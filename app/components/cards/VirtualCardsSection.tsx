@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +21,14 @@ import {
 } from "lucide-react";
 import { playError, playModalClose, playModalOpen, playStep, playTap } from "@/app/lib/sound";
 import { SoleasPayCheckoutV3 } from "@/app/components/payments/SoleasPayCheckoutV3";
+
+import {
+  ALL_COUNTRIES,
+  POPULAR_COUNTRIES,
+  detectUserCountry,
+  dialCodes,
+  formatFullPhoneNumber,
+} from "@/app/lib/countries";
 
 type Language = "fr" | "en";
 type CardBrand = "visa" | "mastercard";
@@ -264,9 +272,27 @@ export function VirtualCardsSection({ language }: { language: Language }) {
   const [step, setStep] = useState<"notes" | "details" | "provider">("notes");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [countryCode, setCountryCode] = useState("CM");
+  const [dialCode, setDialCode] = useState("+237");
   const [provider, setProvider] = useState("soleaspay");
   const [paymentOrderId, setPaymentOrderId] = useState("");
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    void detectUserCountry()
+      .then((detected) => {
+        if (!isMounted || !detected) return;
+        setCountryCode(detected.countryCode);
+        setDialCode(detected.dialCode);
+      })
+      .catch(() => {
+        // Geolocation is optional
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedCard && !detailCard) return;
@@ -473,7 +499,39 @@ export function VirtualCardsSection({ language }: { language: Language }) {
             {step === "details" && (
               <div className="virtual-card-modal-body virtual-card-details-form">
                 <label><span><Mail size={15} /> {t.email}</span><input form="soleaspay-card-checkout" type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(false); }} placeholder={t.emailPlaceholder} autoComplete="email" /></label>
-                <label><span>{t.whatsapp}</span><input form="soleaspay-card-checkout" type="tel" value={whatsapp} onChange={(event) => { setWhatsapp(event.target.value); setError(false); }} placeholder={t.whatsappPlaceholder} autoComplete="tel" /></label>
+                <label><span>{t.whatsapp}</span>
+                  <div className="country-phone-field" style={{ display: "flex", gap: "0.5rem" }}>
+                    <select
+                      className="country-select"
+                      value={countryCode}
+                      onChange={(event) => {
+                        const nextCode = event.target.value;
+                        setCountryCode(nextCode);
+                        if (dialCodes[nextCode]) {
+                          setDialCode(dialCodes[nextCode]);
+                        }
+                      }}
+                      aria-label={language === "fr" ? "Pays" : "Country"}
+                      style={{ minWidth: "120px" }}
+                    >
+                      <optgroup label={language === "fr" ? "Pays populaires" : "Popular countries"}>
+                        {POPULAR_COUNTRIES.map((country) => (
+                          <option key={`pop-${country.code}`} value={country.code}>
+                            {country.flag} {country.dialCode} ({country.name})
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label={language === "fr" ? "Tous les pays (A-Z)" : "All countries (A-Z)"}>
+                        {ALL_COUNTRIES.map((country) => (
+                          <option key={`all-${country.code}`} value={country.code}>
+                            {country.flag} {country.dialCode} ({country.name})
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <input form="soleaspay-card-checkout" type="tel" value={whatsapp} onChange={(event) => { const val = event.target.value.replace(/\D/g, ""); setWhatsapp(val); setError(false); }} placeholder={language === "fr" ? "6 00 00 00 00" : "6 00 00 00 00"} inputMode="numeric" pattern="[0-9]*" autoComplete="tel" style={{ flex: 1 }} />
+                  </div>
+                </label>
                 {error && <p className="virtual-card-form-error" role="alert">{t.invalid}</p>}
               </div>
             )}
@@ -500,9 +558,11 @@ export function VirtualCardsSection({ language }: { language: Language }) {
                     language={language}
                     amount={selectedCard.price}
                     orderId={paymentOrderId}
-                    description={`Produit: Carte virtuelle ${selectedName} | E-mail: ${email} | WhatsApp: ${whatsapp}`}
+                    description={`Produit: Carte virtuelle ${selectedName} | E-mail: ${email} | WhatsApp: ${formatFullPhoneNumber(whatsapp, dialCode)}`}
                     username={selectedName}
                     whatsapp={whatsapp}
+                    dialCode={dialCode}
+                    country={(() => { const c = ALL_COUNTRIES.find((c) => c.code === countryCode); return c ? `${c.flag} ${c.name} (${c.dialCode})` : countryCode; })()}
                     email={email}
                     coins={1}
                     requireEmail
