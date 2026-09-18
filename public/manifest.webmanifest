@@ -1,0 +1,49 @@
+{
+  "id": "./",
+  "name": "Nova Paid",
+  "short_name": "Nova Paid",
+  "description": "Achetez vos packs de pièces TikTok au meilleur prix avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave).",
+  "lang": "fr-FR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#05030D",
+  "theme_color": "#05030D",
+  "categories": [
+    "shopping",
+    "finance",
+    "social"
+  ],
+  "icons": [
+    {
+      "src": "novapaid-logo-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "novapaid-logo-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "novapaid-logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "novapaid-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "novapaid-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

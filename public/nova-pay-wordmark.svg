@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" role="img" aria-labelledby="title desc">
+  <title id="title">Nova Paid</title>
+  <desc id="desc">Logo texte Nova Paid</desc>
+  <defs>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#00d6ff"/>
+      <stop offset=".55" stop-color="#4c7dff"/>
+      <stop offset="1" stop-color="#a56df2"/>
+    </linearGradient>
+  </defs>
+  <text x="4" y="88" fill="url(#word)" font-family="Poppins, Arial, sans-serif" font-size="76" font-weight="800" letter-spacing="3">NOVA</text>
+  <text x="287" y="88" fill="#fff" font-family="Poppins, Arial, sans-serif" font-size="76" font-weight="800" letter-spacing="3">PAY</text>
+</svg>

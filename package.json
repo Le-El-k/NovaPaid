@@ -1,0 +1,60 @@
+{
+  "name": "nova-paid",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "generate:sw": "node scripts/generate-sw.js",
+    "predev": "npm run generate:sw",
+    "prebuild": "npm run generate:sw",
+    "prebuild:pages": "npm run generate:sw",
+    "dev": "vinext dev --port 3000",
+    "build": "vinext build",
+    "build:pages": "next build",
+    "start": "vinext start",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "deploy": "npm run build && wrangler deploy --config ./wrangler.jsonc",
+    "deploy:payments": "wrangler deploy --config ./worker/wrangler.jsonc",
+    "deploy:mailjet": "wrangler deploy --config ./worker/mailjet-wrangler.jsonc",
+    "preview": "npm run build && wrangler dev",
+    "dev:vinext": "vinext dev --port 3001",
+    "build:vinext": "vinext build",
+    "start:vinext": "wrangler dev --config dist/server/wrangler.json",
+    "deploy:vinext": "vinext-cloudflare deploy --config dist/server/wrangler.json"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.468.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-icons": "^5.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.52.1",
+    "@eslint/js": "9.39.4",
+    "@next/eslint-plugin-next": "16.2.6",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vinext/cloudflare": "^1.0.0-beta.5",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "eslint": "9.39.4",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "16.4.0",
+    "next": "^16.3.1",
+    "react-server-dom-webpack": "19.2.6",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.59.3",
+    "vinext": "^1.0.0-beta.5",
+    "vite": "8.0.13",
+    "wrangler": "^4.123.0"
+  },
+  "type": "module"
+}
