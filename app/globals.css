@@ -4469,46 +4469,52 @@ html[data-theme="dark"] .pwa-install-later:hover {
     box-shadow: none;
   }
 
-  .store-page:has(.virtual-cards-section) .sound-toggle,
-  .store-page:has(.virtual-cards-section) .header-coins-counter {
-    display: none;
+  .store-brand img {
+    height: 30px !important;
+    width: auto !important;
   }
 
-  .store-page:has(.virtual-cards-section) .header-right {
-    gap: 6px;
+  .brand-title {
+    font-size: 16px !important;
   }
 
-  .store-page:has(.virtual-cards-section) .mobile-device-chip {
-    display: grid;
-    width: 38px;
-    height: 38px;
-    place-items: center;
-    border: 1px solid #2c3e59;
-    border-radius: 10px;
-    color: #e9f1ff;
-    background: #16253b;
+  .sound-toggle,
+  .header-coins-counter {
+    display: none !important;
   }
 
-  .store-page:has(.virtual-cards-section) .theme-menu {
-    top: 55px;
-    right: 45px;
+  .header-right {
+    gap: 6px !important;
   }
 
-  .store-page:has(.virtual-cards-section) .lang-switcher {
-    min-height: 38px;
-    padding: 0 9px;
-    border-color: #2c3e59;
-    border-radius: 10px;
-    background: #16253b;
+  .mobile-device-chip,
+  .theme-toggle {
+    display: grid !important;
+    width: 38px !important;
+    height: 38px !important;
+    place-items: center !important;
+    border: 1px solid #2c3e59 !important;
+    border-radius: 10px !important;
+    color: #e9f1ff !important;
+    background: #16253b !important;
   }
 
-  
-
-  .store-page:has(.virtual-cards-section) .brand-title {
-    font-size: 16px;
+  .theme-menu {
+    top: 55px !important;
+    right: 45px !important;
   }
 
-  .product-mode-shell {
+  .lang-switcher {
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 9px !important;
+    border: 1px solid #2c3e59 !important;
+    border-radius: 10px !important;
+    background: #16253b !important;
+    color: #e9f1ff !important;
+  }
+
+    .product-mode-shell {
     width: min(calc(100% - 40px), 620px);
     margin-top: 7px;
     gap: 0;
@@ -4823,16 +4829,36 @@ html[data-theme="dark"] .pwa-install-later:hover {
 
 /* Keep every mobile catalogue surface in sync with the selected light theme. */
 @media (max-width: 700px) {
-  .store-page[data-theme="light"]:has(.virtual-cards-section) .mobile-device-chip {
-    border-color: #cbd6e5;
-    color: #263650;
-    background: #f1f5fa;
+  .store-page[data-theme="light"] .store-header {
+    min-height: 56px;
+    height: 56px;
+    padding: 0 12px;
+    border-color: #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
-  .store-page[data-theme="light"]:has(.virtual-cards-section) .lang-switcher {
-    border-color: #cbd6e5;
-    color: #63738a;
-    background: #eef3f8;
+  .store-page[data-theme="light"] .store-brand img {
+    height: 30px !important;
+    width: auto !important;
+  }
+
+  .store-page[data-theme="light"] .brand-title {
+    font-size: 16px !important;
+    color: #16243b !important;
+  }
+
+  .store-page[data-theme="light"] .mobile-device-chip,
+  .store-page[data-theme="light"] .theme-toggle {
+    border: 1px solid #cbd6e5 !important;
+    color: #263650 !important;
+    background: #f1f5fa !important;
+  }
+
+  .store-page[data-theme="light"] .lang-switcher {
+    border: 1px solid #cbd6e5 !important;
+    color: #63738a !important;
+    background: #eef3f8 !important;
   }
 
   .store-page[data-theme="light"] .product-mode-switch {
