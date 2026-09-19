@@ -558,7 +558,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
                     language={language}
                     amount={selectedCard.price}
                     orderId={paymentOrderId}
-                    description={`Produit: Carte virtuelle ${selectedName} | E-mail: ${email} | WhatsApp: ${formatFullPhoneNumber(whatsapp, dialCode)}`}
+                    description={`Carte ${selectedName} | Email: ${email} | ${formatFullPhoneNumber(whatsapp, dialCode)}`.substring(0, 100)}
                     username={selectedName}
                     whatsapp={whatsapp}
                     dialCode={dialCode}

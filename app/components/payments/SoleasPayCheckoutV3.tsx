@@ -163,6 +163,7 @@ export function SoleasPayCheckoutV3({
       <input type="hidden" name="successUrl" value={successUrl} />
       <input type="hidden" name="failureUrl" value={failureUrl} />
       <input type="hidden" name="customer[name]" value={customerName} />
+      <input type="hidden" name="customer[phone]" value={fullPhone} />
       {email && <input type="hidden" name="customer[email]" value={email} />}
       <input type="hidden" name="feeBearer" value="CUSTOMER" />
 
