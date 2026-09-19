@@ -337,7 +337,24 @@ export default function Home() {
     (): Theme => "light",
   );
   const [selectedPack, setSelectedPack] = useState<Pack>(packs[2]);
-  const [productMode, setProductMode] = useState<ProductMode>("cards");
+  const [productMode, setProductMode] = useState<ProductMode>(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.toLowerCase();
+      if (hash.startsWith("#coins") || hash.startsWith("#packs") || hash.startsWith("#tiktok")) {
+        return "coins";
+      }
+      if (hash.startsWith("#cards") || hash.startsWith("#card")) {
+        return "cards";
+      }
+      try {
+        const saved = window.sessionStorage.getItem("nova_product_mode");
+        if (saved === "coins" || saved === "cards") {
+          return saved;
+        }
+      } catch {}
+    }
+    return "cards";
+  });
   const [customCoins, setCustomCoins] = useState(0);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -366,6 +383,19 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash.startsWith("#coins") || hash.startsWith("#packs") || hash.startsWith("#tiktok")) {
+        setProductMode("coins");
+      } else if (hash.startsWith("#cards") || hash.startsWith("#card")) {
+        setProductMode("cards");
+      }
+    };
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -684,7 +714,12 @@ export default function Home() {
             role="tab"
             aria-selected={productMode === "cards"}
             className={productMode === "cards" ? "active" : ""}
-            onClick={() => { playToggle(productMode === "coins"); setProductMode("cards"); }}
+            onClick={() => {
+              playToggle(productMode === "coins");
+              setProductMode("cards");
+              try { window.sessionStorage.setItem("nova_product_mode", "cards"); } catch {}
+              window.history.replaceState(null, "", "#cards");
+            }}
           >
             <CreditCard size={17} /> {t.virtualCards}
           </button>
@@ -693,7 +728,12 @@ export default function Home() {
             role="tab"
             aria-selected={productMode === "coins"}
             className={productMode === "coins" ? "active" : ""}
-            onClick={() => { playToggle(productMode === "cards"); setProductMode("coins"); }}
+            onClick={() => {
+              playToggle(productMode === "cards");
+              setProductMode("coins");
+              try { window.sessionStorage.setItem("nova_product_mode", "coins"); } catch {}
+              window.history.replaceState(null, "", "#coins");
+            }}
           >
             <Coins size={17} /> {t.tiktokCoins}
           </button>

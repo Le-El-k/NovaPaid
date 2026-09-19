@@ -54,7 +54,7 @@ a { color: inherit; text-decoration: none; }
 
 .store-page {
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
   width: 100%;
 }
@@ -4060,7 +4060,8 @@ html[data-theme="dark"] .pwa-install-later:hover {
 .product-mode-switch button:hover { color: #312a69; transform: translateY(-1px); }
 .product-mode-switch button.active { color: #fff; background: linear-gradient(135deg, #3262f5, #7650ef); box-shadow: 0 7px 16px rgba(72, 75, 207, .25); }
 .product-mode-switch button:focus-visible { outline: 2px solid #3262f5; outline-offset: 2px; }
-.virtual-cards-section { width: min(1320px, calc(100% - 32px)); margin: 26px auto 0; padding-bottom: 38px; animation: productFadeIn .34s ease both; }
+.virtual-cards-section { width: min(1320px, calc(100% - 32px)); margin: 26px auto 0; padding-bottom: 38px; animation: opacityFadeIn .34s ease both; }
+@keyframes opacityFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes productFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .virtual-cards-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 18px; }
 .section-kicker { display: inline-flex; align-items: center; gap: 7px; color: #5a50c9; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -4178,7 +4179,7 @@ html[data-theme="dark"] .pwa-install-later:hover {
 .virtual-card-help-banner button::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 70% 20%, rgba(255,255,255,.25), transparent 28%), linear-gradient(135deg, transparent 35%, rgba(0,0,0,.28)); }
 .virtual-card-help-play { position: absolute !important; top: 50%; left: 50%; width: 34px; height: 34px; display: grid !important; place-items: center; transform: translate(-50%, -50%); border-radius: 50%; color: #fff !important; background: #3262f5; }
 .virtual-card-help-play svg { transform: rotate(180deg); }
-.virtual-card-detail-view { min-height: calc(100vh - 145px); padding: 0 0 110px; animation: productFadeIn .28s ease both; }
+.virtual-card-detail-view { min-height: calc(100vh - 145px); padding: 0 0 110px; padding-bottom: 110px !important; animation: opacityFadeIn .28s ease both; }
 .virtual-card-detail-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin: -6px 0 21px; border-bottom: 1px solid #dfe3eb; color: #26324a; }
 .virtual-card-detail-topbar button { display: grid; width: 35px; height: 35px; place-items: center; border: 0; border-radius: 10px; color: inherit; background: #eaf0fa; cursor: pointer; }
 .virtual-card-detail-topbar strong { font-size: 14px; }
@@ -4204,7 +4205,54 @@ html[data-theme="dark"] .pwa-install-later:hover {
 .virtual-card-detail-warning svg { flex: 0 0 auto; color: #71819d; }
 .virtual-card-detail-provider { display: flex; justify-content: center; align-items: center; gap: 7px; color: #788399; font-size: 11px; }
 .virtual-card-detail-provider svg { color: #526b9b; }
-.virtual-card-detail-sticky { display: none; }
+.virtual-card-detail-sticky {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 14px 20px !important;
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 14px)) !important;
+  border-top: 1px solid #2e405b !important;
+  color: #dbe6f5 !important;
+  background: #101b2c !important;
+  box-shadow: 0 -8px 25px rgba(0,0,0,.35) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.virtual-card-detail-sticky div { display: grid; gap: 3px; }
+.virtual-card-detail-sticky span { color: #91a5c1; font-size: 9px; }
+.virtual-card-detail-sticky strong { color: #fff; font-size: 20px; }
+.virtual-card-detail-sticky button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  flex: 1;
+  border: 0;
+  border-radius: 11px;
+  color: #fff;
+  background: #2f68ed;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.virtual-card-detail-sticky button svg { display: block; flex: 0 0 auto; }
+
+.store-page[data-theme="light"] .virtual-card-detail-sticky {
+  border-color: #d2dce8 !important;
+  color: #263650 !important;
+  background: #ffffff !important;
+  box-shadow: 0 -8px 25px rgba(35, 58, 92, .18) !important;
+}
+.store-page[data-theme="light"] .virtual-card-detail-sticky span { color: #71819a !important; }
+.store-page[data-theme="light"] .virtual-card-detail-sticky strong { color: #18263d !important; }
 .virtual-card-art { position: relative; overflow: hidden; border-radius: 11px; background: linear-gradient(135deg, #2c74f4, #255ad5 58%, #387df3); box-shadow: 0 8px 17px rgba(22, 50, 123, .2); }
 .virtual-card-art.detail { width: min(100%, 520px); height: 205px; margin: 0 auto; border-radius: 20px; }
 .virtual-card-art.tone-teal { background: linear-gradient(135deg, #087c84, #1a9f93); }
@@ -4260,7 +4308,7 @@ html[data-theme="dark"] .pwa-install-later:hover {
   .virtual-card-modal { max-height: calc(100vh - 20px); }
   .virtual-card-modal-header, .virtual-card-modal-body, .virtual-card-modal-actions { padding-left: 18px; padding-right: 18px; }
 }
-@media (max-width: 525px) {
+@media (max-width: 700px) {
   .virtual-cards-notice { padding: 12px; }
   .virtual-cards-notice p { font-size: 11.5px; }
   .virtual-card-price-row strong { font-size: 24px; }
@@ -4272,7 +4320,17 @@ html[data-theme="dark"] .pwa-install-later:hover {
   .modal-back-button, .modal-primary-button { padding: 0 11px; font-size: 11px; }
   .virtual-card-providers { grid-template-columns: 1fr; }
   .store-page:has(.virtual-cards-section) .menu-trigger { display: none; }
-  .store-page:has(.virtual-card-detail-view) .store-header, .store-page:has(.virtual-card-detail-view) .product-mode-shell { display: none; }
+  body.card-detail-open .support-float-wrap,
+  .store-page:has(.virtual-card-detail-view) .support-float-wrap,
+  .store-page:has(.virtual-card-detail-view) .store-header,
+  .store-page:has(.virtual-card-detail-view) .product-mode-shell { display: none !important; }
+  .store-page:has(.virtual-card-detail-view) .virtual-cards-section {
+    animation: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
   .virtual-card-help-banner { min-height: 108px; margin-top: 14px; padding: 14px; }
   .virtual-card-help-banner strong { max-width: 185px; font-size: 13px; line-height: 1.3; }
   .virtual-card-help-banner button { width: 112px; height: 74px; }
@@ -4297,10 +4355,28 @@ html[data-theme="dark"] .pwa-install-later:hover {
   .virtual-card-buy > svg:first-child { display: none; }
   .desktop-buy-label { display: none; }
   .mobile-buy-label { display: inline; }
-  .virtual-card-detail-view { min-height: calc(100vh - 80px); margin: -20px -12px 0; padding: 0 12px 106px; background: #080f1d; color: #f5f7fb; }
-  .virtual-card-detail-topbar { position: sticky; top: 0; z-index: 3; margin: 0 -12px; padding: 6px 12px; border-color: rgba(255,255,255,.12); color: #f5f7fb; background: rgba(8,15,29,.95); backdrop-filter: blur(10px); }
+  .virtual-card-detail-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    z-index: 100;
+    background: #080f1d;
+    color: #f5f7fb;
+    overflow: hidden;
+  }
+  .virtual-card-detail-topbar { position: relative; z-index: 3; margin: 0; padding: 6px 12px; border-color: rgba(255,255,255,.12); color: #f5f7fb; background: rgba(8,15,29,.95); flex-shrink: 0; }
   .virtual-card-detail-topbar button, .virtual-card-detail-topbar > span { color: #f4f7fd; background: #15243a; }
   .virtual-card-detail-topbar strong { flex: 1; font-size: 13px; text-align: center; }
+  .virtual-card-detail-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 16px 100px; -webkit-overflow-scrolling: touch; }
   .virtual-card-detail-topbar .virtual-card-detail-device {
     display: grid;
     width: 35px;
@@ -4313,18 +4389,18 @@ html[data-theme="dark"] .pwa-install-later:hover {
     color: #e9f1ff;
     background: #15243a;
   }
-  .virtual-card-art.detail { width: 100%; height: 200px; margin-top: 24px; border-radius: 20px; }
-  .virtual-card-detail-copy { margin-top: 24px; }
+  .virtual-card-art.detail { width: 100%; height: 150px; margin-top: 10px; border-radius: 14px; }
+  .virtual-card-detail-copy { margin-top: 10px; }
   .virtual-card-detail-kicker { color: #a9c8fa; font-size: 10px; }
-  .virtual-card-detail-copy h1 { color: #fff; font-size: 25px; }
-  .virtual-card-detail-copy p { color: #bdd0ea; font-size: 13px; }
-  .virtual-card-detail-facts { margin: 22px 0 27px; border-color: #324662; background: #101d31; }
+  .virtual-card-detail-copy h1 { color: #fff; font-size: 20px; margin-bottom: 2px; }
+  .virtual-card-detail-copy p { color: #bdd0ea; font-size: 11.5px; margin-top: 2px; line-height: 1.4; }
+  .virtual-card-detail-facts { margin: 10px 0 12px; padding: 10px; border-color: #324662; background: #101d31; }
   .virtual-card-detail-facts div + div { border-color: #324662; }
   .virtual-card-detail-facts span { color: #90a4c2; }
   .virtual-card-detail-facts strong { color: #fff; font-size: 17px; }
-  .virtual-card-included-title { color: #fff; font-size: 15px; }
+  .virtual-card-included-title { color: #fff; font-size: 14px; margin-bottom: 6px; }
   .virtual-card-detail-features { grid-template-columns: 1fr; padding: 0 16px; border-color: #324662; background: #101d31; }
-  .virtual-card-detail-features li, .virtual-card-detail-features li:nth-last-child(-n+2) { min-height: 53px; border-color: #324662; color: #dce6f5; font-size: 11.5px; }
+  .virtual-card-detail-features li, .virtual-card-detail-features li:nth-last-child(-n+2) { min-height: 40px; border-color: #324662; color: #dce6f5; font-size: 11.5px; }
   .virtual-card-detail-features li:last-child { border-bottom: 0; }
   .virtual-card-detail-features svg {
     width: 24px;
@@ -4335,11 +4411,29 @@ html[data-theme="dark"] .pwa-install-later:hover {
     background: #0d4937;
   }
   .virtual-card-detail-features li.negative svg { color: #ff9ca4; background: #5a2530; }
-  .virtual-card-detail-warning { margin-top: 24px; padding: 14px 15px; border-color: #324662; border-radius: 14px; color: #bbcae0; background: #132239; font-size: 11px; line-height: 1.55; }
+  .virtual-card-detail-warning { margin-top: 14px; padding: 10px 12px; border-color: #324662; border-radius: 12px; color: #bbcae0; background: #132239; font-size: 10.5px; line-height: 1.45; }
   .virtual-card-detail-warning svg { color: #91a5c5; }
   .virtual-card-detail-provider { color: #8fa5c5; }
   .virtual-card-detail-provider svg { color: #7c91b1; }
-  .virtual-card-detail-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid #2e405b; color: #dbe6f5; background: #101b2c; box-shadow: 0 -8px 25px rgba(0,0,0,.2); }
+  .virtual-card-detail-sticky {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 14px 20px !important;
+    padding-bottom: max(14px, env(safe-area-inset-bottom, 14px)) !important;
+    border-top: 1px solid #2e405b !important;
+    color: #dbe6f5 !important;
+    background: #101b2c !important;
+    box-shadow: 0 -8px 25px rgba(0,0,0,.35) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
   .virtual-card-detail-sticky div { display: grid; gap: 3px; }
   .virtual-card-detail-sticky span { color: #91a5c1; font-size: 9px; }
   .virtual-card-detail-sticky strong { color: #fff; font-size: 20px; }
@@ -4361,7 +4455,7 @@ html[data-theme="dark"] .pwa-install-later:hover {
 }
 
 /* Mobile card catalogue follows the compact flow from the reference screens. */
-@media (max-width: 525px) {
+@media (max-width: 700px) {
   .store-page[data-theme="dark"] {
     background: #080f1d;
   }
@@ -4408,9 +4502,7 @@ html[data-theme="dark"] .pwa-install-later:hover {
     background: #16253b;
   }
 
-  .store-page:has(.virtual-cards-section) .store-brand img {
-    height: 30px;
-  }
+  
 
   .store-page:has(.virtual-cards-section) .brand-title {
     font-size: 16px;
@@ -4459,10 +4551,8 @@ html[data-theme="dark"] .pwa-install-later:hover {
 
   .virtual-cards-heading .section-kicker,
   .virtual-cards-heading p,
-  .virtual-cards-security,
-  .virtual-cards-notice {
-    display: none;
-  }
+  .virtual-cards-security { display: none; }
+
 
   .virtual-cards-heading h1 {
     margin: 0;
@@ -4618,7 +4708,7 @@ html[data-theme="dark"] .pwa-install-later:hover {
 }
 
 /* Keep mobile card containers readable when the user selects the light theme. */
-@media (max-width: 525px) {
+@media (max-width: 700px) {
   .store-page[data-theme="light"] .virtual-card-card {
     border-color: #cbd6e5;
     background: #f7f9fc;
@@ -4732,7 +4822,7 @@ html[data-theme="dark"] .pwa-install-later:hover {
 }
 
 /* Keep every mobile catalogue surface in sync with the selected light theme. */
-@media (max-width: 525px) {
+@media (max-width: 700px) {
   .store-page[data-theme="light"]:has(.virtual-cards-section) .mobile-device-chip {
     border-color: #cbd6e5;
     color: #263650;

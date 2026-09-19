@@ -40,7 +40,13 @@
       "purpose": "any"
     },
     {
-      "src": "novapaid-logo-512.png",
+      "src": "novapaid-logo-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "novapaid-logo-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
