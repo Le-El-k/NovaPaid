@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState, useRef } from "react";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
@@ -20,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { playError, playModalClose, playModalOpen, playStep, playTap } from "@/app/lib/sound";
+import { getAssetPath } from "@/app/lib/asset-path";
 import { SoleasPayCheckoutV3 } from "@/app/components/payments/SoleasPayCheckoutV3";
 
 import {
@@ -161,6 +164,8 @@ const labels = {
     emailPlaceholder: "vous@exemple.com",
     whatsappPlaceholder: "+237 6 00 00 00 00",
     previous: "Précédent",
+    back: "Retour",
+    continue: "Continuer",
     next: "Suivant",
     chooseProvider: "Choisir un provider",
     chooseProviderIntro: "Sélectionnez le service qui traitera votre paiement.",
@@ -168,6 +173,11 @@ const labels = {
     providerLabel: "Choisir un prestataire",
     pay: "Payer",
     invalid: "Renseignez un e-mail et un numéro WhatsApp valides.",
+    emailRequiredWarning: "Veuillez renseigner une adresse e-mail valide.",
+    whatsappRequiredWarning: "Veuillez renseigner votre numéro WhatsApp (au moins 6 chiffres).",
+    whatsappHint: "Pour vous contacter en cas de besoin",
+    popularCountries: "Pays populaires",
+    allCountries: "Tous les pays (A-Z)",
     paymentNotice: "Le paiement sécurisé est traité par SoleasPay.",
     contactSupport: "Contacter le support",
     close: "Fermer",
@@ -216,6 +226,8 @@ const labels = {
     emailPlaceholder: "you@example.com",
     whatsappPlaceholder: "+237 6 00 00 00 00",
     previous: "Back",
+    back: "Back",
+    continue: "Continue",
     next: "Next",
     chooseProvider: "Choose a provider",
     chooseProviderIntro: "Select the service that will process your payment.",
@@ -223,6 +235,11 @@ const labels = {
     providerLabel: "Choose a provider",
     pay: "Pay",
     invalid: "Enter a valid email and WhatsApp number.",
+    emailRequiredWarning: "Please enter a valid email address.",
+    whatsappRequiredWarning: "Please enter your WhatsApp number (at least 6 digits).",
+    whatsappHint: "So we can contact you about the order",
+    popularCountries: "Popular countries",
+    allCountries: "All countries (A-Z)",
     paymentNotice: "Secure payment is processed by SoleasPay.",
     contactSupport: "Contact support",
     close: "Close",
@@ -269,6 +286,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
   const t = labels[language];
   const [selectedCard, setSelectedCard] = useState<VirtualCard | null>(null);
   const [detailCard, setDetailCard] = useState<VirtualCard | null>(null);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [step, setStep] = useState<"notes" | "details" | "provider">("notes");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -277,6 +295,10 @@ export function VirtualCardsSection({ language }: { language: Language }) {
   const [provider, setProvider] = useState("soleaspay");
   const [paymentOrderId, setPaymentOrderId] = useState("");
   const [error, setError] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [whatsappError, setWhatsappError] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const whatsappInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -299,6 +321,58 @@ export function VirtualCardsSection({ language }: { language: Language }) {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, [selectedCard, detailCard]);
+
+  // Persist card detail view across page refreshes via URL hash & sessionStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    let cardId: string | null = null;
+    if (hash.includes("card=")) {
+      cardId = hash.split("card=")[1]?.split("&")[0] || null;
+    } else if (hash.startsWith("#card-")) {
+      cardId = hash.replace("#card-", "");
+    }
+    if (!cardId) {
+      try {
+        cardId = window.sessionStorage.getItem("nova_detail_card");
+      } catch {}
+    }
+    if (cardId) {
+      const found = cards.find((c) => c.id === cardId);
+      if (found && window.matchMedia("(max-width: 700px)").matches) {
+        setDetailCard(found);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (detailCard) {
+      window.history.replaceState(null, "", "#cards?card=" + detailCard.id);
+      try {
+        window.sessionStorage.setItem("nova_detail_card", detailCard.id);
+      } catch {}
+    } else {
+      try {
+        window.sessionStorage.removeItem("nova_detail_card");
+      } catch {}
+      if (window.location.hash.includes("card=")) {
+        window.history.replaceState(null, "", "#cards");
+      }
+    }
+  }, [detailCard]);
+
+  // Handle browser back button: close card detail view when navigating back
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash;
+      if (!hash.includes("card=") && !hash.startsWith("#card-") && detailCard) {
+        setDetailCard(null);
+      }
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [detailCard]);
 
   const selectedName = useMemo(
     () => selectedCard ? selectedCard.name[language] : "",
@@ -370,6 +444,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
             <span className="virtual-card-detail-device" aria-hidden="true"><Monitor size={16} /></span>
             <span>{language === "fr" ? "FR" : "EN"}</span>
           </div>
+          <div className="virtual-card-detail-scroll">
           <VirtualCardArt card={detailCard} detail />
           <div className="virtual-card-detail-copy">
             <span className="virtual-card-detail-kicker">{detailCard.brand === "visa" ? "VISA" : "MASTERCARD"} · {t.cardType}</span>
@@ -391,6 +466,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
           </ul>
           <div className="virtual-card-detail-warning"><Info size={17} /><span>{t.notice} {language === "fr" ? "Les conditions complètes sont présentées à la prochaine étape." : "Full terms are shown at the next step."}</span></div>
           <div className="virtual-card-detail-provider"><LockKeyhole size={14} /> {t.secureWith} SoleasPay</div>
+          </div>
           <div className="virtual-card-detail-sticky">
             <div><span>{t.creationFee}</span><strong>{formatPrice(detailCard.price, language)}</strong></div>
             <button type="button" onClick={() => openCheckout(detailCard)}>{t.obtain} <ArrowRight size={17} /></button>
@@ -415,14 +491,49 @@ export function VirtualCardsSection({ language }: { language: Language }) {
         <p><strong>{t.noticeTitle} :</strong> {t.notice}</p>
       </div>
 
-      <div className="virtual-card-help-banner">
-        <div><strong>{t.helpCard}</strong><span>{t.watchTutorial} <ArrowRight size={15} /></span></div>
-        <button type="button" aria-label={t.watchTutorial} onClick={() => playTap()}><span className="virtual-card-help-play"><ArrowRight size={18} /></span></button>
+      
+      <div className="help-video-banner">
+        <div className="help-video-banner-left">
+          <div className="help-video-title-row">
+            <span className="help-video-dot" aria-hidden="true" />
+            <h2>{t.helpCard}</h2>
+          </div>
+          <p>{t.watchTutorial}</p>
+        </div>
+
+        <button
+          type="button"
+          className="help-video-trigger"
+          onClick={() => {
+            playModalOpen();
+            setVideoModalOpen(true);
+          }}
+          aria-label={t.watchTutorial}
+        >
+          <Image
+            src="https://img.youtube.com/vi/AZgaA8ufCzs/maxresdefault.jpg"
+            alt={t.helpCard}
+            className="help-video-thumbnail"
+            fill
+            sizes="(max-width: 760px) 100vw, 360px"
+            unoptimized
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                "https://img.youtube.com/vi/AZgaA8ufCzs/hqdefault.jpg";
+            }}
+          />
+          <div className="help-video-overlay" />
+          <div className="help-video-play-btn" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="help-video-play-icon" width="18" height="18">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        </button>
       </div>
 
       <div className="virtual-cards-grid">
         {cards.map((card) => (
-          <article className={`virtual-card-card tone-${card.tone}${card.recommended ? " is-recommended" : ""}`} key={card.id}>
+          <article className={`virtual-card-card tone-${card.tone}${card.recommended ? " is-recommended" : ""}`} key={card.id} onClick={() => openCard(card)} style={{ cursor: "pointer" }}>
             {card.recommended && <span className="virtual-card-badge"><BadgeCheck size={13} /> {t.recommended}</span>}
             <div className="virtual-card-hero">
               <VirtualCardArt card={card} />
@@ -466,41 +577,127 @@ export function VirtualCardsSection({ language }: { language: Language }) {
       )}
 
       {selectedCard && (
-        <div className="virtual-card-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
-          <section className="virtual-card-modal" role="dialog" aria-modal="true" aria-labelledby="virtual-card-modal-title">
-            <header className="virtual-card-modal-header">
-              <div>
-                <span className="modal-step-label">{step === "notes" ? "1 / 3" : step === "details" ? "2 / 3" : "3 / 3"}</span>
-                <h2 id="virtual-card-modal-title">{step === "notes" ? t.usageTitle : step === "details" ? t.coordinates : t.chooseProvider}</h2>
-                <p>{step === "notes" ? t.usageIntro : step === "details" ? t.coordinatesIntro : t.chooseProviderIntro}</p>
-              </div>
-              <button type="button" className="virtual-card-close" onClick={close} aria-label={t.close}><X size={20} /></button>
-            </header>
+        <div
+          className="checkout-overlay"
+          role="presentation"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}
+        >
+          <section className="checkout-panel" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+            <button type="button" className="close-checkout" onClick={close} aria-label={t.close}>
+              <X />
+            </button>
+
+            <div className="checkout-progress" aria-label={step === "notes" ? "1 / 3" : step === "details" ? "2 / 3" : "3 / 3"}>
+              <span className="active" />
+              <span className={step === "details" || step === "provider" ? "active" : ""} />
+              <span className={step === "provider" ? "active" : ""} />
+            </div>
 
             {step === "notes" && (
-              <div className="virtual-card-modal-body">
-                <div className="usage-highlight">
-                  <strong>{t.cardInfo}</strong>
-                  <p>{t.usageDescription}</p>
+              <div className="checkout-step step-instructions">
+                <div className="instructions-header">
+                  <span className="modal-kicker">{language === "fr" ? "ÉTAPE 1 SUR 3" : "STEP 1 OF 3"}</span>
+                  <h2 id="checkout-title">{t.usageTitle}</h2>
+                  <p className="instructions-intro">{t.usageIntro}</p>
                 </div>
-                <div className="usage-facts">
-                  <div><span>{t.validity}</span><strong>{t.threeYears}</strong></div>
-                  <div><span>{t.transactionLimit}</span><strong>{t.tenThousand}</strong></div>
-                  <div><span>{t.balanceLimit}</span><strong>{t.oneHundredThousand}</strong></div>
-                  <div><span>{t.failureFee}</span><strong>{t.thirtyCents}</strong></div>
+
+                <div className="instruction-cards">
+                  <div className="instruction-card">
+                    <div className="instruction-card-icon"><CreditCard size={20} /></div>
+                    <div>
+                      <strong>{t.cardInfo}</strong>
+                      <p>{t.usageDescription}</p>
+                    </div>
+                  </div>
+
+                  <div className="instruction-card warning">
+                    <div className="instruction-card-icon"><Info size={20} /></div>
+                    <div>
+                      <strong>{t.noticeTitle}</strong>
+                      <p>{t.notice}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="usage-warnings">
-                  <p><CircleX size={16} /> {t.warningOne}</p>
-                  <p><CircleX size={16} /> {t.warningTwo}</p>
+
+                <div className="instructions-actions">
+                  <button type="button" className="modal-secondary" onClick={close}>{t.refuse}</button>
+                  <button
+                    type="button"
+                    className="modal-primary"
+                    onClick={() => {
+                      playStep(true);
+                      setStep("details");
+                    }}
+                  >
+                    {t.accept} <ArrowRight size={18} />
+                  </button>
                 </div>
               </div>
             )}
 
             {step === "details" && (
-              <div className="virtual-card-modal-body virtual-card-details-form">
-                <label><span><Mail size={15} /> {t.email}</span><input form="soleaspay-card-checkout" type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(false); }} placeholder={t.emailPlaceholder} autoComplete="email" /></label>
-                <label><span>{t.whatsapp}</span>
-                  <div className="country-phone-field" style={{ display: "flex", gap: "0.5rem" }}>
+              <div className="checkout-step step-form">
+                <button
+                  type="button"
+                  className="back-button"
+                  onClick={() => {
+                    playStep(false);
+                    setStep("notes");
+                  }}
+                >
+                  <ArrowLeft size={15} /> {t.back}
+                </button>
+
+                <div className="form-header">
+                  <div>
+                    <span className="modal-kicker">{language === "fr" ? "ÉTAPE 2 SUR 3" : "STEP 2 OF 3"}</span>
+                    <h2 id="checkout-title">{t.coordinates}</h2>
+                  </div>
+                  <div className="form-header-pack">
+                    <span>{selectedName}</span> · <strong>{formatPrice(selectedCard.price, language)}</strong>
+                  </div>
+                </div>
+
+                <label className="field-label">
+                  <span>
+                    {t.email} <span className="required">*</span>
+                  </span>
+                  <div className={"field" + (emailError ? " field-error" : "")}>
+                    <span><Mail size={16} /></span>
+                    <input
+                      ref={emailInputRef}
+                      form="soleaspay-card-checkout"
+                      type="email"
+                      value={email}
+                      onChange={(event) => {
+                        setEmail(event.target.value);
+                        if (emailError && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(event.target.value.trim())) {
+                          setEmailError(false);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+                          setEmailError(true);
+                        }
+                      }}
+                      placeholder={t.emailPlaceholder}
+                      autoComplete="email"
+                    />
+                  </div>
+                  {emailError && (
+                    <div className="field-error-notice" role="alert">
+                      <AlertCircle size={13} />
+                      <span>{t.emailRequiredWarning}</span>
+                    </div>
+                  )}
+                </label>
+
+                <label className="field-label">
+                  <span>
+                    {t.whatsapp} <span className="required">*</span>{" "}
+                    <span className="field-hint">— {t.whatsappHint}</span>
+                  </span>
+                  <div className={"field country-phone-field" + (whatsappError ? " field-error" : "")}>
                     <select
                       className="country-select"
                       value={countryCode}
@@ -512,80 +709,145 @@ export function VirtualCardsSection({ language }: { language: Language }) {
                         }
                       }}
                       aria-label={language === "fr" ? "Pays" : "Country"}
-                      style={{ minWidth: "120px" }}
                     >
-                      <optgroup label={language === "fr" ? "Pays populaires" : "Popular countries"}>
+                      <optgroup label={t.popularCountries}>
                         {POPULAR_COUNTRIES.map((country) => (
-                          <option key={`pop-${country.code}`} value={country.code}>
+                          <option key={"card-pop-" + country.code} value={country.code}>
                             {country.flag} {country.dialCode} ({country.name})
                           </option>
                         ))}
                       </optgroup>
-                      <optgroup label={language === "fr" ? "Tous les pays (A-Z)" : "All countries (A-Z)"}>
+                      <optgroup label={t.allCountries}>
                         {ALL_COUNTRIES.map((country) => (
-                          <option key={`all-${country.code}`} value={country.code}>
+                          <option key={"card-all-" + country.code} value={country.code}>
                             {country.flag} {country.dialCode} ({country.name})
                           </option>
                         ))}
                       </optgroup>
                     </select>
-                    <input form="soleaspay-card-checkout" type="tel" value={whatsapp} onChange={(event) => { const val = event.target.value.replace(/\D/g, ""); setWhatsapp(val); setError(false); }} placeholder={language === "fr" ? "6 00 00 00 00" : "6 00 00 00 00"} inputMode="numeric" pattern="[0-9]*" autoComplete="tel" style={{ flex: 1 }} />
+                    <input
+                      ref={whatsappInputRef}
+                      form="soleaspay-card-checkout"
+                      type="tel"
+                      value={whatsapp}
+                      onChange={(event) => {
+                        const val = event.target.value.replace(/\D/g, "");
+                        setWhatsapp(val);
+                        if (whatsappError && val.length >= 6) {
+                          setWhatsappError(false);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (whatsapp.replace(/\D/g, "").length < 6) {
+                          setWhatsappError(true);
+                        }
+                      }}
+                      placeholder="6 00 00 00 00"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="tel"
+                      required
+                    />
                   </div>
+                  {whatsappError && (
+                    <div className="field-error-notice" role="alert">
+                      <AlertCircle size={13} />
+                      <span>{t.whatsappRequiredWarning}</span>
+                    </div>
+                  )}
                 </label>
-                {error && <p className="virtual-card-form-error" role="alert">{t.invalid}</p>}
+
+                <button
+                  type="button"
+                  className="modal-primary"
+                  onClick={nextStep}
+                >
+                  {t.continue} <ArrowRight size={18} />
+                </button>
               </div>
             )}
 
             {step === "provider" && (
-              <div className="virtual-card-modal-body virtual-card-provider-step">
-                <div className="selected-card-summary"><span>{t.selectedCard}</span><strong>{selectedName}</strong><b>{formatPrice(selectedCard.price, language)}</b></div>
-                <p className="provider-step-label">{t.providerLabel}</p>
-                <div className="virtual-card-providers" role="radiogroup" aria-label={t.providerLabel}>
-                  {([
-                    ["soleaspay", "SoleasPay", true],
-                  ] as const).map(([id, name, recommended]) => (
-                    <button type="button" role="radio" aria-checked={provider === id} className={`virtual-card-provider${provider === id ? " selected" : ""}`} key={id} onClick={() => setProvider(String(id))}>
-                      <span className="provider-logo"><img src="/soleaspay-logo.png" alt="" width={24} height={24} /></span>
-                      <strong>{name}</strong>
-                      {recommended && <small>{t.recommended}</small>}
-                    </button>
-                  ))}
+              <div className="checkout-step">
+                <button
+                  type="button"
+                  className="back-button"
+                  onClick={() => {
+                    playStep(false);
+                    setStep("details");
+                  }}
+                >
+                  <ArrowLeft size={15} /> {t.back}
+                </button>
+                <span className="modal-kicker">{language === "fr" ? "ÉTAPE 3 SUR 3" : "STEP 3 OF 3"}</span>
+                <h2 id="checkout-title">{t.chooseProvider}</h2>
+
+                <div className="checkout-summary">
+                  <div><span>{t.selectedCard}</span><strong>{selectedName}</strong></div>
+                  <div><span>{t.creationFee}</span><strong>{formatPrice(selectedCard.price, language)}</strong></div>
+                  <div><span>{t.validity}</span><strong>{t.threeYears}</strong></div>
                 </div>
-                <p className="virtual-card-api-notice"><ShieldCheck size={15} /> {t.paymentNotice}</p>
+
+                <div className="payment-provider-selector">
+                  <span className="payment-provider-selector-label">{t.providerLabel}</span>
+                  <div
+                    className="payment-provider-options"
+                    role="radiogroup"
+                    aria-label={t.providerLabel}
+                  >
+                    <button
+                      type="button"
+                      className={"payment-provider-option" + (provider === "soleaspay" ? " selected" : "")}
+                      role="radio"
+                      aria-checked={provider === "soleaspay"}
+                      onClick={() => {
+                        playTap();
+                        setProvider("soleaspay");
+                      }}
+                    >
+                      <span className="payment-logo-wrap" aria-hidden="true">
+                        <Image
+                          src={getAssetPath("/soleaspay-logo.png")}
+                          alt="SoleasPay"
+                          width={44}
+                          height={28}
+                          className="payment-logo-img"
+                        />
+                      </span>
+                      <strong className="payment-provider-name">SoleasPay</strong>
+                      <span className="payment-provider-radio" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+
+                <p className="virtual-card-api-notice" style={{ marginTop: "14px" }}>
+                  <ShieldCheck size={15} /> {t.paymentNotice}
+                </p>
+
                 {selectedCard && (
                   <SoleasPayCheckoutV3
                     formId="soleaspay-card-checkout"
                     language={language}
                     amount={selectedCard.price}
                     orderId={paymentOrderId}
-                    description={`Carte ${selectedName} | Email: ${email} | ${formatFullPhoneNumber(whatsapp, dialCode)}`.substring(0, 100)}
+                    description={"Carte " + selectedName + " | Email: " + email + " | " + formatFullPhoneNumber(whatsapp, dialCode).substring(0, 100)}
                     username={selectedName}
                     whatsapp={whatsapp}
                     dialCode={dialCode}
-                    country={(() => { const c = ALL_COUNTRIES.find((c) => c.code === countryCode); return c ? `${c.flag} ${c.name} (${c.dialCode})` : countryCode; })()}
+                    country={(() => { const c = ALL_COUNTRIES.find((c) => c.code === countryCode); return c ? (c.flag + " " + c.name + " (" + c.dialCode + ")") : countryCode; })()}
                     email={email}
                     coins={1}
                     requireEmail
                     productType="card"
                     productLabel={selectedName}
                     isEmailValid={/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())}
-                    onRequireEmail={() => setError(true)}
+                    onRequireEmail={() => setEmailError(true)}
                   />
                 )}
               </div>
             )}
-
-            <footer className="virtual-card-modal-actions">
-              {step !== "notes" ? (
-                <button type="button" className="modal-back-button" onClick={() => { playTap(); setStep(step === "provider" ? "details" : "notes"); }}><ArrowLeft size={16} /> {t.previous}</button>
-              ) : <button type="button" className="modal-back-button" onClick={close}>{t.refuse}</button>}
-              {step !== "provider" ? (
-                <button type="button" className="modal-primary-button" onClick={nextStep}>{step === "notes" ? t.accept : t.next} <ArrowRight size={17} /></button>
-              ) : null}
-            </footer>
           </section>
         </div>
-      )}
-    </section>
+      )}</section>
   );
 }
