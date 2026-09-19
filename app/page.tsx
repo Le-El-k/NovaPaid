@@ -337,24 +337,7 @@ export default function Home() {
     (): Theme => "light",
   );
   const [selectedPack, setSelectedPack] = useState<Pack>(packs[2]);
-  const [productMode, setProductMode] = useState<ProductMode>(() => {
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash.toLowerCase();
-      if (hash.startsWith("#coins") || hash.startsWith("#packs") || hash.startsWith("#tiktok")) {
-        return "coins";
-      }
-      if (hash.startsWith("#cards") || hash.startsWith("#card")) {
-        return "cards";
-      }
-      try {
-        const saved = window.sessionStorage.getItem("nova_product_mode");
-        if (saved === "coins" || saved === "cards") {
-          return saved;
-        }
-      } catch {}
-    }
-    return "cards";
-  });
+  const [productMode, setProductMode] = useState<ProductMode>("cards");
   const [customCoins, setCustomCoins] = useState(0);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -391,8 +374,16 @@ export default function Home() {
         setProductMode("coins");
       } else if (hash.startsWith("#cards") || hash.startsWith("#card")) {
         setProductMode("cards");
+      } else {
+        try {
+          const saved = window.sessionStorage.getItem("nova_product_mode");
+          if (saved === "coins" || saved === "cards") {
+            setProductMode(saved);
+          }
+        } catch {}
       }
     };
+    handleHash();
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
@@ -500,6 +491,79 @@ export default function Home() {
       document.body.style.overflow = "";
     };
   }, [checkoutOpen, sideNavOpen, supportOpen, videoModalOpen]);
+
+  // Mobile horizontal swipe navigation between Cards and TikTok coins
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+    let isTouchValid = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      // 1. Only on mobile screens
+      if (window.innerWidth > 768) return;
+
+      // 2. Only on home screen / catalogue (no modal open, no card detail open)
+      if (checkoutOpen || sideNavOpen || supportOpen || videoModalOpen) return;
+      if (document.body.classList.contains("card-detail-open")) return;
+      if (window.location.hash.includes("card=")) return;
+
+      // 3. Ignore touches on interactive elements
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, a, input, select, textarea, iframe, .field, .video-player-frame, .help-video-trigger")) {
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        startTime = Date.now();
+        isTouchValid = true;
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isTouchValid) return;
+      isTouchValid = false;
+
+      if (checkoutOpen || sideNavOpen || supportOpen || videoModalOpen) return;
+      if (document.body.classList.contains("card-detail-open")) return;
+      if (window.location.hash.includes("card=")) return;
+      if (e.changedTouches.length !== 1) return;
+
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const dt = Date.now() - startTime;
+
+      // Must be a quick swipe (< 600ms) and primarily horizontal (> 50px)
+      if (dt > 600) return;
+      if (Math.abs(dx) < 50) return;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.3) return;
+
+      // Swipe right on cards -> TikTok coins
+      // Swipe left on coins -> Cards
+      if (productMode === "cards") {
+        playToggle(true);
+        setProductMode("coins");
+        try { window.sessionStorage.setItem("nova_product_mode", "coins"); } catch {}
+        window.history.replaceState(null, "", "#coins");
+      } else if (productMode === "coins") {
+        playToggle(true);
+        setProductMode("cards");
+        try { window.sessionStorage.setItem("nova_product_mode", "cards"); } catch {}
+        window.history.replaceState(null, "", "#cards");
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [productMode, checkoutOpen, sideNavOpen, supportOpen, videoModalOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
