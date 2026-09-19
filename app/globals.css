@@ -4319,7 +4319,7 @@ html[data-theme="dark"] .pwa-install-later:hover {
   .virtual-card-modal-actions { gap: 7px; }
   .modal-back-button, .modal-primary-button { padding: 0 11px; font-size: 11px; }
   .virtual-card-providers { grid-template-columns: 1fr; }
-  .store-page:has(.virtual-cards-section) .menu-trigger { display: none; }
+  .menu-trigger { display: none; }
   body.card-detail-open .support-float-wrap,
   .store-page:has(.virtual-card-detail-view) .support-float-wrap,
   .store-page:has(.virtual-card-detail-view) .store-header,
