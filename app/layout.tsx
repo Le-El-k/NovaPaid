@@ -16,7 +16,7 @@ const installPromptCaptureScript = `
 `;
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || process.env.BASE_PATH || "";
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://novapaid.net").replace(/\/+$/, "");
 const pwaOgImageUrl = `${siteUrl}/novapaid-logo-512.png`;
 
 export const metadata: Metadata = {

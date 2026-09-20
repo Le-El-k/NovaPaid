@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /payment/
+
+Sitemap: https://novapaid.net/sitemap.xml
+
