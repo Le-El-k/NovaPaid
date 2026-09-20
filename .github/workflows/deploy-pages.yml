@@ -38,6 +38,7 @@ jobs:
       - name: Build static site with Next.js
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_SITE_URL: "https://novapaid.net"
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
           NEXT_PUBLIC_SOLEASPAY_API_KEY: ${{ secrets.NEXT_PUBLIC_SOLEASPAY_API_KEY }}
           NEXT_PUBLIC_EMAILJS_SERVICE_ID: ${{ secrets.NEXT_PUBLIC_EMAILJS_SERVICE_ID }}
