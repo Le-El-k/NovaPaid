@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
+import fs from "node:fs";
 
-const basePath = process.env.BASE_PATH || process.env.NEXT_PUBLIC_BASE_PATH || "";
+const hasCustomDomain = fs.existsSync("./public/CNAME");
+const basePath = hasCustomDomain ? "" : (process.env.BASE_PATH || process.env.NEXT_PUBLIC_BASE_PATH || "");
 
 const nextConfig: NextConfig = {
   output: "export",
