@@ -22,11 +22,11 @@ const pwaOgImageUrl = `${siteUrl}/novapaid-logo-512.png`;
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Nova Paid — Recharge Pièces TikTok au Meilleur Prix en Afrique (Mobile Money)",
+    default: "Nova Paid — Cartes Virtuelles & Recharge Pièces TikTok au Meilleur Prix",
     template: "%s | Nova Paid",
   },
   description:
-    "Achetez vos pièces TikTok instantanément et au meilleur tarif avec Orange Money, MTN MoMo, Moov Money et Wave. Livraison sécurisée et express en FCFA sur Nova Paid.",
+    "Achetez vos cartes bancaires virtuelles Visa / Mastercard et rechargez vos pièces TikTok instantanément avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave). Service rapide, fiable et sécurisé en FCFA.",
   applicationName: "Nova Paid",
   authors: [{ name: "Nova Paid", url: siteUrl }],
   creator: "Nova Paid",
@@ -52,8 +52,8 @@ export const metadata: Metadata = {
     "recharge tiktok xaf",
     "recharge tiktok xof",
   ],
-  category: "Finance & E-commerce",
-  classification: "TikTok Coins & Mobile Money Services",
+  category: "Fintech & E-commerce",
+  classification: "Cartes Virtuelles & Recharge Pièces TikTok",
   manifest: `${basePath}/manifest.webmanifest`,
   alternates: {
     canonical: `${siteUrl}/`,
@@ -84,9 +84,9 @@ export const metadata: Metadata = {
     apple: [{ url: `${basePath}/novapaid-logo-180.png`, sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "Nova Paid — Recharge Pièces TikTok au Meilleur Prix (Mobile Money)",
+    title: "Nova Paid — Cartes Virtuelles Visa / Mastercard & Pièces TikTok",
     description:
-      "Achetez directement vos pièces TikTok avec Orange Money, MTN MoMo, Moov et Wave. Livraison express et tarifs imbattables en FCFA.",
+      "Obtenez votre carte bancaire virtuelle internationale et rechargez vos pièces TikTok en toute sécurité par Mobile Money. Tarifs imbattables et livraison express en FCFA.",
     url: `${siteUrl}/`,
     siteName: "Nova Paid",
     locale: "fr_FR",
@@ -104,9 +104,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nova Paid — Recharge Pièces TikTok en FCFA (Mobile Money)",
+    title: "Nova Paid — Cartes Virtuelles & Pièces TikTok (Mobile Money)",
     description:
-      "Rechargez vos pièces TikTok instantanément avec Orange Money & MTN MoMo. Tarifs avantageux, livraison express et sécurisée.",
+      "Cartes bancaires virtuelles Visa / Mastercard et recharge de pièces TikTok instantanées avec Mobile Money en FCFA.",
     images: [pwaOgImageUrl],
     creator: "@novapaid",
     site: "@novapaid",
