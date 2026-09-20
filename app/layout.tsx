@@ -75,12 +75,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: `${basePath}/favicon.ico`, sizes: "any" },
+      { url: `${basePath}/novapaid-logo-48.png`, sizes: "48x48", type: "image/png" },
       { url: `${basePath}/novapaid-logo-32.png`, sizes: "32x32", type: "image/png" },
       { url: `${basePath}/novapaid-logo-96.png`, sizes: "96x96", type: "image/png" },
       { url: `${basePath}/novapaid-logo-192.png`, sizes: "192x192", type: "image/png" },
       { url: `${basePath}/novapaid-logo-512.png`, sizes: "512x512", type: "image/png" },
     ],
-    shortcut: `${basePath}/novapaid-logo-96.png`,
+    shortcut: `${basePath}/favicon.ico`,
     apple: [{ url: `${basePath}/novapaid-logo-180.png`, sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
