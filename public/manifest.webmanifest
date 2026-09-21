@@ -1,12 +1,12 @@
 {
-  "id": "./",
+  "id": "/",
   "name": "Nova Paid",
   "short_name": "Nova Paid",
   "description": "Cartes bancaires virtuelles Visa / Mastercard et recharge de pièces TikTok au meilleur prix avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave).",
   "lang": "fr-FR",
   "dir": "ltr",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#05030D",
@@ -18,35 +18,35 @@
   ],
   "icons": [
     {
-      "src": "novapaid-logo-32.png",
+      "src": "/novapaid-logo-32.png",
       "sizes": "32x32",
       "type": "image/png"
     },
     {
-      "src": "novapaid-logo-96.png",
+      "src": "/novapaid-logo-96.png",
       "sizes": "96x96",
       "type": "image/png"
     },
     {
-      "src": "novapaid-logo-192.png",
+      "src": "/novapaid-logo-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "novapaid-logo-512.png",
+      "src": "/novapaid-logo-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "novapaid-logo-maskable-192.png",
+      "src": "/novapaid-logo-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "novapaid-logo-maskable-512.png",
+      "src": "/novapaid-logo-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
