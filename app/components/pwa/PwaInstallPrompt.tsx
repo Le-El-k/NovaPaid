@@ -20,7 +20,7 @@ type DeferredInstallPrompt = Event & {
 
 const INSTALL_REMINDER_KEY = "nova-pay-pwa-install-reminder-until";
 const INSTALL_PROMPT_READY_EVENT = "nova-pay-install-prompt-ready";
-const REMINDER_DURATION_MS = 2 * 60 * 60 * 1000;
+const REMINDER_DURATION_MS = 24 * 60 * 60 * 1000;
 
 type WindowWithInstallPrompt = Window & {
   __novapaidInstallPrompt?: DeferredInstallPrompt | null;
@@ -172,6 +172,7 @@ export function PwaInstallPrompt() {
 
   useEffect(() => {
     if (isRunningAsInstalledApp()) return;
+    if (typeof window !== "undefined" && window.location.pathname.includes("/payment")) return;
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -207,10 +208,13 @@ export function PwaInstallPrompt() {
     };
 
     const reminderUntil = getReminderUntil();
-    const remainingReminderTime = reminderUntil ? reminderUntil - Date.now() : 0;
+    if (reminderUntil && reminderUntil > Date.now()) {
+      return;
+    }
+    // Wait at least 10 seconds before asking user to install PWA
     reminderTimerRef.current = window.setTimeout(
       showModalWhenReminderExpires,
-      remainingReminderTime > 0 ? Math.min(remainingReminderTime, 2_147_483_647) : 0,
+      10000,
     );
 
     return () => {
