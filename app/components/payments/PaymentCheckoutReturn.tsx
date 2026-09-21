@@ -88,7 +88,7 @@ const copy = {
     cardSuccessTitle: "Votre carte est commandée !",
     cardSuccessMessage: "Merci pour votre achat ! Votre carte virtuelle sera préparée après confirmation du paiement.",
     cardDeliveryMessage: "Créez votre compte PrismCard : votre carte virtuelle sera automatiquement ajoutée dans les 5 minutes suivant la création. Pour toute question, contactez notre service client sur",
-    cardCreateAccount: "Créer mon compte",
+    cardCreateAccount: "Créer un compte",
     whatsapp: "WhatsApp",
     missingKicker: "Commande indisponible",
     missingTitle: "Commande introuvable",
@@ -414,6 +414,38 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
       window.queueMicrotask(() => setReturnState(nextState));
     };
 
+    const demoParam = searchParams.get("demo") ?? searchParams.get("preview") ?? searchParams.get("tutoriel");
+    if (demoParam) {
+      const isCardPreview = demoParam === "card" || demoParam === "carte";
+      const customUser = searchParams.get("user")?.trim() || "tutoriel_user";
+      
+      commitState({
+        phase: "received",
+        paymentReturn: {
+          reference: isCardPreview ? "SPAY-CMR-84729103" : "SPAY-CMR-63910482",
+          status: "SUCCESS",
+          successful: true,
+          orderId: isCardPreview ? "NOVA-CARD-849201837461" : "NOVA-COIN-619284710392",
+        },
+        pendingCheckout: {
+          version: 1,
+          provider: "soleaspay",
+          orderId: isCardPreview ? "NOVA-CARD-849201837461" : "NOVA-COIN-619284710392",
+          username: isCardPreview ? "MASTERCARD BASIQUE" : customUser,
+          coins: isCardPreview ? 1 : 1000,
+          amount: isCardPreview ? 6000 : 11240,
+          currency: "XAF",
+          submittedAt: new Date().toISOString(),
+          productType: isCardPreview ? "card" : "coins",
+          productLabel: isCardPreview ? "MASTERCARD BASIQUE" : "1 000 pièces",
+        },
+        resolvedOutcome: "success",
+        confirmed: true,
+      });
+      return;
+    }
+
+
     if (requestedEntry && !isLiveReturn) {
       canonicalizeHistoryEntry(requestedEntry);
       commitState(returnStateFromHistory(requestedEntry));
@@ -596,7 +628,7 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
       returnState.phase !== "received" ||
       returnState.resolvedOutcome !== "success" ||
       !returnState.confirmed ||
-      !returnState.pendingCheckout
+      !returnState.pendingCheckout || (typeof window !== 'undefined' && window.location.search.includes('preview') || window.location.search.includes('demo') || window.location.search.includes('tutoriel'))
     ) return;
 
     emailSentRef.current = true;
