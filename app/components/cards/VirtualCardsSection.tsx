@@ -511,7 +511,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
           aria-label={t.watchTutorial}
         >
           <Image
-            src="https://img.youtube.com/vi/AZgaA8ufCzs/maxresdefault.jpg"
+            src="https://img.youtube.com/vi/GAQgxNcMlpI/maxresdefault.jpg"
             alt={t.helpCard}
             className="help-video-thumbnail"
             fill
@@ -519,7 +519,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
             unoptimized
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src =
-                "https://img.youtube.com/vi/AZgaA8ufCzs/hqdefault.jpg";
+                "https://img.youtube.com/vi/GAQgxNcMlpI/hqdefault.jpg";
             }}
           />
           <div className="help-video-overlay" />
@@ -848,6 +848,52 @@ export function VirtualCardsSection({ language }: { language: Language }) {
             )}
           </section>
         </div>
-      )}</section>
+      )}
+      {videoModalOpen && (
+        <div
+          className="video-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              playModalClose();
+              setVideoModalOpen(false);
+            }
+          }}
+        >
+          <section
+            className="video-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="video-modal-title"
+          >
+            <div className="video-modal-header">
+              <h2 id="video-modal-title">{t.watchTutorial}</h2>
+              <button
+                type="button"
+                className="close-video-modal"
+                onClick={() => {
+                  playModalClose();
+                  setVideoModalOpen(false);
+                }}
+                aria-label={t.close}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="video-modal-body">
+              <div className="video-player-frame">
+                <iframe
+                  src="https://www.youtube.com/embed/GAQgxNcMlpI?autoplay=1&rel=0"
+                  title={t.watchTutorial}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+    </section>
   );
 }

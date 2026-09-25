@@ -827,7 +827,7 @@ export default function Home() {
             aria-label={t.watchVideo}
           >
             <Image
-              src="https://img.youtube.com/vi/AZgaA8ufCzs/maxresdefault.jpg"
+              src="https://img.youtube.com/vi/GAQgxNcMlpI/maxresdefault.jpg"
               alt={t.videoBannerTitle}
               className="help-video-thumbnail"
               fill
@@ -835,7 +835,7 @@ export default function Home() {
               unoptimized
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src =
-                  "https://img.youtube.com/vi/AZgaA8ufCzs/hqdefault.jpg";
+                  "https://img.youtube.com/vi/GAQgxNcMlpI/hqdefault.jpg";
               }}
             />
             <div className="help-video-overlay" />
@@ -1467,7 +1467,7 @@ export default function Home() {
             <div className="video-modal-body">
               <div className="video-player-frame">
                 <iframe
-                  src="https://www.youtube.com/embed/AZgaA8ufCzs?autoplay=1&rel=0"
+                  src="https://www.youtube.com/embed/GAQgxNcMlpI?autoplay=1&rel=0"
                   title={t.videoModalTitle}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen

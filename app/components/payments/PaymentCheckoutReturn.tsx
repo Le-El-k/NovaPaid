@@ -414,36 +414,7 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
       window.queueMicrotask(() => setReturnState(nextState));
     };
 
-    const demoParam = searchParams.get("demo") ?? searchParams.get("preview") ?? searchParams.get("tutoriel");
-    if (demoParam) {
-      const isCardPreview = demoParam === "card" || demoParam === "carte";
-      const customUser = searchParams.get("user")?.trim() || "tutoriel_user";
-      
-      commitState({
-        phase: "received",
-        paymentReturn: {
-          reference: isCardPreview ? "SPAY-CMR-84729103" : "SPAY-CMR-63910482",
-          status: "SUCCESS",
-          successful: true,
-          orderId: isCardPreview ? "NOVA-CARD-849201837461" : "NOVA-COIN-619284710392",
-        },
-        pendingCheckout: {
-          version: 1,
-          provider: "soleaspay",
-          orderId: isCardPreview ? "NOVA-CARD-849201837461" : "NOVA-COIN-619284710392",
-          username: isCardPreview ? "MASTERCARD BASIQUE" : customUser,
-          coins: isCardPreview ? 1 : 1000,
-          amount: isCardPreview ? 6000 : 11240,
-          currency: "XAF",
-          submittedAt: new Date().toISOString(),
-          productType: isCardPreview ? "card" : "coins",
-          productLabel: isCardPreview ? "MASTERCARD BASIQUE" : "1 000 pièces",
-        },
-        resolvedOutcome: "success",
-        confirmed: true,
-      });
-      return;
-    }
+
 
 
     if (requestedEntry && !isLiveReturn) {
@@ -628,7 +599,7 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
       returnState.phase !== "received" ||
       returnState.resolvedOutcome !== "success" ||
       !returnState.confirmed ||
-      !returnState.pendingCheckout || (typeof window !== 'undefined' && window.location.search.includes('preview') || window.location.search.includes('demo') || window.location.search.includes('tutoriel'))
+      !returnState.pendingCheckout
     ) return;
 
     emailSentRef.current = true;
@@ -713,8 +684,6 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
                   <a
                     className="payment-return-primary-action payment-return-account-action"
                     href="https://prism.payool.net/register"
-                    target="_blank"
-                    rel="noopener noreferrer"
                   >
                     <ExternalLink size={18} aria-hidden="true" />
                     <span>{t.cardCreateAccount}</span>
