@@ -511,7 +511,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
           aria-label={t.watchTutorial}
         >
           <Image
-            src="https://img.youtube.com/vi/GAQgxNcMlpI/maxresdefault.jpg"
+            src={getAssetPath("/tutorial-thumbnail.jpg")}
             alt={t.helpCard}
             className="help-video-thumbnail"
             fill
@@ -519,7 +519,7 @@ export function VirtualCardsSection({ language }: { language: Language }) {
             unoptimized
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src =
-                "https://img.youtube.com/vi/GAQgxNcMlpI/hqdefault.jpg";
+                "https://img.youtube.com/vi/GAQgxNcMlpI/sddefault.jpg";
             }}
           />
           <div className="help-video-overlay" />

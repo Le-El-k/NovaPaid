@@ -827,7 +827,7 @@ export default function Home() {
             aria-label={t.watchVideo}
           >
             <Image
-              src="https://img.youtube.com/vi/GAQgxNcMlpI/maxresdefault.jpg"
+              src={getAssetPath("/tutorial-thumbnail.jpg")}
               alt={t.videoBannerTitle}
               className="help-video-thumbnail"
               fill
@@ -835,7 +835,7 @@ export default function Home() {
               unoptimized
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src =
-                  "https://img.youtube.com/vi/GAQgxNcMlpI/hqdefault.jpg";
+                  "https://img.youtube.com/vi/GAQgxNcMlpI/sddefault.jpg";
               }}
             />
             <div className="help-video-overlay" />
