@@ -172,10 +172,10 @@ export const gamesCatalog: GameItem[] = [
     },
     deliveryTime: { fr: "10 - 20 minutes", en: "10 - 20 minutes" },
     packs: [
-      { id: "fortnite-800", name: "800 V-Bucks", price: 6600, image: "/fortnite/card-800.png" },
-      { id: "fortnite-2400", name: "2 400 V-Bucks", price: 16900, popular: true, badge: "Populaire", image: "/fortnite/card-2400.png" },
-      { id: "fortnite-4500", name: "4 500 V-Bucks", price: 27200, image: "/fortnite/card-4500.png" },
-      { id: "fortnite-12500", name: "12 500 V-Bucks", price: 66200, badge: "Méga Pack", image: "/fortnite/card-12500.png" },
+      { id: "fortnite-800", name: "800 V-Bucks", price: 6600, bonus: "Pack Standard", image: "/fortnite/card-800.png" },
+      { id: "fortnite-2400", name: "2 400 V-Bucks", price: 16900, popular: true, badge: "Populaire", bonus: "+320 Bonus inclus", image: "/fortnite/card-2400.png" },
+      { id: "fortnite-4500", name: "4 500 V-Bucks", price: 27200, bonus: "+500 Bonus inclus", image: "/fortnite/card-4500.png" },
+      { id: "fortnite-12500", name: "12 500 V-Bucks", price: 66200, badge: "Méga Pack", bonus: "+2 500 Bonus inclus", image: "/fortnite/card-12500.png" },
     ],
   },
   {
@@ -1071,9 +1071,7 @@ export function VideoGamesSection({ language, theme = "dark" }: { language: Lang
       const matchesCategory =
         category === "all" ||
         game.category === category ||
-        (game.category === "crossplay" && (category === "console" || category === "pc" || category === "mobile")) ||
-        (category === "console" && game.category === "console") ||
-        (category === "pc" && game.category === "pc");
+        (game.category === "crossplay" && category === "mobile");
 
       const query = searchQuery.trim().toLowerCase();
       const matchesQuery =
@@ -1279,15 +1277,22 @@ export function VideoGamesSection({ language, theme = "dark" }: { language: Lang
                       role="radio"
                       aria-checked={isSelected}
                     >
+                      {pack.badge && <span className="fortnite-vbucks-badge">{pack.badge}</span>}
                       <div className="fortnite-vbucks-art-wrap">
                         <Image
                           src={getAssetPath(pack.image)}
                           alt={pack.name}
-                          width={316}
-                          height={539}
+                          width={640}
+                          height={360}
                           className="fortnite-vbucks-art"
                           priority
                         />
+                      </div>
+                      <div className="fortnite-vbucks-meta">
+                        <span className="fortnite-vbucks-name">{pack.name}</span>
+                        {pack.bonus && (
+                          <span className="fortnite-vbucks-bonus">{pack.bonus}</span>
+                        )}
                       </div>
                       <div className="fortnite-vbucks-price-pill">
                         <span>{formatPrice(pack.price, language)}</span>
@@ -1553,7 +1558,8 @@ export function VideoGamesSection({ language, theme = "dark" }: { language: Lang
                     <div className="game-checkout-actions">
                       <button
                         type="button"
-                        className="video-game-primary-btn w-full"
+                        className={"video-game-primary-btn w-full" + (!acceptCredentials || !accept2fa ? " disabled" : "")}
+                        disabled={!acceptCredentials || !accept2fa}
                         onClick={handleStep1Continue}
                       >
                         {t.acceptAndContinue} <ArrowRight size={17} />
@@ -1952,10 +1958,9 @@ export function VideoGamesSection({ language, theme = "dark" }: { language: Lang
             role="tab"
             aria-selected={category === "all"}
             className={`video-games-cat-btn ${category === "all" ? "active" : ""}`}
-            onClick={(e) => {
+            onClick={() => {
               playTap();
               setCategory("all");
-              e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
             }}
           >
             <Gamepad2 size={15} /> {t.all}
@@ -1965,78 +1970,13 @@ export function VideoGamesSection({ language, theme = "dark" }: { language: Lang
             role="tab"
             aria-selected={category === "mobile"}
             className={`video-games-cat-btn ${category === "mobile" ? "active" : ""}`}
-            onClick={(e) => {
+            onClick={() => {
               playTap();
               setCategory("mobile");
-              e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
             }}
           >
             <Smartphone size={15} /> {t.mobile}
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={category === "console"}
-            className={`video-games-cat-btn ${category === "console" ? "active" : ""}`}
-            onClick={(e) => {
-              playTap();
-              setCategory("console");
-              e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }}
-          >
-            <Tv size={15} /> {t.console}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={category === "pc"}
-            className={`video-games-cat-btn ${category === "pc" ? "active" : ""}`}
-            onClick={(e) => {
-              playTap();
-              setCategory("pc");
-              e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }}
-          >
-            <Clock3 size={15} /> {t.pc}
-          </button>
-        </div>
-        <div className="video-games-category-dots" aria-hidden="true">
-          <span
-            className={category === "all" ? "dot active" : "dot"}
-            onClick={() => {
-              playTap();
-              setCategory("all");
-              (categoriesNavRef.current?.children[0] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }}
-            title={t.all}
-          />
-          <span
-            className={category === "mobile" ? "dot active" : "dot"}
-            onClick={() => {
-              playTap();
-              setCategory("mobile");
-              (categoriesNavRef.current?.children[1] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }}
-            title={t.mobile}
-          />
-          <span
-            className={category === "console" ? "dot active" : "dot"}
-            onClick={() => {
-              playTap();
-              setCategory("console");
-              (categoriesNavRef.current?.children[2] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }}
-            title={t.console}
-          />
-          <span
-            className={category === "pc" ? "dot active" : "dot"}
-            onClick={() => {
-              playTap();
-              setCategory("pc");
-              (categoriesNavRef.current?.children[3] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }}
-            title={t.pc}
-          />
         </div>
         </div>
 

@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   Coins,
@@ -495,6 +496,70 @@ export default function Home() {
   const [username, setUsername] = useState("");
   const [usernameError, setUsernameError] = useState(false);
   const usernameInputRef = useRef<HTMLInputElement>(null);
+  const [activeReviewIndex, setActiveReviewIndex] = useState(0);
+  const [reviewDragOffset, setReviewDragOffset] = useState(0);
+  const [isDraggingReview, setIsDraggingReview] = useState(false);
+  const reviewDragStartX = useRef<number | null>(null);
+
+  const handlePrevReview = () => {
+    playTap();
+    setActiveReviewIndex((prev) => (prev - 1 + customerReviews.length) % customerReviews.length);
+  };
+
+  const handleNextReview = () => {
+    playTap();
+    setActiveReviewIndex((prev) => (prev + 1) % customerReviews.length);
+  };
+
+  const onReviewTouchStart = (e: React.TouchEvent) => {
+    reviewDragStartX.current = e.touches[0].clientX;
+    setIsDraggingReview(true);
+    setReviewDragOffset(0);
+  };
+
+  const onReviewTouchMove = (e: React.TouchEvent) => {
+    if (reviewDragStartX.current === null) return;
+    const diff = e.touches[0].clientX - reviewDragStartX.current;
+    setReviewDragOffset(diff);
+  };
+
+  const onReviewTouchEnd = () => {
+    if (reviewDragStartX.current !== null) {
+      if (reviewDragOffset < -40) {
+        handleNextReview();
+      } else if (reviewDragOffset > 40) {
+        handlePrevReview();
+      }
+    }
+    reviewDragStartX.current = null;
+    setIsDraggingReview(false);
+    setReviewDragOffset(0);
+  };
+
+  const onReviewMouseDown = (e: React.MouseEvent) => {
+    reviewDragStartX.current = e.clientX;
+    setIsDraggingReview(true);
+    setReviewDragOffset(0);
+  };
+
+  const onReviewMouseMove = (e: React.MouseEvent) => {
+    if (reviewDragStartX.current === null) return;
+    const diff = e.clientX - reviewDragStartX.current;
+    setReviewDragOffset(diff);
+  };
+
+  const onReviewMouseUp = () => {
+    if (reviewDragStartX.current !== null) {
+      if (reviewDragOffset < -40) {
+        handleNextReview();
+      } else if (reviewDragOffset > 40) {
+        handlePrevReview();
+      }
+    }
+    reviewDragStartX.current = null;
+    setIsDraggingReview(false);
+    setReviewDragOffset(0);
+  };
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
@@ -510,11 +575,40 @@ export default function Home() {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [isPwa, setIsPwa] = useState(false);
   const t = copy[language];
 
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    const checkPwa = () => {
+      const navStandalone = typeof navigator !== "undefined" && (navigator as Navigator & { standalone?: boolean })?.standalone === true;
+      const matchStandalone = typeof window !== "undefined" && typeof window.matchMedia === "function" && (
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.matchMedia("(display-mode: fullscreen)").matches ||
+        window.matchMedia("(display-mode: minimal-ui)").matches
+      );
+      const isApp = Boolean(matchStandalone || navStandalone || (typeof document !== "undefined" && document.referrer.startsWith("android-app://")));
+      setIsPwa(isApp);
+      if (isApp) {
+        document.documentElement.classList.add("is-pwa");
+        document.body.classList.add("is-pwa");
+      } else {
+        document.documentElement.classList.remove("is-pwa");
+        document.body.classList.remove("is-pwa");
+      }
+    };
+    checkPwa();
+
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      const mq = window.matchMedia("(display-mode: standalone)");
+      const handler = () => checkPwa();
+      mq.addEventListener?.("change", handler);
+      return () => mq.removeEventListener?.("change", handler);
+    }
+  }, []);
 
   useEffect(() => {
     const handleHash = () => {
@@ -650,37 +744,82 @@ export default function Home() {
     let startY = 0;
     let startTime = 0;
     let isTouchValid = false;
+    let hasTriggered = false;
+
+    const modes: ProductMode[] = ["cards", "coins", "games"];
+
+    const triggerSwitch = (direction: "next" | "prev") => {
+      if (hasTriggered) return;
+      hasTriggered = true;
+
+      const currentIdx = modes.indexOf(productMode);
+      if (currentIdx === -1) return;
+
+      const nextIdx = direction === "next"
+        ? (currentIdx + 1) % modes.length
+        : (currentIdx - 1 + modes.length) % modes.length;
+
+      const nextMode = modes[nextIdx];
+      playToggle(true);
+      setProductMode(nextMode);
+      try { window.sessionStorage.setItem("nova_product_mode", nextMode); } catch {}
+      window.history.replaceState(null, "", `#${nextMode === "coins" ? "coins" : nextMode}`);
+    };
+
+    const shouldIgnore = (target: HTMLElement | null) => {
+      if (checkoutOpen || sideNavOpen || supportOpen || videoModalOpen || isGameDetail) return true;
+      if (document.body.classList.contains("card-detail-open")) return true;
+      if (document.body.classList.contains("game-detail-open")) return true;
+      if (window.location.hash.includes("card=")) return true;
+      if (window.location.hash.includes("game=")) return true;
+      if (target?.closest("input, select, textarea, iframe, .video-player-frame, .reviews-stack-deck, [role='dialog'], .checkout-overlay")) {
+        return true;
+      }
+      return false;
+    };
 
     const handleTouchStart = (e: TouchEvent) => {
-      // 1. Only on mobile screens
-      if (window.innerWidth > 768) return;
-
-      // 2. Only on home screen / catalogue (no modal open, no card detail open)
-      if (checkoutOpen || sideNavOpen || supportOpen || videoModalOpen) return;
-      if (document.body.classList.contains("card-detail-open")) return;
-      if (window.location.hash.includes("card=")) return;
-
-      // 3. Ignore touches on interactive elements
-      const target = e.target as HTMLElement | null;
-      if (target?.closest("button, a, input, select, textarea, iframe, .field, .video-player-frame, .help-video-trigger")) {
-        return;
-      }
+      if (e.touches.length !== 1) return;
+      if (shouldIgnore(e.target as HTMLElement | null)) return;
 
       if (e.touches.length === 1) {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         startTime = Date.now();
         isTouchValid = true;
+        hasTriggered = false;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isTouchValid || hasTriggered || e.touches.length !== 1) return;
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+
+      // Trigger as soon as horizontal swipe distance exceeds 45px
+      if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        const blockClick = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          window.removeEventListener("click", blockClick, true);
+        };
+        window.addEventListener("click", blockClick, true);
+        setTimeout(() => window.removeEventListener("click", blockClick, true), 350);
+
+        triggerSwitch(dx < 0 ? "next" : "prev");
       }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!isTouchValid) return;
+      if (!isTouchValid || hasTriggered) {
+        isTouchValid = false;
+        hasTriggered = false;
+        return;
+      }
       isTouchValid = false;
 
-      if (checkoutOpen || sideNavOpen || supportOpen || videoModalOpen) return;
-      if (document.body.classList.contains("card-detail-open")) return;
-      if (window.location.hash.includes("card=")) return;
       if (e.changedTouches.length !== 1) return;
 
       const endX = e.changedTouches[0].clientX;
@@ -689,47 +828,102 @@ export default function Home() {
       const dy = endY - startY;
       const dt = Date.now() - startTime;
 
-      // Must be a quick swipe (< 600ms) and primarily horizontal (> 50px)
-      if (dt > 600) return;
-      if (Math.abs(dx) < 50) return;
-      if (Math.abs(dx) <= Math.abs(dy) * 1.3) return;
+      if (dt < 800 && Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        const blockClick = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          window.removeEventListener("click", blockClick, true);
+        };
+        window.addEventListener("click", blockClick, true);
+        setTimeout(() => window.removeEventListener("click", blockClick, true), 350);
 
-      if (dx < 0) {
-        // Swipe left: cards -> coins -> games
-        if (productMode === "cards") {
-          playToggle(true);
-          setProductMode("coins");
-          try { window.sessionStorage.setItem("nova_product_mode", "coins"); } catch {}
-          window.history.replaceState(null, "", "#coins");
-        } else if (productMode === "coins") {
-          playToggle(true);
-          setProductMode("games");
-          try { window.sessionStorage.setItem("nova_product_mode", "games"); } catch {}
-          window.history.replaceState(null, "", "#games");
-        }
-      } else {
-        // Swipe right: games -> coins -> cards
-        if (productMode === "games") {
-          playToggle(true);
-          setProductMode("coins");
-          try { window.sessionStorage.setItem("nova_product_mode", "coins"); } catch {}
-          window.history.replaceState(null, "", "#coins");
-        } else if (productMode === "coins") {
-          playToggle(true);
-          setProductMode("cards");
-          try { window.sessionStorage.setItem("nova_product_mode", "cards"); } catch {}
-          window.history.replaceState(null, "", "#cards");
-        }
+        triggerSwitch(dx < 0 ? "next" : "prev");
       }
+      hasTriggered = false;
     };
 
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+
+    // Also support Pointer events for desktop drag and touch pens
+    let pStartX = 0;
+    let pStartY = 0;
+    let pStartTime = 0;
+    let isPointerTracking = false;
+    let pHasTriggered = false;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (shouldIgnore(e.target as HTMLElement | null)) return;
+
+      pStartX = e.clientX;
+      pStartY = e.clientY;
+      pStartTime = Date.now();
+      isPointerTracking = true;
+      pHasTriggered = false;
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isPointerTracking || pHasTriggered) return;
+      const dx = e.clientX - pStartX;
+      const dy = e.clientY - pStartY;
+
+      if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        pHasTriggered = true;
+        const blockClick = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          window.removeEventListener("click", blockClick, true);
+        };
+        window.addEventListener("click", blockClick, true);
+        setTimeout(() => window.removeEventListener("click", blockClick, true), 350);
+
+        triggerSwitch(dx < 0 ? "next" : "prev");
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!isPointerTracking || pHasTriggered) {
+        isPointerTracking = false;
+        pHasTriggered = false;
+        return;
+      }
+      isPointerTracking = false;
+
+      const dx = e.clientX - pStartX;
+      const dy = e.clientY - pStartY;
+      const dt = Date.now() - pStartTime;
+
+      if (dt < 800 && Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        const blockClick = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          window.removeEventListener("click", blockClick, true);
+        };
+        window.addEventListener("click", blockClick, true);
+        setTimeout(() => window.removeEventListener("click", blockClick, true), 350);
+
+        triggerSwitch(dx < 0 ? "next" : "prev");
+      }
+      pHasTriggered = false;
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("pointerup", handlePointerUp, { passive: true });
+
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [productMode, checkoutOpen, sideNavOpen, supportOpen, videoModalOpen]);
+  }, [productMode, checkoutOpen, sideNavOpen, supportOpen, videoModalOpen, isGameDetail]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -968,7 +1162,7 @@ export default function Home() {
         </div>
       )}
 
-      {!isGameDetail && (
+      {!isGameDetail && !isPwa && (
       <section className="store-hero">
         <div className="store-hero-inner">
           <div className="hero-badge">
@@ -1266,51 +1460,6 @@ export default function Home() {
 
       {productMode === "games" && !isGameDetail && (
       <>
-      {/* SECTION PARTENAIRES DE PAIEMENT */}
-      <section className="payment-partners-section">
-        <div className="section-container">
-          <div className="partners-card">
-            <div className="partners-header">
-              <span className="section-pill-badge"><ShieldCheck size={14} /> 100% SÉCURISÉ</span>
-              <h2>{t.partnersTitle}</h2>
-              <p>{t.partnersSubtitle}</p>
-            </div>
-            <div className="partners-grid">
-              <div className="partner-logo-pill">
-                <span className="partner-indicator orange" />
-                <strong>Orange Money</strong>
-                <small>Afrique Centrale & Ouest</small>
-              </div>
-              <div className="partner-logo-pill">
-                <span className="partner-indicator yellow" />
-                <strong>MTN MoMo</strong>
-                <small>Mobile Money officiel</small>
-              </div>
-              <div className="partner-logo-pill">
-                <span className="partner-indicator blue" />
-                <strong>Moov Money</strong>
-                <small>Paiement instantané</small>
-              </div>
-              <div className="partner-logo-pill">
-                <span className="partner-indicator cyan" />
-                <strong>Wave</strong>
-                <small>Sénégal & Côte d'Ivoire</small>
-              </div>
-              <div className="partner-logo-pill">
-                <span className="partner-indicator emerald" />
-                <strong>Visa & Mastercard</strong>
-                <small>International 3D Secure</small>
-              </div>
-              <div className="partner-logo-pill">
-                <span className="partner-indicator purple" />
-                <strong>SoleasPay</strong>
-                <small>Passerelle certifiée</small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* SECTION TÉMOIGNAGES CLIENTS */}
       <section className="reviews-section" id="reviews">
         <div className="section-container">
@@ -1319,9 +1468,38 @@ export default function Home() {
             <h2>{t.reviewsTitle}</h2>
             <p>{t.reviewsSubtitle}</p>
           </div>
-          <div className="reviews-grid">
-            {customerReviews.map((rev, index) => (
-              <div className="review-card" key={`rev-${index}`}>
+          <div className="reviews-stack-wrapper">
+            <div
+              className="reviews-stack-deck"
+              onTouchStart={onReviewTouchStart}
+              onTouchMove={onReviewTouchMove}
+              onTouchEnd={onReviewTouchEnd}
+              onMouseDown={onReviewMouseDown}
+              onMouseMove={onReviewMouseMove}
+              onMouseUp={onReviewMouseUp}
+              onMouseLeave={onReviewMouseUp}
+            >
+            {customerReviews.map((rev, index) => {
+              const offset = (index - activeReviewIndex + customerReviews.length) % customerReviews.length;
+              let stackClass = "stack-hidden";
+              let inlineStyle: React.CSSProperties = {};
+
+              if (offset === 0) {
+                stackClass = "stack-active";
+                if (isDraggingReview && reviewDragOffset !== 0) {
+                  inlineStyle = {
+                    transform: `translateX(${reviewDragOffset}px) rotate(${reviewDragOffset * 0.04}deg)`,
+                    transition: "none",
+                  };
+                }
+              } else if (offset === 1) {
+                stackClass = "stack-next";
+              } else if (offset === 2) {
+                stackClass = "stack-next-2";
+              }
+
+              return (
+              <div className={`review-card ${stackClass}`} style={inlineStyle} key={`rev-${index}`}>
                 <div className="review-top-row">
                   <div className="review-stars" aria-label="5 étoiles sur 5">
                     {Array.from({ length: rev.rating }).map((_, i) => (
@@ -1341,7 +1519,41 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
+            </div>
+            <div className="reviews-carousel-nav">
+              <button
+                type="button"
+                className="reviews-carousel-btn prev"
+                onClick={handlePrevReview}
+                aria-label="Avis précédent"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="reviews-carousel-dots" role="tablist" aria-label="Pagination avis">
+                {customerReviews.map((_, dotIdx) => (
+                  <button
+                    key={`dot-${dotIdx}`}
+                    type="button"
+                    className={`reviews-carousel-dot ${activeReviewIndex === dotIdx ? "active" : ""}`}
+                    onClick={() => {
+                      playTap();
+                      setActiveReviewIndex(dotIdx);
+                    }}
+                    aria-label={`Aller à l'avis ${dotIdx + 1}`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                className="reviews-carousel-btn next"
+                onClick={handleNextReview}
+                aria-label="Avis suivant"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -1385,13 +1597,14 @@ export default function Home() {
       </>
       )}
 
+      {!isPwa && (
       <footer className="store-footer">
         <div className="store-footer-inner">
           <div className="footer-top-grid">
             <div className="footer-col footer-col-brand">
               <div className="footer-brand-row">
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <Image src={getAssetPath("/novapaid-logo-96.png")} alt="Nova Paid" width={30} height={30} />
+                  <Image src={getAssetPath("/novapaid-logo-96.png")} alt="Nova Paid" width={32} height={32} />
                   <strong className="footer-brand-title">Nova Paid</strong>
                 </div>
                 <div className="footer-status-pill">
@@ -1402,7 +1615,7 @@ export default function Home() {
               <p className="footer-about-text">{t.footerAbout}</p>
             </div>
 
-            <div className="footer-mobile-links-row">
+            <div className="footer-nav-row">
             <div className="footer-col">
               <h4>{t.products}</h4>
               <ul className="footer-links-list">
@@ -1428,7 +1641,9 @@ export default function Home() {
               <h4>Assistance</h4>
               <ul className="footer-links-list">
                 <li>
-                  
+                  <button type="button" onClick={() => { playModalOpen(); setSupportOpen(true); }}>
+                    <Headphones size={14} /> {t.support}
+                  </button>
                 </li>
                 <li>
                   <span className="footer-secure-item"><ShieldCheck size={14} /> SoleasPay</span>
@@ -1438,18 +1653,18 @@ export default function Home() {
                 </li>
               </ul>
             </div>
-            </div>
 
-            <div className="footer-col">
+            <div className="footer-col footer-col-payments">
               <h4>Moyens de paiement</h4>
-              <p className="footer-col-desc">Paiements locaux sécurisés par Mobile Money en FCFA :</p>
+              <p className="footer-col-desc">Paiements locaux sécurisés en FCFA :</p>
               <div className="footer-payment-badges">
-                <span className="footer-pay-badge">Orange Money</span>
-                <span className="footer-pay-badge">MTN MoMo</span>
-                <span className="footer-pay-badge">Moov Money</span>
-                <span className="footer-pay-badge">Wave</span>
-                <span className="footer-pay-badge">Visa & Mastercard</span>
+                <span className="footer-pay-badge"><span className="pay-dot orange" /> Orange Money</span>
+                <span className="footer-pay-badge"><span className="pay-dot yellow" /> MTN MoMo</span>
+                <span className="footer-pay-badge"><span className="pay-dot blue" /> Moov Money</span>
+                <span className="footer-pay-badge"><span className="pay-dot cyan" /> Wave</span>
+                <span className="footer-pay-badge"><span className="pay-dot emerald" /> Visa & Mastercard</span>
               </div>
+            </div>
             </div>
           </div>
 
@@ -1461,6 +1676,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      )}
 
       {checkoutOpen && (
         <div
