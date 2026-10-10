@@ -1,13 +1,6 @@
 {
-<<<<<<< HEAD
-  "version": "1791585802875",
-  "commit": "unknown",
-  "buildTime": "2026-10-09T22:43:22.875Z",
-  "timestamp": 1791585802875
-=======
-  "version": "64c470b-1790361503844",
-  "commit": "64c470b",
-  "buildTime": "2026-09-25T18:38:23.844Z",
-  "timestamp": 1790361503844
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
+  "version": "6b77fce-1791603173346",
+  "commit": "6b77fce",
+  "buildTime": "2026-10-10T03:32:53.346Z",
+  "timestamp": 1791603173346
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { type FormEvent, useRef, useState, useSyncExternalStore } from "react";
 import {
@@ -30,15 +30,10 @@ type SoleasPayCheckoutV3Props = {
   requireEmail?: boolean;
   isEmailValid?: boolean;
   onRequireEmail?: () => void;
-<<<<<<< HEAD
   productType?: "coins" | "card" | "game";
   productLabel?: string;
   loginMethod?: string;
   playerName?: string;
-=======
-  productType?: "coins" | "card";
-  productLabel?: string;
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   formId?: string;
 };
 
@@ -63,11 +58,8 @@ export function SoleasPayCheckoutV3({
   onRequireEmail,
   productType = "coins",
   productLabel,
-<<<<<<< HEAD
   loginMethod,
   playerName,
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   formId = "soleaspay-checkout-v3",
 }: SoleasPayCheckoutV3Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,11 +78,7 @@ export function SoleasPayCheckoutV3({
     ? `${origin}${getAssetPath("/payment/failed")}?provider=soleaspay&order=${encodeURIComponent(orderId)}`
     : "";
   const fullPhone = formatFullPhoneNumber(whatsapp, dialCode);
-<<<<<<< HEAD
   const customerName = username.trim().replace(/^@/, "") || "Client";
-=======
-  const customerName = `${username} | ${fullPhone}`;
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 
   function rememberPendingCheckout(): void {
     const pendingCheckout: PendingPaymentCheckout = {
@@ -104,11 +92,8 @@ export function SoleasPayCheckoutV3({
       submittedAt: new Date().toISOString(),
       productType,
       productLabel,
-<<<<<<< HEAD
       loginMethod,
       playerName,
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     };
 
     try {

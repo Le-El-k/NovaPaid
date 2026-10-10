@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { Download, MonitorDown, Plus, Share, Smartphone } from "lucide-react";
@@ -212,15 +212,8 @@ export function PwaInstallPrompt() {
       return;
     }
     // Wait at least 10 seconds before asking user to install PWA
-<<<<<<< HEAD
     // Auto popup disabled
     // reminderTimerRef.current = null;
-=======
-    reminderTimerRef.current = window.setTimeout(
-      showModalWhenReminderExpires,
-      4000,
-    );
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);

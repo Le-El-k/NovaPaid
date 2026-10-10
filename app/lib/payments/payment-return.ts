@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   PaymentProvider,
   PendingPaymentCheckout,
 } from "@/app/lib/payments/payment-contract";
@@ -114,11 +114,7 @@ export function parsePendingPaymentCheckout(rawValue: string | null): PendingPay
       amount: value.amount,
       currency: "XAF",
       submittedAt: value.submittedAt,
-<<<<<<< HEAD
       productType: value.productType === "card" ? "card" : value.productType === "game" ? "game" : "coins",
-=======
-      productType: value.productType === "card" ? "card" : "coins",
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
       productLabel: typeof value.productLabel === "string" && value.productLabel.length <= 160
         ? value.productLabel.trim()
         : undefined,

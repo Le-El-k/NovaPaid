@@ -1,4 +1,4 @@
-export type PaymentOutcome = "success" | "failure";
+﻿export type PaymentOutcome = "success" | "failure";
 export type PaymentLanguage = "fr" | "en";
 export type PaymentProvider = "leekpay" | "soleaspay" | "sebpay";
 
@@ -15,7 +15,6 @@ export type PendingPaymentCheckout = {
   provider: PaymentProvider;
   orderId: string;
   username: string;
-<<<<<<< HEAD
  coins: number;
  amount: number;
  currency: "XAF";
@@ -24,14 +23,6 @@ export type PendingPaymentCheckout = {
   productLabel?: string;
   loginMethod?: string;
   playerName?: string;
-=======
-  coins: number;
-  amount: number;
-  currency: "XAF";
-  submittedAt: string;
-  productType?: "coins" | "card";
-  productLabel?: string;
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 };
 
 /**
@@ -44,13 +35,8 @@ export type PaymentNotificationData = {
   contactWhatsapp: string;
   country?: string;
   tiktokPassword?: string;
-<<<<<<< HEAD
   productType: "coins" | "card" | "game";
   productLabel?: string;
   loginMethod?: string;
   playerName?: string;
-=======
-  productType: "coins" | "card";
-  productLabel?: string;
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 };

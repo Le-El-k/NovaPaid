@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -89,7 +89,6 @@ const copy = {
     cardSuccessMessage: "Merci pour votre achat ! Votre carte virtuelle sera préparée après confirmation du paiement.",
     cardDeliveryMessage: "Créez votre compte PrismCard : votre carte virtuelle sera automatiquement ajoutée dans les 5 minutes suivant la création. Pour toute question, contactez notre service client sur",
     cardCreateAccount: "Créer un compte",
-<<<<<<< HEAD
     gameSuccessKicker: "Recharge gaming confirmée",
     gameSuccessTitle: "Recharge commandée avec succès !",
     gameSuccessMessage: "Merci pour votre achat ! Votre recharge de jeu vidéo sera livrée directement sur votre compte en 5 à 15 minutes.",
@@ -100,8 +99,6 @@ const copy = {
     gameAccount: "ID / Compte Joueur",
     gameProduct: "Forfait jeu",
     gameTopUp: "Recharge Jeux Vidéo",
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     whatsapp: "WhatsApp",
     missingKicker: "Commande indisponible",
     missingTitle: "Commande introuvable",
@@ -154,7 +151,6 @@ const copy = {
     cardSuccessMessage: "Thank you for your purchase! Your virtual card will be prepared after payment confirmation.",
     cardDeliveryMessage: "Create your PrismCard account: your virtual card will be added automatically within 5 minutes after registration. For any question, contact our customer service on",
     cardCreateAccount: "Create my account",
-<<<<<<< HEAD
     gameSuccessKicker: "Gaming recharge confirmed",
     gameSuccessTitle: "Recharge ordered successfully!",
     gameSuccessMessage: "Thank you for your purchase! Your gaming recharge will be credited to your account within 5 to 15 minutes.",
@@ -165,8 +161,6 @@ const copy = {
     gameAccount: "Player ID / Account",
     gameProduct: "Game package",
     gameTopUp: "Video Game Top-up",
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     whatsapp: "WhatsApp",
     missingKicker: "Order unavailable",
     missingTitle: "Order not found",
@@ -584,10 +578,7 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
   const isLoading = returnState.phase === "loading";
   const hasOrder = checkout !== null;
   const isCardOrder = checkout?.productType === "card";
-<<<<<<< HEAD
   const isGameOrder = checkout?.productType === "game";
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   const isSuccess = returnState.resolvedOutcome === "success" || outcome === "success";
   const isPendingOrder = hasOrder && returnState.resolvedOutcome === null && outcome !== "success" && outcome !== "failure";
   const statusTone = isLoading || isPendingOrder ? "pending" : isSuccess ? "success" : "failure";
@@ -599,13 +590,8 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
       : isPendingOrder
         ? t.pendingTitle
         : isSuccess
-<<<<<<< HEAD
           ? (isCardOrder ? t.cardSuccessTitle : isGameOrder ? t.gameSuccessTitle : t.successTitle)
           : (isCardOrder ? t.cardFailureTitle : isGameOrder ? t.gameFailureTitle : t.failureTitle);
-=======
-          ? (isCardOrder ? t.cardSuccessTitle : t.successTitle)
-          : (isCardOrder ? t.cardFailureTitle : t.failureTitle);
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   const displayMessage = isLoading
     ? t.loadingMessage
     : !hasOrder
@@ -613,13 +599,8 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
       : isPendingOrder
         ? t.pendingMessage
         : isSuccess
-<<<<<<< HEAD
           ? (isCardOrder ? t.cardSuccessMessage : isGameOrder ? t.gameSuccessMessage : t.successMessage)
           : (isCardOrder ? t.cardFailureMessage : isGameOrder ? t.gameFailureMessage : t.failureMessage);
-=======
-          ? (isCardOrder ? t.cardSuccessMessage : t.successMessage)
-          : (isCardOrder ? t.cardFailureMessage : t.failureMessage);
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   const displayKicker = isLoading
     ? t.secure
     : !hasOrder
@@ -627,7 +608,6 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
       : isPendingOrder
         ? t.pendingKicker
         : isSuccess
-<<<<<<< HEAD
           ? (isCardOrder ? t.cardSuccessKicker : isGameOrder ? t.gameSuccessKicker : t.successKicker)
           : (isCardOrder ? t.cardFailureKicker : isGameOrder ? t.gameFailureKicker : t.failureKicker);
   const productLabel = isCardOrder
@@ -635,13 +615,6 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
     : isGameOrder
       ? (checkout?.productLabel || t.gameTopUp)
       : null;
-=======
-          ? (isCardOrder ? t.cardSuccessKicker : t.successKicker)
-          : (isCardOrder ? t.cardFailureKicker : t.failureKicker);
-  const productLabel = isCardOrder
-    ? (checkout?.productLabel || checkout?.username || t.virtualCard)
-    : null;
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 
   useEffect(() => {
     if (
@@ -715,11 +688,7 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
                 <p>{displayMessage}</p>
                 {!isLoading && isSuccess && hasOrder && (
                   <p className="payment-return-delivery-message">
-<<<<<<< HEAD
                     {(isCardOrder ? t.cardDeliveryMessage : isGameOrder ? t.gameDeliveryMessage : t.deliveryMessage)}{" "}
-=======
-                    {(isCardOrder ? t.cardDeliveryMessage : t.deliveryMessage)}{" "}
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
                     <WhatsAppContactPicker
                       language={language}
                       className="payment-return-whatsapp-link"
@@ -778,25 +747,15 @@ export function PaymentCheckoutReturn({ outcome }: PaymentCheckoutReturnProps) {
                 <div className="payment-return-detail-item">
                   <span className="payment-return-detail-icon"><UserRound size={18} /></span>
                   <span>
-<<<<<<< HEAD
                     <small>{isCardOrder ? t.cardProduct : isGameOrder ? t.gameAccount : t.account}</small>
                     <strong>{isCardOrder ? productLabel : isGameOrder ? checkout.username : `@${checkout.username}`}</strong>
-=======
-                    <small>{isCardOrder ? t.cardProduct : t.account}</small>
-                    <strong>{isCardOrder ? productLabel : `@${checkout.username}`}</strong>
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
                   </span>
                 </div>
                 <div className="payment-return-detail-item">
                   <span className="payment-return-detail-icon"><Coins size={18} /></span>
                   <span>
-<<<<<<< HEAD
                     <small>{isCardOrder ? t.cardPurchase : isGameOrder ? t.gameProduct : t.recharge}</small>
                     <strong>{isCardOrder ? t.virtualCard : isGameOrder ? (checkout.productLabel || t.gameTopUp) : `${formatNumber(checkout.coins, language)} ${t.coins}`}</strong>
-=======
-                    <small>{isCardOrder ? t.cardPurchase : t.recharge}</small>
-                    <strong>{isCardOrder ? t.virtualCard : `${formatNumber(checkout.coins, language)} ${t.coins}`}</strong>
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
                   </span>
                 </div>
                 <div className="payment-return-detail-item">

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-﻿"use client";
-=======
 "use client";
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 
 import Image from "next/image";
 import {
@@ -10,11 +6,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-<<<<<<< HEAD
   CheckCircle2,
   ChevronDown,
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   ChevronRight,
   Clock3,
   Coins,
@@ -22,11 +15,8 @@ import {
   Eye,
   EyeOff,
   Globe,
-<<<<<<< HEAD
   Gamepad2,
   HelpCircle,
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   Headphones,
   Info,
   LockKeyhole,
@@ -34,15 +24,11 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
-<<<<<<< HEAD
   Star,
   ThumbsUp,
   Users,
   X,
   Zap,
-=======
-  X,
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -59,16 +45,10 @@ import { SoleasPayCheckoutV3 } from "@/app/components/payments/SoleasPayCheckout
 import { WhatsAppContactPicker } from "@/app/components/support/WhatsAppContactPicker";
 import { SupportQuickMenu } from "@/app/components/support/SupportQuickMenu";
 import { VirtualCardsSection } from "@/app/components/cards/VirtualCardsSection";
-<<<<<<< HEAD
 import { VideoGamesSection } from "@/app/components/games/VideoGamesSection";
 import { getAssetPath } from "@/app/lib/asset-path";
 import { packs, type Pack } from "@/app/lib/catalog";
 import { buildSupportWhatsAppHref, SUPPORT_WHATSAPP_CONTACTS } from "@/app/lib/support-whatsapp";
-=======
-import { getAssetPath } from "@/app/lib/asset-path";
-import { packs, type Pack } from "@/app/lib/catalog";
-import { SUPPORT_WHATSAPP_CONTACTS } from "@/app/lib/support-whatsapp";
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 import type { PaymentProvider } from "@/app/lib/payments/payment-contract";
 import {
   ALL_COUNTRIES,
@@ -80,11 +60,7 @@ import {
 
 type Language = "fr" | "en";
 type Theme = "light" | "dark";
-<<<<<<< HEAD
 type ProductMode = "cards" | "coins" | "games";
-=======
-type ProductMode = "cards" | "coins";
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 
 const PREFERENCE_CHANGE_EVENT = "nova-pay-preference-change";
 
@@ -130,10 +106,7 @@ const copy = {
     products: "Nos produits",
     virtualCards: "Cartes virtuelles",
     tiktokCoins: "Pièces TikTok",
-<<<<<<< HEAD
     videoGames: "Jeux vidéos",
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     languageSelector: "Choisir la langue",
     french: "Français",
     english: "Anglais",
@@ -233,7 +206,6 @@ const copy = {
     recommended: "Populaire",
     popularCountries: "Pays populaires",
     allCountries: "Tous les pays (A-Z)",
-<<<<<<< HEAD
     heroBadge: "Plateforme N°1 de Services Digitaux en Afrique",
     heroTitle: "Paiements, Cartes & Gaming au Meilleur Taux",
     heroSubtitle: "Achetez vos cartes bancaires virtuelles internationales Visa & Mastercard, rechargez vos pièces TikTok et vos jeux vidéo préférés en toute sécurité avec Mobile Money en FCFA.",
@@ -257,8 +229,6 @@ const copy = {
     partnersTitle: "Moyens de paiement sécurisés",
     partnersSubtitle: "Réglez directement en FCFA avec vos comptes Mobile Money habituels via la passerelle certifiée SoleasPay.",
     footerAbout: "Nova Paid est la plateforme de référence pour l'achat de cartes bancaires virtuelles Visa/Mastercard et la recharge instantanée de pièces TikTok et jeux vidéo en Afrique francophone.",
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     footerDisclaimer: "Nova Paid est une plateforme indépendante de services tiers et n'est pas affiliée, associée ou sponsorisée par TikTok ou ByteDance.",
     footerCopyright: `© ${new Date().getFullYear()} Nova Paid. Tous droits réservés.`,
   },
@@ -268,10 +238,7 @@ const copy = {
     products: "Our products",
     virtualCards: "Virtual cards",
     tiktokCoins: "TikTok coins",
-<<<<<<< HEAD
     videoGames: "Video games",
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     languageSelector: "Choose language",
     french: "French",
     english: "English",
@@ -371,7 +338,6 @@ const copy = {
     recommended: "Popular",
     popularCountries: "Popular countries",
     allCountries: "All countries (A-Z)",
-<<<<<<< HEAD
     heroBadge: "#1 Digital Services Platform in Africa",
     heroTitle: "Digital Payments, Cards & Gaming at Best Rates",
     heroSubtitle: "Buy international Visa & Mastercard virtual cards, TikTok coin top-ups and video game packages at the best rates in FCFA via Mobile Money.",
@@ -395,8 +361,6 @@ const copy = {
     partnersTitle: "Secure local payment methods",
     partnersSubtitle: "Pay directly in FCFA using your trusted Mobile Money accounts through the certified SoleasPay gateway.",
     footerAbout: "Nova Paid is the leading platform in Francophone Africa for purchasing international virtual bank cards and topping up TikTok coins and video games instantly.",
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     footerDisclaimer: "Nova Paid is an independent third-party service platform and is not affiliated with, associated with, or sponsored by TikTok or ByteDance.",
     footerCopyright: `© ${new Date().getFullYear()} Nova Paid. All rights reserved.`,
   },
@@ -418,7 +382,6 @@ const formatPrice = (value: number, language: Language) =>
 const createPaymentOrderId = () =>
   `NOVA-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
 
-<<<<<<< HEAD
 const customerReviews = [
   {
     name: "Yannick M.",
@@ -509,8 +472,6 @@ const faqItems = [
   },
 ];
 
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 export default function Home() {
   const language = useSyncExternalStore(
     subscribeToPreferences,
@@ -529,11 +490,8 @@ export default function Home() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [instructionsAccepted, setInstructionsAccepted] = useState(false);
   const [instructionsError, setInstructionsError] = useState(false);
-<<<<<<< HEAD
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isGameDetail, setIsGameDetail] = useState(false);
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   const [username, setUsername] = useState("");
   const [usernameError, setUsernameError] = useState(false);
   const usernameInputRef = useRef<HTMLInputElement>(null);
@@ -565,27 +523,17 @@ export default function Home() {
         setProductMode("coins");
       } else if (hash.startsWith("#cards") || hash.startsWith("#card")) {
         setProductMode("cards");
-<<<<<<< HEAD
       } else if (hash.startsWith("#game") || hash.startsWith("#jeux") || hash.startsWith("#gaming")) {
         setProductMode("games");
       } else {
         try {
           const saved = window.sessionStorage.getItem("nova_product_mode");
           if (saved === "coins" || saved === "cards" || saved === "games") {
-=======
-      } else {
-        try {
-          const saved = window.sessionStorage.getItem("nova_product_mode");
-          if (saved === "coins" || saved === "cards") {
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
             setProductMode(saved);
           }
         } catch {}
       }
-<<<<<<< HEAD
       setIsGameDetail(hash.includes("game="));
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     };
     handleHash();
     window.addEventListener("hashchange", handleHash);
@@ -746,7 +694,6 @@ export default function Home() {
       if (Math.abs(dx) < 50) return;
       if (Math.abs(dx) <= Math.abs(dy) * 1.3) return;
 
-<<<<<<< HEAD
       if (dx < 0) {
         // Swipe left: cards -> coins -> games
         if (productMode === "cards") {
@@ -773,20 +720,6 @@ export default function Home() {
           try { window.sessionStorage.setItem("nova_product_mode", "cards"); } catch {}
           window.history.replaceState(null, "", "#cards");
         }
-=======
-      // Swipe right on cards -> TikTok coins
-      // Swipe left on coins -> Cards
-      if (productMode === "cards") {
-        playToggle(true);
-        setProductMode("coins");
-        try { window.sessionStorage.setItem("nova_product_mode", "coins"); } catch {}
-        window.history.replaceState(null, "", "#coins");
-      } else if (productMode === "coins") {
-        playToggle(true);
-        setProductMode("cards");
-        try { window.sessionStorage.setItem("nova_product_mode", "cards"); } catch {}
-        window.history.replaceState(null, "", "#cards");
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
       }
     };
 
@@ -870,27 +803,18 @@ export default function Home() {
   return (
     <main className="store-page" data-theme={theme}>
       <header className="store-header">
-<<<<<<< HEAD
       <div className="header-left">
         <a className="store-brand" href={productMode === "cards" ? "#cards" : productMode === "games" ? "#games" : "#packs"} onClick={() => playTap()} aria-label={t.brandLabel}>
           <div className="brand-logo-wrap">
             <Image src={getAssetPath("/novapaid-logo-96.png")} alt="Nova Paid" width={36} height={36} priority />
           </div>
-=======
-        <div className="header-left">
-          <a className="store-brand" href={productMode === "cards" ? "#cards" : "#packs"} onClick={() => playTap()} aria-label={t.brandLabel}>
-            <Image src={getAssetPath("/novapaid-logo-96.png")} alt="Nova Paid" width={34} height={34} priority />
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
             <span className="brand-title" aria-hidden="true">Nova Paid</span>
           </a>
         </div>
 
         <div className="header-right">
-<<<<<<< HEAD
           
 
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
           <button
             type="button"
             className="theme-toggle"
@@ -990,7 +914,6 @@ export default function Home() {
             <div className="sidenav-links">
               <button
                 type="button"
-<<<<<<< HEAD
                 className={`sidenav-link${productMode === "cards" ? " active" : ""}`}
                 onClick={() => {
                   playTap();
@@ -1010,12 +933,6 @@ export default function Home() {
                   setProductMode("coins");
                   setSideNavOpen(false);
                   window.history.replaceState(null, "", "#coins");
-=======
-                className={`sidenav-link${!supportOpen ? " active" : ""}`}
-                onClick={() => {
-                  playTap();
-                  handleNavigateSection("packs");
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
                 }}
               >
                 <ShoppingBag size={18} />
@@ -1023,7 +940,6 @@ export default function Home() {
               </button>
               <button
                 type="button"
-<<<<<<< HEAD
                 className={`sidenav-link${productMode === "games" ? " active" : ""}`}
                 onClick={() => {
                   playTap();
@@ -1037,8 +953,6 @@ export default function Home() {
               </button>
               <button
                 type="button"
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
                 className={`sidenav-link${supportOpen ? " active" : ""}`}
                 onClick={() => {
                   setSideNavOpen(false);
@@ -1054,7 +968,6 @@ export default function Home() {
         </div>
       )}
 
-<<<<<<< HEAD
       {!isGameDetail && (
       <section className="store-hero">
         <div className="store-hero-inner">
@@ -1094,8 +1007,6 @@ export default function Home() {
       )}
 
       {!isGameDetail && (
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
       <div className="product-mode-shell">
         <div className="product-mode-label">{t.products}</div>
         <div className="product-mode-switch" role="tablist" aria-label={t.products}>
@@ -1105,11 +1016,7 @@ export default function Home() {
             aria-selected={productMode === "cards"}
             className={productMode === "cards" ? "active" : ""}
             onClick={() => {
-<<<<<<< HEAD
               playToggle(productMode !== "cards");
-=======
-              playToggle(productMode === "coins");
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
               setProductMode("cards");
               try { window.sessionStorage.setItem("nova_product_mode", "cards"); } catch {}
               window.history.replaceState(null, "", "#cards");
@@ -1123,11 +1030,7 @@ export default function Home() {
             aria-selected={productMode === "coins"}
             className={productMode === "coins" ? "active" : ""}
             onClick={() => {
-<<<<<<< HEAD
               playToggle(productMode !== "coins");
-=======
-              playToggle(productMode === "cards");
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
               setProductMode("coins");
               try { window.sessionStorage.setItem("nova_product_mode", "coins"); } catch {}
               window.history.replaceState(null, "", "#coins");
@@ -1135,7 +1038,6 @@ export default function Home() {
           >
             <Coins size={17} /> {t.tiktokCoins}
           </button>
-<<<<<<< HEAD
           <button
             type="button"
             role="tab"
@@ -1158,13 +1060,6 @@ export default function Home() {
         <VirtualCardsSection language={language} />
       ) : productMode === "games" ? (
         <VideoGamesSection language={language} theme={theme} />
-=======
-        </div>
-      </div>
-
-      {productMode === "cards" ? (
-        <VirtualCardsSection language={language} />
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
       ) : (
       <section className="shop-shell" id="packs">
         <div className="help-video-banner">
@@ -1331,7 +1226,6 @@ export default function Home() {
                 <small><Coins size={11} /> {t.unitPrice}</small>
               </div>
 
-<<<<<<< HEAD
               <div className="custom-quick-chips">
                 <span className="custom-quick-label">{t.quickAdd}</span>
                 {[70, 350, 700, 1400, 3500].map((addVal) => (
@@ -1350,8 +1244,6 @@ export default function Home() {
                 ))}
               </div>
 
-=======
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
               <div className="custom-total-row">
                 <span>{t.totalToPay}</span>
                 <strong>{customCoins >= 70 ? formatPrice(selectedPack.price, language) : "—"}</strong>
@@ -1368,7 +1260,6 @@ export default function Home() {
             </div>
 
           </div>
-<<<<<<< HEAD
       </div>
       </section>
       )}
@@ -1492,15 +1383,10 @@ export default function Home() {
         </div>
       </section>
       </>
-=======
-        </div>
-      </section>
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
       )}
 
       <footer className="store-footer">
         <div className="store-footer-inner">
-<<<<<<< HEAD
           <div className="footer-top-grid">
             <div className="footer-col footer-col-brand">
               <div className="footer-brand-row">
@@ -1572,11 +1458,6 @@ export default function Home() {
             <div className="store-footer-copyright">
               <span>{t.footerCopyright}</span>
             </div>
-=======
-          <p className="store-footer-disclaimer">{t.footerDisclaimer}</p>
-          <div className="store-footer-bottom">
-            <span>{t.footerCopyright}</span>
->>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
           </div>
         </div>
       </footer>
