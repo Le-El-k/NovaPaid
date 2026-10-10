@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nova-pay",
+  "compatibility_date": "2026-08-13",
+  "main": "vinext/server/fetch-handler",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

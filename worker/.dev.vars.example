@@ -1,0 +1,13 @@
+SEBPAY_PUBLIC_KEY="pk_xxxxxxxxxxxxxxxxxxxx"
+SEBPAY_SECRET_KEY="sk_xxxxxxxxxxxxxxxxxxxx"
+
+# secrets in production; never expose them as NEXT_PUBLIC_* variables.
+ALLOWED_ORIGIN="http://localhost:4174"
+
+# Mailjet worker only — use real secrets in worker/.dev.vars locally and
+# Wrangler secrets in production. Do not use NEXT_PUBLIC_ variables.
+MAILJET_API_KEY="your-mailjet-api-key"
+MAILJET_API_SECRET="your-mailjet-api-secret"
+MAILJET_FROM_EMAIL="verified-sender@example.com"
+MAILJET_FROM_NAME="Nova Paid"
+MAILJET_TO_EMAIL="serviceclient2126@gmail.com"
