@@ -830,7 +830,11 @@ export function VirtualCardsSection({ language }: { language: Language }) {
                     language={language}
                     amount={selectedCard.price}
                     orderId={paymentOrderId}
+<<<<<<< HEAD
                     description={"Carte Virtuelle " + selectedName}
+=======
+                    description={"Carte " + selectedName + " | Email: " + email + " | " + formatFullPhoneNumber(whatsapp, dialCode).substring(0, 100)}
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
                     username={selectedName}
                     whatsapp={whatsapp}
                     dialCode={dialCode}

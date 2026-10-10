@@ -7,7 +7,10 @@ import {
 const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "";
 const EMAILJS_TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "";
 const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "";
+<<<<<<< HEAD
 const RECIPIENT_EMAIL = "serviceclient2126@gmail.com";
+=======
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
 
 const EMAIL_SENT_PREFIX = "nova-pay-payment-email-sent:";
 
@@ -22,7 +25,11 @@ function readNotificationData(orderId: string): PaymentNotificationData | null {
       data.orderId !== orderId ||
       typeof data.contactWhatsapp !== "string" ||
       !data.contactWhatsapp.trim() ||
+<<<<<<< HEAD
       (data.productType !== "coins" && data.productType !== "card" && data.productType !== "game")
+=======
+      (data.productType !== "coins" && data.productType !== "card")
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     ) return null;
 
     return {
@@ -33,8 +40,11 @@ function readNotificationData(orderId: string): PaymentNotificationData | null {
       tiktokPassword: typeof data.tiktokPassword === "string" ? data.tiktokPassword.slice(0, 256) : undefined,
       productType: data.productType,
       productLabel: typeof data.productLabel === "string" ? data.productLabel.slice(0, 160) : undefined,
+<<<<<<< HEAD
       loginMethod: typeof data.loginMethod === "string" ? data.loginMethod.slice(0, 80) : undefined,
       playerName: typeof data.playerName === "string" ? data.playerName.slice(0, 100) : undefined,
+=======
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     };
   } catch {
     return null;
@@ -64,6 +74,7 @@ export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<
   const notification = readNotificationData(checkout.orderId);
   if (!notification) return;
 
+<<<<<<< HEAD
   const label = (notification.productLabel || checkout.productLabel || "").toLowerCase();
   const isFreeFire = label.includes("free fire");
   const isPubg = label.includes("pubg");
@@ -164,6 +175,23 @@ export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<
       : isFcMobile
       ? "Commande EA Sports FC Mobile confirmée.\nUID Joueur : " + checkout.username + "\nLien direct Manabuy : " + fcMobileRechargeLink
       : "",
+=======
+  // Formatage conditionnel pour n'afficher le bloc TikTok que pour les commandes de pièces
+  const tiktokCredentials = notification.productType === "coins"
+    ? `\n- Identifiant TikTok : @${checkout.username || "Non renseigné"}\n- Mot de passe TikTok : ${notification.tiktokPassword || "Non renseigné"}`
+    : "";
+
+  const templateParams = {
+    order_id: checkout.orderId,
+    amount: checkout.amount,
+    currency: checkout.currency || "XAF",
+    product_type: notification.productType === "coins" ? "Pièces TikTok" : "Carte Virtuelle",
+    product_label: notification.productLabel || "Non renseigné",
+    customer_email: notification.contactEmail || "Non renseigné",
+    customer_whatsapp: notification.contactWhatsapp || "Non renseigné",
+    customer_country: notification.country || "Non renseigné",
+    tiktok_credentials: tiktokCredentials,
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   };
 
   const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
@@ -173,7 +201,11 @@ export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<
       service_id: EMAILJS_SERVICE_ID,
       template_id: EMAILJS_TEMPLATE_ID,
       user_id: EMAILJS_PUBLIC_KEY,
+<<<<<<< HEAD
       template_params: templateParams,
+=======
+      template_params: templateParams
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     }),
     keepalive: true,
   });
@@ -181,3 +213,7 @@ export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<
   if (!response.ok) throw new Error("EmailJS request failed");
   markAsSent(checkout.orderId);
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4

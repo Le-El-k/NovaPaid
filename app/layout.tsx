@@ -22,11 +22,19 @@ const pwaOgImageUrl = `${siteUrl}/novapaid-logo-512.png`;
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
+<<<<<<< HEAD
     default: "Nova Paid — Cartes Virtuelles, Pièces TikTok & Jeux Vidéo au Meilleur Prix",
     template: "%s | Nova Paid",
   },
   description:
     "Achetez vos cartes bancaires virtuelles Visa / Mastercard, rechargez vos pièces TikTok et vos jeux vidéo préférés (Free Fire, PUBG, Call of Duty) instantanément avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave). Service rapide, fiable et sécurisé en FCFA.",
+=======
+    default: "Nova Paid — Cartes Virtuelles & Recharge Pièces TikTok au Meilleur Prix",
+    template: "%s | Nova Paid",
+  },
+  description:
+    "Achetez vos cartes bancaires virtuelles Visa / Mastercard et rechargez vos pièces TikTok instantanément avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave). Service rapide, fiable et sécurisé en FCFA.",
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   applicationName: "Nova Paid",
   authors: [{ name: "Nova Paid", url: siteUrl }],
   creator: "Nova Paid",
@@ -51,6 +59,7 @@ export const metadata: Metadata = {
     "tiktok coins cheap",
     "recharge tiktok xaf",
     "recharge tiktok xof",
+<<<<<<< HEAD
     "recharge jeux video",
     "diamants free fire",
     "uc pubg mobile",
@@ -60,6 +69,11 @@ export const metadata: Metadata = {
   ],
   category: "Fintech & E-commerce",
   classification: "Cartes Virtuelles, Pièces TikTok & Jeux Vidéo",
+=======
+  ],
+  category: "Fintech & E-commerce",
+  classification: "Cartes Virtuelles & Recharge Pièces TikTok",
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   manifest: `${basePath}/manifest.webmanifest`,
   alternates: {
     canonical: `${siteUrl}/`,

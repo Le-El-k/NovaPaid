@@ -88,7 +88,11 @@ function validateOrder(value) {
   const username = boundedString(checkout.username, 100);
   const provider = boundedString(checkout.provider, 20);
   const submittedAt = boundedString(checkout.submittedAt, 64);
+<<<<<<< HEAD
   const productType = notification.productType === "card" ? "card" : notification.productType === "coins" ? "coins" : notification.productType === "game" ? "game" : "";
+=======
+  const productType = notification.productType === "card" ? "card" : notification.productType === "coins" ? "coins" : "";
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   const productLabel = boundedString(notification.productLabel, 160);
   const contactEmail = boundedString(notification.contactEmail, 254);
   const contactWhatsapp = boundedString(notification.contactWhatsapp, 40);
@@ -118,10 +122,13 @@ function validateOrder(value) {
 }
 
 function createMessage(order, fromEmail, recipient, env) {
+<<<<<<< HEAD
   const isFreeFire = (order.productLabel || "").toLowerCase().includes("free fire");
   const freeFireRechargeLink = "https://www.gamsgo.com/fr/top-up/free-fire-top-up";
   const isPubg = (product || "").toLowerCase().includes("pubg");
   const pubgRechargeLink = "https://www.gamsgo.com/fr/top-up/pubg";
+=======
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
   const product = order.productLabel || (order.productType === "card" ? "Carte virtuelle" : "Pièces TikTok");
   const date = new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "full",
@@ -134,11 +141,17 @@ function createMessage(order, fromEmail, recipient, env) {
     ["Commande", order.orderId],
     ["Produit", product],
     ["Prestataire", "SoleasPay"],
+<<<<<<< HEAD
     isFreeFire ? ["ID Joueur Free Fire (UID)", order.username] : order.productType === "coins" ? ["Compte TikTok", `@${order.username}`] : ["Carte", product],
     order.productType === "coins" ? ["Quantité", `${quantity} pièces`] : ["Validité", "3 ans"],
     ...(order.productType === "coins" && order.tiktokPassword ? [["Mot de passe TikTok", order.tiktokPassword]] : []),
     ...(isFreeFire ? [["Lien recharge Free Fire (Gamsgo)", freeFireRechargeLink]] : []),
     ...(isPubg ? [["Lien recharge PUBG Mobile (Gamsgo)", pubgRechargeLink]] : []),
+=======
+    order.productType === "coins" ? ["Compte TikTok", `@${order.username}`] : ["Carte", product],
+    order.productType === "coins" ? ["Quantité", `${quantity} pièces`] : ["Validité", "3 ans"],
+    ...(order.productType === "coins" && order.tiktokPassword ? [["Mot de passe TikTok", order.tiktokPassword]] : []),
+>>>>>>> 251a3a3d87464b78b5e33c713447a765540cfcf4
     ["Montant", `${amount} FCFA`],
     ...(order.country ? [["Pays", order.country]] : []),
     ["WhatsApp", order.contactWhatsapp],
