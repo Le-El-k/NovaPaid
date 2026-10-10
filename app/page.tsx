@@ -1162,44 +1162,6 @@ export default function Home() {
         </div>
       )}
 
-      {!isGameDetail && !isPwa && (
-      <section className="store-hero">
-        <div className="store-hero-inner">
-          <div className="hero-badge">
-            <span className="hero-badge-dot" />
-            <Sparkles size={14} />
-            <span>{t.heroBadge}</span>
-          </div>
-          <h1 className="hero-headline">{t.heroTitle}</h1>
-          <p className="hero-subline">{t.heroSubtitle}</p>
-          <div className="hero-live-ticker" aria-label="Statut du service en direct">
-            <span className="live-pulsing-dot" />
-            <span className="hero-live-ticker-text">
-              <strong>{language === "fr" ? "+15 000 recharges livrées" : "+15,000 top-ups delivered"}</strong> {language === "fr" ? "• Service actif 24/7 en direct" : "• Active 24/7 live service"}
-            </span>
-          </div>
-          <div className="hero-trust-bar">
-            <div className="hero-trust-pill">
-              <Zap size={14} style={{ color: "#f59e0b" }} />
-              <span>{t.trustInstant}</span>
-            </div>
-            <div className="hero-trust-pill">
-              <ShieldCheck size={14} style={{ color: "#10b981" }} />
-              <span>{t.trustSecurity}</span>
-            </div>
-            <div className="hero-trust-pill">
-              <CreditCard size={14} style={{ color: "#3b82f6" }} />
-              <span>{t.trustPayment}</span>
-            </div>
-            <div className="hero-trust-pill">
-              <Star size={14} style={{ color: "#eab308" }} />
-              <span>{t.trustRating}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-      )}
-
       {!isGameDetail && (
       <div className="product-mode-shell">
         <div className="product-mode-label">{t.products}</div>

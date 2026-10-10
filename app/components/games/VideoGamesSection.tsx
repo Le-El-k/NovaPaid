@@ -1936,7 +1936,7 @@ export function VideoGamesSection({ language, theme = "dark" }: { language: Lang
   // RENDER CATALOGUE LIST VIEW
   return (
     <section className="video-games-section" id="games">
-      <div className="video-games-heading">
+      <div className="video-games-heading desktop-only">
         <div>
 
 

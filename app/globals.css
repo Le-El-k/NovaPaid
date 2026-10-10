@@ -10870,7 +10870,9 @@ html[data-theme="light"] .game-modal-step-title {
 /* PWA Mode (Standalone/Installed App): Hide Hero Banner and Footer, Keep in Web Browser */
 @media all and (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
   .store-hero,
-  .store-footer {
+  .store-footer,
+  .video-games-heading,
+  .video-games-heading.desktop-only {
     display: none !important;
   }
   body {
@@ -10883,7 +10885,13 @@ html.is-pwa .store-hero,
 body.is-pwa .store-hero,
 .is-pwa .store-footer,
 html.is-pwa .store-footer,
-body.is-pwa .store-footer {
+body.is-pwa .store-footer,
+.is-pwa .video-games-heading,
+html.is-pwa .video-games-heading,
+body.is-pwa .video-games-heading,
+.is-pwa .video-games-heading.desktop-only,
+html.is-pwa .video-games-heading.desktop-only,
+body.is-pwa .video-games-heading.desktop-only {
   display: none !important;
 }
 
@@ -10903,6 +10911,10 @@ body.is-pwa {
   box-sizing: border-box !important;
 }
 
+.product-mode-shell {
+  margin: 24px auto 28px !important;
+}
+
 @media (max-width: 768px) {
   .shop-shell,
   .virtual-cards-section,
@@ -10914,6 +10926,10 @@ body.is-pwa {
     padding-left: 0 !important;
     padding-right: 0 !important;
     box-sizing: border-box !important;
+  }
+
+  .product-mode-shell {
+    margin: 12px auto 16px !important;
   }
 
   .shop-titlebar {
@@ -10952,6 +10968,15 @@ body.is-pwa {
     align-items: center !important;
     justify-content: center !important;
     width: 100% !important;
+  }
+
+  /* Hide Video Games Heading on Mobile Web */
+  .video-games-heading,
+  .video-games-heading.desktop-only {
+    display: none !important;
+  }
+  .video-games-filter-bar {
+    margin-top: 6px !important;
   }
 
   .virtual-cards-heading h1,
