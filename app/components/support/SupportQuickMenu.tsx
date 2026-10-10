@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { ChevronRight, Coins, CreditCard, Headphones } from "lucide-react";
+import { ChevronRight, Coins, CreditCard, Gamepad2, Headphones } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { playTap } from "@/app/lib/sound";
 import { buildSupportWhatsAppHref, SUPPORT_WHATSAPP_CONTACTS } from "@/app/lib/support-whatsapp";
@@ -12,15 +12,19 @@ const copy = {
     label: "Ouvrir le support",
     tiktok: "Support TikTok",
     cards: "Support cartes Visa",
+    games: "Support jeux vidéos",
     tiktokMessage: "Salut Nova Paid, j'ai besoin d'assistance pour mes pièces TikTok.",
     cardsMessage: "Salut Nova Paid, j'ai besoin d'assistance pour une carte Visa.",
+    gamesMessage: "Salut Nova Paid, j'ai besoin d'assistance pour les jeux vidéos.",
   },
   en: {
     label: "Open support",
     tiktok: "TikTok support",
     cards: "Visa card support",
+    games: "Video games support",
     tiktokMessage: "Hi Nova Paid, I need help with my TikTok coins.",
     cardsMessage: "Hi Nova Paid, I need help with a Visa card.",
+    gamesMessage: "Hi Nova Paid, I need help with video games top-up.",
   },
 } as const;
 
@@ -76,6 +80,18 @@ export function SupportQuickMenu({ language }: { language: SupportLanguage }) {
           >
             <span className="support-quick-action-icon"><CreditCard size={17} /></span>
             <span>{t.cards}</span>
+            <ChevronRight size={15} aria-hidden="true" />
+          </a>
+          <a
+            href={buildSupportWhatsAppHref(contact.whatsappNumber, t.gamesMessage)}
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            className="support-quick-action"
+            onClick={() => setOpen(false)}
+          >
+            <span className="support-quick-action-icon"><Gamepad2 size={17} /></span>
+            <span>{t.games}</span>
             <ChevronRight size={15} aria-hidden="true" />
           </a>
         </div>

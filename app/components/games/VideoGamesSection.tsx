@@ -358,13 +358,13 @@ export const gamesCatalog: GameItem[] = [
       {
         "id": "pubg-325",
         "name": "300+25 UC",
-        "price": 4270,
+        "price": 3770,
         "image": "/pubg/uc-low.jpg"
       },
       {
         "id": "pubg-660",
         "name": "600+60 UC",
-        "price": 8540,
+        "price": 7530,
         "popular": true,
         "badge": "Populaire",
         "image": "/pubg/uc-low.jpg"
@@ -372,38 +372,38 @@ export const gamesCatalog: GameItem[] = [
       {
         "id": "pubg-1800",
         "name": "1500+300 UC",
-        "price": 21350,
+        "price": 18830,
         "image": "/pubg/uc-mid.jpg"
       },
       {
         "id": "pubg-3850",
         "name": "3000+850 UC",
-        "price": 42680,
+        "price": 37650,
         "image": "/pubg/uc-mid.jpg"
       },
       {
         "id": "pubg-8100",
         "name": "6000+2100 UC",
-        "price": 85380,
+        "price": 75310,
         "badge": "Top Promo",
         "image": "/pubg/uc-mid.jpg"
       },
       {
         "id": "pubg-16200",
         "name": "12000+4200 UC",
-        "price": 171300,
+        "price": 151120,
         "image": "/pubg/uc-high.png"
       },
       {
         "id": "pubg-24300",
         "name": "18000+6300 UC",
-        "price": 256500,
+        "price": 226280,
         "image": "/pubg/uc-high.png"
       },
       {
         "id": "pubg-32400",
         "name": "24000+8400 UC",
-        "price": 341700,
+        "price": 301440,
         "image": "/pubg/uc-high.png"
       }
     ]
@@ -447,13 +447,13 @@ export const gamesCatalog: GameItem[] = [
       {
         id: "cod-420",
         name: "420 CP",
-        price: 6330,
+        price: 4340,
         image: "/cod/cp-low.png"
       },
       {
         id: "cod-880",
         name: "880 CP",
-        price: 12670,
+        price: 7680,
         popular: true,
         badge: "Populaire",
         image: "/cod/cp-high.png"
@@ -461,45 +461,45 @@ export const gamesCatalog: GameItem[] = [
       {
         id: "cod-2400",
         name: "2400 CP",
-        price: 31700,
+        price: 18710,
         image: "/cod/cp-high.png"
       },
       {
         id: "cod-5000",
         name: "5000 CP",
-        price: 63420,
+        price: 37420,
         badge: "Top Promo",
         image: "/cod/cp-high.png"
       },
       {
         id: "cod-10800",
         name: "10800 CP",
-        price: 126840,
+        price: 74850,
         badge: "Méga Pack",
         image: "/cod/cp-high.png"
       },
       {
         id: "cod-21600",
         name: "21600 CP",
-        price: 248410,
+        price: 146580,
         image: "/cod/cp-high.png"
       },
       {
         id: "cod-32400",
         name: "32400 CP",
-        price: 369970,
+        price: 218320,
         image: "/cod/cp-high.png"
       },
       {
         id: "cod-43200",
         name: "43200 CP",
-        price: 480970,
+        price: 283820,
         image: "/cod/cp-high.png"
       },
       {
         id: "cod-54000",
         name: "54000 CP",
-        price: 597250,
+        price: 352430,
         image: "/cod/cp-high.png"
       }
     ]
