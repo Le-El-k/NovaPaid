@@ -43,3 +43,12 @@ worker/.dev.vars*
 /outputs/
 /work/
 .wrangler/
+
+# AI models & video generation local assets
+/models/
+/novapaid-games-pub/
+/.agents/
+skills-lock.json
+*.onnx
+*.wav
+*.m4a

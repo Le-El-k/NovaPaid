@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Nova Paid",
   "short_name": "Nova Paid",
-  "description": "Cartes bancaires virtuelles Visa / Mastercard et recharge de pièces TikTok au meilleur prix avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave).",
+  "description": "Cartes bancaires virtuelles Visa/Mastercard, recharge de pièces TikTok et jeux vidéo (Fortnite, Free Fire, PUBG, COD, FC Mobile) en FCFA avec Mobile Money.",
   "lang": "fr-FR",
   "dir": "ltr",
   "start_url": "/",
@@ -14,7 +14,9 @@
   "categories": [
     "shopping",
     "finance",
-    "social"
+    "social",
+    "games",
+    "entertainment"
   ],
   "icons": [
     {
