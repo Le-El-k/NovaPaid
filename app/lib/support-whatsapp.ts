@@ -1,4 +1,4 @@
-export type SupportLanguage = "fr" | "en";
+﻿export type SupportLanguage = "fr" | "en";
 
 export type SupportWhatsAppContact = {
   id: string;
@@ -15,9 +15,9 @@ export const SUPPORT_WHATSAPP_CONTACTS = [
       fr: "Support Nova Paid",
       en: "Nova Paid support",
     },
-    whatsappNumber: "237682018364",
-    phoneNumber: "+237682018364",
-    displayPhone: "+237 682 018 364",
+    whatsappNumber: "237657887403",
+    phoneNumber: "+237657887403",
+    displayPhone: "+237 657 887 403",
   },
 ] as const satisfies readonly SupportWhatsAppContact[];
 
