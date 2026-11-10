@@ -33,6 +33,7 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.local
+.env.admin.local
 worker/.dev.vars*
 !worker/.dev.vars.example
 

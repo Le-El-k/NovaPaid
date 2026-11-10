@@ -1,5 +1,5 @@
 /**
- * Sound feedback is intentionally disabled for Nova Paid.
+ * Sound feedback is intentionally disabled for NovaPaid.
  * The exported no-op functions keep existing interaction code simple while
  * guaranteeing that clicks never create audio or haptic side effects.
  */

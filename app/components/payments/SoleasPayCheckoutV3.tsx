@@ -30,11 +30,12 @@ type SoleasPayCheckoutV3Props = {
   requireEmail?: boolean;
   isEmailValid?: boolean;
   onRequireEmail?: () => void;
-  productType?: "coins" | "card" | "game";
+  productType?: "coins" | "card" | "game" | "internet";
   productLabel?: string;
   loginMethod?: string;
   playerName?: string;
   formId?: string;
+  buttonLabel?: string;
 };
 
 const CHECKOUT_URL = "https://pay.soleaspay.com";
@@ -61,6 +62,7 @@ export function SoleasPayCheckoutV3({
   loginMethod,
   playerName,
   formId = "soleaspay-checkout-v3",
+  buttonLabel,
 }: SoleasPayCheckoutV3Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionStartedRef = useRef(false);
@@ -165,7 +167,7 @@ export function SoleasPayCheckoutV3({
       <input type="hidden" name="line" value="up" />
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="description" value={description} />
-      <input type="hidden" name="shopName" value="Nova Paid" />
+      <input type="hidden" name="shopName" value="NovaPaid" />
       <input type="hidden" name="successUrl" value={successUrl} />
       <input type="hidden" name="failureUrl" value={failureUrl} />
       <input type="hidden" name="customer[name]" value={customerName} />
@@ -191,7 +193,7 @@ export function SoleasPayCheckoutV3({
             ? language === "fr" ? "Ouverture de SoleasPay…" : "Opening SoleasPay…"
             : !SOLEASPAY_API_KEY
               ? language === "fr" ? "SoleasPay bientôt disponible" : "SoleasPay coming soon"
-              : language === "fr" ? "Payer avec SoleasPay" : "Pay with SoleasPay"}
+              : buttonLabel || (language === "fr" ? "Payer avec SoleasPay" : "Pay with SoleasPay")}
         </span>
       </button>
     </form>

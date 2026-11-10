@@ -32,11 +32,12 @@ const copy = {
     desktop: "Téléphone ou ordinateur",
     ios: "iPhone ou iPad",
     other: "Votre appareil",
-    installTitle: "Installez Nova Paid sur votre appareil",
-    iosTitle: "Ajoutez Nova Paid à votre écran d’accueil",
-    installDescription: "Accédez plus rapidement à Nova Paid depuis votre téléphone, tablette ou ordinateur.",
-    iosDescription: "Installez Nova Paid en quelques secondes pour y accéder comme à une application.",
-    benefit: "Nova Paid s’ouvrira depuis votre écran d’accueil ou votre bureau, comme une application.",
+    installTitle: "Installez NovaPaid sur votre appareil",
+    iosTitle: "Ajoutez NovaPaid à votre écran d’accueil",
+    installDescription: "Accédez plus rapidement à NovaPaid depuis votre téléphone, tablette ou ordinateur.",
+    iosDescription: "Installez NovaPaid en quelques secondes pour y accéder comme à une application.",
+    benefit: "NovaPaid s’ouvrira depuis votre écran d’accueil ou votre bureau, comme une application.",
+    manualInstall: "Si l’invite ne s’ouvre pas, utilisez le menu de votre navigateur puis choisissez « Installer NovaPaid » ou « Ajouter à l’écran d’accueil ».",
     install: "Installer l’application",
     installing: "Ouverture de l’invite…",
     later: "Plus tard",
@@ -49,11 +50,12 @@ const copy = {
     desktop: "Phone or computer",
     ios: "iPhone or iPad",
     other: "Your device",
-    installTitle: "Install Nova Paid on your device",
-    iosTitle: "Add Nova Paid to your Home Screen",
-    installDescription: "Open Nova Paid faster from your phone, tablet, or computer.",
-    iosDescription: "Install Nova Paid in seconds and access it like an app.",
-    benefit: "Nova Paid will open from your Home Screen or desktop like an app.",
+    installTitle: "Install NovaPaid on your device",
+    iosTitle: "Add NovaPaid to your Home Screen",
+    installDescription: "Open NovaPaid faster from your phone, tablet, or computer.",
+    iosDescription: "Install NovaPaid in seconds and access it like an app.",
+    benefit: "NovaPaid will open from your Home Screen or desktop like an app.",
+    manualInstall: "If the prompt does not open, use your browser menu and choose “Install NovaPaid” or “Add to Home Screen”.",
     install: "Install the app",
     installing: "Opening prompt…",
     later: "Not now",
@@ -162,6 +164,7 @@ function waitForInstallPrompt(timeoutMs: number): Promise<DeferredInstallPrompt 
 export function PwaInstallPrompt() {
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [showManualInstallGuide, setShowManualInstallGuide] = useState(false);
   const installPromptRef = useRef<DeferredInstallPrompt | null>(null);
   const reminderTimerRef = useRef<number | null>(null);
   const language = useSyncExternalStore(
@@ -196,9 +199,12 @@ export function PwaInstallPrompt() {
       setIsVisible(false);
     };
 
+    const onManualInstallRequest = () => setIsVisible(true);
+
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener(INSTALL_PROMPT_READY_EVENT, onInstallPromptReady);
     window.addEventListener("appinstalled", onAppInstalled);
+    window.addEventListener("nova-pay-open-install-dialog", onManualInstallRequest);
     installPromptRef.current = getStoredInstallPrompt();
 
     const showModalWhenReminderExpires = () => {
@@ -219,6 +225,7 @@ export function PwaInstallPrompt() {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener(INSTALL_PROMPT_READY_EVENT, onInstallPromptReady);
       window.removeEventListener("appinstalled", onAppInstalled);
+      window.removeEventListener("nova-pay-open-install-dialog", onManualInstallRequest);
       if (reminderTimerRef.current !== null) {
         window.clearTimeout(reminderTimerRef.current);
       }
@@ -254,11 +261,15 @@ export function PwaInstallPrompt() {
 
   const requestInstallation = async () => {
     setIsInstalling(true);
+    setShowManualInstallGuide(false);
 
     try {
       const installPrompt = installPromptRef.current ?? getStoredInstallPrompt() ??
         await waitForInstallPrompt(1500);
-      if (!installPrompt) return;
+      if (!installPrompt) {
+        setShowManualInstallGuide(true);
+        return;
+      }
 
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
@@ -332,6 +343,7 @@ export function PwaInstallPrompt() {
               <Download size={17} aria-hidden="true" />
               <span>{t.benefit}</span>
             </div>
+            {showManualInstallGuide && <p className="pwa-install-manual-fallback" role="status">{t.manualInstall}</p>}
           </>
         )}
 

@@ -1,8 +1,18 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./"),
+    },
+    extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"],
+  },
   // The embedded preview does not expose Vite's HMR WebSocket transport.
   // Keeping the dev overlay enabled there turns a recoverable client error
   // into an unhandled `send` rejection that covers the whole storefront.

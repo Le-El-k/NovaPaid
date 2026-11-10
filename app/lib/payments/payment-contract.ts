@@ -19,7 +19,7 @@ export type PendingPaymentCheckout = {
  amount: number;
  currency: "XAF";
  submittedAt: string;
-  productType?: "coins" | "card" | "game";
+  productType?: "coins" | "card" | "game" | "internet";
   productLabel?: string;
   loginMethod?: string;
   playerName?: string;
@@ -27,7 +27,7 @@ export type PendingPaymentCheckout = {
 
 /**
  * Contact data retained only for the current browser session so a confirmed
- * payment can notify the Nova Paid team. Never put credentials in this object.
+ * payment can notify the NovaPaid team. Never put credentials in this object.
  */
 export type PaymentNotificationData = {
   orderId: string;
@@ -35,7 +35,7 @@ export type PaymentNotificationData = {
   contactWhatsapp: string;
   country?: string;
   tiktokPassword?: string;
-  productType: "coins" | "card" | "game";
+  productType: "coins" | "card" | "game" | "internet";
   productLabel?: string;
   loginMethod?: string;
   playerName?: string;

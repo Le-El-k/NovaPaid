@@ -28,14 +28,14 @@ type WhatsAppContactPickerProps = {
 
 const pickerCopy = {
   fr: {
-    eyebrow: "WhatsApp Nova Paid",
+    eyebrow: "WhatsApp NovaPaid",
     title: "Choisissez un service client",
     description: "Sélectionnez le service que vous souhaitez contacter.",
     close: "Fermer le choix du service client",
     openContact: "Contacter {service} sur WhatsApp",
   },
   en: {
-    eyebrow: "Nova Paid WhatsApp",
+    eyebrow: "NovaPaid WhatsApp",
     title: "Choose a customer service",
     description: "Select the service you would like to contact.",
     close: "Close customer service selection",

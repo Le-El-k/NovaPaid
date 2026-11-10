@@ -93,7 +93,7 @@ function parseEntry(value: unknown): PaymentHistoryEntry | null {
     amount: value.amount,
     currency: "XAF",
     submittedAt: value.submittedAt,
-    productType: value.productType === "card" ? "card" : value.productType === "game" ? "game" : "coins",
+    productType: value.productType === "card" ? "card" : value.productType === "game" ? "game" : value.productType === "internet" ? "internet" : "coins",
     productLabel: typeof value.productLabel === "string" && value.productLabel.length <= 160
       ? value.productLabel.trim()
       : undefined,
