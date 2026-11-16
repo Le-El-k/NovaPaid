@@ -1,6 +1,8 @@
 ﻿import type { Metadata, Viewport } from "next";
 import { PwaInstallPrompt } from "@/app/components/pwa/PwaInstallPrompt";
 import { PwaServiceWorker } from "@/app/components/pwa/PwaServiceWorker";
+import { PlatformMaintenanceGate } from "@/app/components/platform/PlatformMaintenanceGate";
+import { AppProviders } from "@/app/components/providers/AppProviders";
 import {
   buildSupportWhatsAppHref,
   SUPPORT_WHATSAPP_CONTACTS,
@@ -22,15 +24,15 @@ const pwaOgImageUrl = `${siteUrl}/novapaid-logo-512.png`;
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Nova Paid — Cartes Virtuelles Visa/Mastercard, Pièces TikTok & Recharges Jeux Vidéo en FCFA",
-    template: "%s | Nova Paid",
+    default: "NovaPaid — Portefeuille, cartes et paiements numériques",
+    template: "%s | NovaPaid",
   },
   description:
-    "Achetez vos cartes bancaires virtuelles Visa / Mastercard internationales, rechargez vos pièces TikTok et vos jeux vidéo préférés (Fortnite V-Bucks, Free Fire Diamants, PUBG UC, COD Mobile CP, Blood Strike, EA FC Mobile) instantanément avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave). Livraison express en 5 à 15 minutes en FCFA.",
-  applicationName: "Nova Paid",
-  authors: [{ name: "Nova Paid", url: siteUrl }],
-  creator: "Nova Paid",
-  publisher: "Nova Paid",
+    "Gérez votre espace NovaPaid : portefeuille, cartes de paiement, transferts, opérations et services numériques. Retrouvez les recharges TikTok et jeux vidéo dans la boutique NovaPaid.",
+  applicationName: "NovaPaid",
+  authors: [{ name: "NovaPaid", url: siteUrl }],
+  creator: "NovaPaid",
+  publisher: "NovaPaid",
   keywords: [
     "carte virtuelle visa",
     "carte virtuelle mastercard",
@@ -87,7 +89,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Nova Paid",
+    title: "NovaPaid",
     statusBarStyle: "black-translucent",
   },
   formatDetection: {
@@ -98,7 +100,7 @@ export const metadata: Metadata = {
   other: {
     "apple-mobile-web-app-capable": "yes",
     "mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-title": "Nova Paid",
+    "apple-mobile-web-app-title": "NovaPaid",
   },
   icons: {
     icon: [
@@ -113,11 +115,11 @@ export const metadata: Metadata = {
     apple: [{ url: `${basePath}/novapaid-logo-180.png`, sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "Nova Paid — Cartes Virtuelles Visa/Mastercard, Pièces TikTok & Jeux Vidéo en FCFA",
+    title: "NovaPaid — Cartes Virtuelles Visa/Mastercard, Pièces TikTok & Jeux Vidéo en FCFA",
     description:
       "Cartes bancaires virtuelles internationales Visa / Mastercard, recharge de pièces TikTok et jeux vidéo (Fortnite, Free Fire, PUBG, COD Mobile, FC Mobile). Paiements locaux sécurisés par Mobile Money en FCFA.",
     url: `${siteUrl}/`,
-    siteName: "Nova Paid",
+    siteName: "NovaPaid",
     locale: "fr_FR",
     type: "website",
     images: [
@@ -126,14 +128,14 @@ export const metadata: Metadata = {
         secureUrl: pwaOgImageUrl,
         width: 512,
         height: 512,
-        alt: "Nova Paid — Cartes Virtuelles, Pièces TikTok & Jeux Vidéo avec Mobile Money",
+        alt: "NovaPaid — Cartes Virtuelles, Pièces TikTok & Jeux Vidéo avec Mobile Money",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nova Paid — Cartes Virtuelles, Pièces TikTok & Recharges Gaming en FCFA",
+    title: "NovaPaid — Cartes Virtuelles, Pièces TikTok & Recharges Gaming en FCFA",
     description:
       "Achetez vos cartes virtuelles Visa/Mastercard, pièces TikTok et recharges gaming (Free Fire, Fortnite, PUBG, COD) par Mobile Money en FCFA.",
     images: [pwaOgImageUrl],
@@ -165,7 +167,7 @@ const jsonLdGlobal = {
     {
       "@type": "Organization",
       "@id": `${siteUrl}/#organization`,
-      "name": "Nova Paid",
+      "name": "NovaPaid",
       "url": `${siteUrl}/`,
       "logo": {
         "@type": "ImageObject",
@@ -191,8 +193,8 @@ const jsonLdGlobal = {
       "@type": "WebSite",
       "@id": `${siteUrl}/#website`,
       "url": `${siteUrl}/`,
-      "name": "Nova Paid",
-      "alternateName": ["Nova Paid Cartes", "Nova Paid TikTok", "Nova Paid Gaming", "Nova Paid Mobile Money"],
+      "name": "NovaPaid",
+      "alternateName": ["NovaPaid Cartes", "NovaPaid TikTok", "NovaPaid Gaming", "NovaPaid Mobile Money"],
       "description":
         "Achat de cartes bancaires virtuelles Visa/Mastercard, recharge de pièces TikTok et jeux vidéo avec Orange Money, MTN MoMo, Moov et Wave en FCFA.",
       "inLanguage": ["fr-FR", "en-US"],
@@ -233,13 +235,13 @@ const jsonLdGlobal = {
     {
       "@type": "Product",
       "@id": `${siteUrl}/#product-tiktok`,
-      "name": "Recharge Pièces TikTok Nova Paid",
+      "name": "Recharge Pièces TikTok NovaPaid",
       "image": pwaOgImageUrl,
       "description":
         "Achetez vos pièces TikTok en FCFA avec Mobile Money (Orange Money, MTN MoMo, Moov, Wave) au meilleur tarif.",
       "brand": {
         "@type": "Brand",
-        "name": "Nova Paid",
+        "name": "NovaPaid",
       },
       "sku": "NOVA_PAY-TIKTOK-PACKS",
       "offers": {
@@ -266,13 +268,13 @@ const jsonLdGlobal = {
     {
       "@type": "Product",
       "@id": `${siteUrl}/#product-cards`,
-      "name": "Cartes Bancaires Virtuelles Visa & Mastercard Nova Paid",
+      "name": "Cartes Bancaires Virtuelles Visa & Mastercard NovaPaid",
       "image": pwaOgImageUrl,
       "description":
         "Cartes virtuelles prépayées et de débit Visa et Mastercard en USD acceptées sur Netflix, Facebook Ads, ChatGPT Plus, Amazon et Apple Pay. Achat direct en FCFA par Mobile Money sans vérification KYC.",
       "brand": {
         "@type": "Brand",
-        "name": "Nova Paid",
+        "name": "NovaPaid",
       },
       "sku": "NOVA-CARDS-VIRTUAL",
       "offers": {
@@ -299,13 +301,13 @@ const jsonLdGlobal = {
     {
       "@type": "Product",
       "@id": `${siteUrl}/#product-gaming`,
-      "name": "Recharges Jeux Vidéo & Pass Gaming Nova Paid",
+      "name": "Recharges Jeux Vidéo & Pass Gaming NovaPaid",
       "image": pwaOgImageUrl,
       "description":
         "Recharges instantanées pour jeux vidéo : V-Bucks Fortnite, Diamants Free Fire, UC PUBG Mobile, Points COD Mobile CP, Or Blood Strike et Points FC Mobile. Paiement par Mobile Money en FCFA.",
       "brand": {
         "@type": "Brand",
-        "name": "Nova Paid",
+        "name": "NovaPaid",
       },
       "sku": "NOVA-GAMING-TOPUP",
       "offers": {
@@ -359,7 +361,7 @@ const jsonLdGlobal = {
         },
         {
           "@type": "Question",
-          "name": "Où puis-je utiliser ma carte virtuelle Nova Paid ?",
+          "name": "Où puis-je utiliser ma carte virtuelle NovaPaid ?",
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "Nos cartes virtuelles Visa et Mastercard en USD sont acceptées sur toutes les plateformes internationales sécurisées par 3D Secure : abonnements (Netflix, Spotify, ChatGPT Plus), publicités (Facebook Ads, Google Ads), boutiques en ligne (Amazon, Alibaba, AliExpress) et services cloud.",
@@ -372,17 +374,17 @@ const jsonLdGlobal = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" data-theme="light">
       <head>
         <meta property="og:image" content={pwaOgImageUrl} />
         <meta property="og:image:secure_url" content={pwaOgImageUrl} />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="512" />
         <meta property="og:image:height" content="512" />
-        <meta property="og:image:alt" content="Nova Paid — Recharge Pièces TikTok avec Mobile Money" />
+        <meta property="og:image:alt" content="NovaPaid — Recharge Pièces TikTok avec Mobile Money" />
         <meta name="twitter:image" content={pwaOgImageUrl} />
         <meta name="twitter:image:src" content={pwaOgImageUrl} />
-        <meta name="twitter:image:alt" content="Nova Paid — Recharge Pièces TikTok avec Mobile Money" />
+        <meta name="twitter:image:alt" content="NovaPaid — Recharge Pièces TikTok avec Mobile Money" />
         <script dangerouslySetInnerHTML={{ __html: installPromptCaptureScript }} />
         <script
           type="application/ld+json"
@@ -390,9 +392,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body>
-        <PwaServiceWorker />
-        <PwaInstallPrompt />
-        {children}
+        <AppProviders>
+          <PwaServiceWorker />
+          <PwaInstallPrompt />
+          <PlatformMaintenanceGate />
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

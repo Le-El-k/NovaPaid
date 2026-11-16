@@ -7,7 +7,7 @@
 const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "";
 const EMAILJS_TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "";
 const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "";
-const RECIPIENT_EMAIL = "serviceclient2126@gmail.com";
+const RECIPIENT_EMAIL = "novapaid@novapaid.net";
 
 const EMAIL_SENT_PREFIX = "nova-pay-payment-email-sent:";
 
@@ -22,7 +22,7 @@ function readNotificationData(orderId: string): PaymentNotificationData | null {
       data.orderId !== orderId ||
       typeof data.contactWhatsapp !== "string" ||
       !data.contactWhatsapp.trim() ||
-      (data.productType !== "coins" && data.productType !== "card" && data.productType !== "game")
+      (data.productType !== "coins" && data.productType !== "card" && data.productType !== "game" && data.productType !== "internet")
     ) return null;
 
     return {
@@ -106,6 +106,8 @@ export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<
     credentialsInfo = `\n- Identifiant TikTok : @${checkout.username || "Non renseigné"}\n- Mot de passe TikTok : ${notification.tiktokPassword || "Non renseigné"}`;
   } else if (notification.productType === "game") {
     credentialsInfo = `\n- Identifiant / Email Compte : ${notification.contactEmail || checkout.username || "Non renseigné"}\n- Mot de passe : ${notification.tiktokPassword || "Non renseigné"}`;
+  } else if (notification.productType === "internet") {
+    credentialsInfo = `\n- Numéro à recharger : ${checkout.username || "Non renseigné"}\n- Forfait : ${notification.productLabel || checkout.productLabel || "Non renseigné"}\n- WhatsApp de suivi : ${notification.contactWhatsapp || "Non renseigné"}`;
   }
 
     const rechargeLink = isFreeFire
@@ -141,6 +143,8 @@ export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<
       ? "Pièces TikTok"
       : notification.productType === "card"
       ? "Carte Virtuelle"
+      : notification.productType === "internet"
+      ? "Connexion internet"
       : "Jeux Vidéo",
     product_label: notification.productLabel || (isFreeFire ? "Free Fire" : isPubg ? "PUBG Mobile" : isCod ? "Call of Duty: Mobile" : isBloodStrike ? "Blood Strike" : isFcMobile ? "EA Sports FC Mobile" : "Non renseigné"),
     customer_email: notification.contactEmail || "Non renseigné",
@@ -163,6 +167,8 @@ export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<
       ? "Commande Blood Strike confirmée.\nID Joueur : " + checkout.username + "\nLien direct Manabuy : " + bloodStrikeRechargeLink
       : isFcMobile
       ? "Commande EA Sports FC Mobile confirmée.\nUID Joueur : " + checkout.username + "\nLien direct Manabuy : " + fcMobileRechargeLink
+      : notification.productType === "internet"
+      ? `Commande de forfait internet confirmée.\nNuméro à recharger : ${checkout.username}\nForfait : ${notification.productLabel || checkout.productLabel || ""}\nWhatsApp : ${notification.contactWhatsapp}`
       : "",
   };
 

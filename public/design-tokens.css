@@ -1,0 +1,214 @@
+/* ==========================================================================
+   NOVAPAID DESIGN SYSTEM — THREE-LAYER TOKEN ARCHITECTURE
+   Standardisé selon les spécifications Swiss Style & Fintech Precision
+   ========================================================================== */
+
+:root {
+  /* ==========================================================================
+     LAYER 1: PRIMITIVE TOKENS (RAW SYSTEM VALUES)
+     ========================================================================== */
+
+  /* Palette Bleue Royale (Identité Majeure) */
+  --np-blue-50:  #eff6ff;
+  --np-blue-100: #dbeafe;
+  --np-blue-200: #bfdbfe;
+  --np-blue-300: #93c5fd;
+  --np-blue-400: #60a5fa;
+  --np-blue-500: #3b82f6;
+  --np-blue-600: #1870eb;
+  --np-blue-700: #1255b9;
+  --np-blue-800: #0f4494;
+  --np-blue-900: #0b306b;
+  --np-blue-950: #071f45;
+
+  /* Palette Émeraude (Sécurité, Approbation, Succès) */
+  --np-emerald-50:  #ecfdf5;
+  --np-emerald-100: #d1fae5;
+  --np-emerald-200: #a7f3d0;
+  --np-emerald-300: #6ee7b7;
+  --np-emerald-400: #34d399;
+  --np-emerald-500: #10b981;
+  --np-emerald-600: #059669;
+  --np-emerald-700: #047857;
+  --np-emerald-800: #065f46;
+  --np-emerald-900: #064e3b;
+
+  /* Palette Ambre / Or (Avis Vérifiés, Réputation) */
+  --np-amber-50:  #fffbeb;
+  --np-amber-100: #fef3c7;
+  --np-amber-200: #fde68a;
+  --np-amber-300: #fcd34d;
+  --np-amber-400: #fbbf24;
+  --np-amber-500: #f59e0b;
+  --np-amber-600: #d97706;
+  --np-amber-700: #b45309;
+
+  /* Palette Neutre Ardoise & Nuit Pro Max */
+  --np-neutral-0:   #ffffff;
+  --np-neutral-25:  #fcfdfd;
+  --np-neutral-50:  #f8fafc;
+  --np-neutral-100: #f1f5f9;
+  --np-neutral-200: #e2e8f0;
+  --np-neutral-300: #cbd5e1;
+  --np-neutral-400: #94a3b8;
+  --np-neutral-500: #64748b;
+  --np-neutral-600: #475569;
+  --np-neutral-700: #334155;
+  --np-neutral-800: #1e293b;
+  --np-neutral-900: #0f172a;
+  --np-neutral-950: #090d16;
+  --np-neutral-1000:#04070e;
+
+  /* Échelle d'espacement (Spacing Scale 4px - 96px) */
+  --np-space-1:  4px;
+  --np-space-2:  8px;
+  --np-space-3:  12px;
+  --np-space-4:  16px;
+  --np-space-5:  20px;
+  --np-space-6:  24px;
+  --np-space-8:  32px;
+  --np-space-10: 40px;
+  --np-space-12: 48px;
+  --np-space-16: 64px;
+  --np-space-20: 80px;
+  --np-space-24: 96px;
+
+  /* Rayons de courbure (Border Radii) */
+  --np-radius-xs: 4px;
+  --np-radius-sm: 8px;
+  --np-radius-md: 12px;
+  --np-radius-lg: 16px;
+  --np-radius-xl: 22px;
+  --np-radius-2xl: 30px;
+  --np-radius-full: 9999px;
+
+  /* Ombres multi-couches (Elevations) */
+  --np-shadow-subtle: 0 1px 3px rgba(15, 23, 42, 0.04);
+  --np-shadow-card:   0 4px 16px -2px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --np-shadow-card-hover: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+  --np-shadow-floating: 0 20px 48px -10px rgba(15, 23, 42, 0.14), 0 8px 16px -4px rgba(15, 23, 42, 0.06);
+  --np-shadow-glow-blue: 0 0 28px rgba(24, 112, 235, 0.28);
+  --np-shadow-glow-emerald: 0 0 28px rgba(16, 185, 129, 0.24);
+
+  /* Transitions fluides */
+  --np-transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --np-transition-normal: 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --np-transition-slow: 360ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ==========================================================================
+     LAYER 2: SEMANTIC TOKENS (ROLE & PURPOSE ALIASES)
+     ========================================================================== */
+
+  /* Fonds & Surfaces */
+  --color-bg-body:           var(--np-neutral-0);
+  --color-bg-alt:            var(--np-neutral-50);
+  --color-bg-surface:        var(--np-neutral-0);
+  --color-bg-surface-elevated: var(--np-neutral-0);
+  --color-bg-inset:          var(--np-neutral-100);
+  --color-bg-overlay:        rgba(9, 13, 22, 0.72);
+  --color-bg-dark:           var(--np-neutral-950);
+  --color-bg-dark-card:      var(--np-neutral-900);
+
+  /* Textes & Typographie (Contraste supérieur à 4.5:1 garanti) */
+  --color-text-main:         var(--np-neutral-900);
+  --color-text-body:         var(--np-neutral-700);
+  --color-text-muted:        var(--np-neutral-500);
+  --color-text-faint:        var(--np-neutral-400);
+  --color-text-inverse:      var(--np-neutral-0);
+  --color-text-inverse-muted:var(--np-neutral-300);
+
+  /* Bordures */
+  --color-border-subtle:     var(--np-neutral-200);
+  --color-border-strong:     var(--np-neutral-300);
+  --color-border-dark:       var(--np-neutral-800);
+  --color-border-focus:      var(--np-blue-600);
+
+  /* Actions & Marques */
+  --color-primary:           var(--np-blue-600);
+  --color-primary-hover:     var(--np-blue-700);
+  --color-primary-subtle:    var(--np-blue-50);
+  --color-primary-fg:        var(--np-neutral-0);
+
+  --color-success:           var(--np-emerald-600);
+  --color-success-hover:     var(--np-emerald-700);
+  --color-success-subtle:    var(--np-emerald-50);
+  --color-success-fg:        var(--np-neutral-0);
+
+  --color-warning:           var(--np-amber-500);
+  --color-warning-subtle:    var(--np-amber-100);
+  --color-warning-dark:      var(--np-amber-600);
+
+  --color-danger:            #ef4444;
+  --color-danger-subtle:     #fef2f2;
+}
+
+/* ==========================================================================
+   LAYER 3: FLUID TYPOGRAPHY & RESPONSIVE BREAKPOINTS
+   Mobile-first, testé sur 375px, 768px, 1024px, 1440px+
+   ========================================================================== */
+
+/* Échelle typographique fluide */
+.np-type-h1 {
+  font-size: clamp(28px, 4.4vw, 54px);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--color-text-main);
+}
+
+.np-type-h2 {
+  font-size: clamp(24px, 3.2vw, 38px);
+  font-weight: 850;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--color-text-main);
+}
+
+.np-type-h3 {
+  font-size: clamp(17px, 2.2vw, 22px);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: var(--color-text-main);
+}
+
+.np-type-lead {
+  font-size: clamp(15px, 1.8vw, 17px);
+  line-height: 1.65;
+  color: var(--color-text-body);
+}
+
+.np-type-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text-body);
+}
+
+.np-type-small {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.np-type-micro {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Accessibilité & Focus visible universel */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Réduction de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

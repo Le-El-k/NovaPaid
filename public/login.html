@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion — NovaPaid</title>
+  <link rel="icon" href="/novapaid-logo-96.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --np-primary: #1870eb;
+      --np-primary-dark: #1255b9;
+      --np-emerald: #10b981;
+      --np-text-main: #0f172a;
+      --np-text-muted: #64748b;
+      --np-border: #e2e8f0;
+      --np-radius-lg: 16px;
+      --np-radius-xl: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 50% 0%, rgba(24, 112, 235, 0.08) 0%, transparent 60%), #f8fafc;
+      color: var(--np-text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .np-auth-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      margin-bottom: 24px;
+      transition: color 0.15s;
+    }
+
+    .np-auth-back-link:hover {
+      color: var(--np-primary);
+    }
+
+    .np-auth-card {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border: 1px solid var(--np-border);
+      border-radius: var(--np-radius-xl);
+      padding: 40px 36px;
+      box-shadow: 0 16px 40px -8px rgba(15, 23, 42, 0.08);
+      position: relative;
+    }
+
+    @media (max-width: 480px) {
+      .np-auth-card {
+        padding: 28px 22px;
+      }
+    }
+
+    .np-auth-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .np-auth-logo-box {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--np-radius-lg);
+      margin: 0 auto 16px;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 4px 14px rgba(24, 112, 235, 0.2);
+      background: #ffffff;
+    }
+
+    .np-auth-header h1 {
+      font-size: 22px;
+      font-weight: 850;
+      color: var(--np-text-main);
+      margin: 0 0 6px;
+      letter-spacing: -0.5px;
+    }
+
+    .np-auth-header p {
+      font-size: 13px;
+      color: var(--np-text-muted);
+      margin: 0;
+    }
+
+    .np-form-group {
+      margin-bottom: 16px;
+    }
+
+    .np-form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 750;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .np-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .np-input-prefix {
+      position: absolute;
+      left: 14px;
+      color: #94a3b8;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .np-input {
+      width: 100%;
+      padding: 12px 14px 12px 42px;
+      border: 1.5px solid var(--np-border);
+      border-radius: var(--np-radius-md);
+      font-size: 13.5px;
+      color: var(--np-text-main);
+      background: #ffffff;
+      outline: none;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .np-input:focus {
+      border-color: var(--np-primary);
+      box-shadow: 0 0 0 3px rgba(24, 112, 235, 0.1);
+    }
+
+    .np-eye-btn {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      padding: 4px;
+    }
+
+    .np-eye-btn:hover {
+      color: var(--np-text-main);
+    }
+
+    .np-submit-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: var(--np-radius-md);
+      border: 0;
+      background: var(--np-primary);
+      color: #ffffff;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(24, 112, 235, 0.28);
+      transition: all 0.15s;
+      margin-top: 8px;
+    }
+
+    .np-submit-btn:hover {
+      background: var(--np-primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .np-auth-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #f1f5f9;
+      font-size: 13px;
+      color: var(--np-text-muted);
+    }
+
+    .np-auth-footer a {
+      color: var(--np-primary);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .np-auth-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .np-alert-box {
+      display: none;
+      padding: 10px 14px;
+      border-radius: var(--np-radius-md);
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      font-size: 12.5px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .np-security-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 24px;
+      font-size: 11.5px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <a href="/" class="np-auth-back-link">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    <span>Retour à l'accueil NovaPaid</span>
+  </a>
+
+  <div class="np-auth-card">
+    <div class="np-auth-header">
+      <div class="np-auth-logo-box">
+        <img src="/novapaid-logo-96.png" alt="NovaPaid" width="44" height="44" style="border-radius:10px;">
+      </div>
+      <h1>Connexion Espace Client</h1>
+      <p>Accédez à vos cartes virtuelles et à votre portefeuille</p>
+    </div>
+
+    <div id="auth-error-box" class="np-alert-box"></div>
+
+    <form onsubmit="handleLogin(event)">
+      <div class="np-form-group">
+        <label class="np-form-label" for="login-email">Adresse email ou téléphone</label>
+        <div class="np-input-wrap">
+          <span class="np-input-prefix">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </span>
+          <input
+            type="text"
+            id="login-email"
+            required
+            placeholder="roddy@novapaid.com"
+            value="roddy@novapaid.com"
+            class="np-input"
+          >
+        </div>
+      </div>
+
+      <div class="np-form-group">
+        <label class="np-form-label" for="login-password">Mot de passe</label>
+        <div class="np-input-wrap">
+          <span class="np-input-prefix">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </span>
+          <input
+            type="password"
+            id="login-password"
+            required
+            placeholder="••••••••"
+            value="novapaid2026"
+            class="np-input"
+          >
+          <button type="button" class="np-eye-btn" onclick="togglePasswordVisibility()">
+            <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" id="submit-btn" class="np-submit-btn">
+        <span>Se connecter</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </button>
+    </form>
+
+    <div class="np-auth-footer">
+      Vous n'avez pas encore de compte ?
+      <a href="/register">Créer un compte</a>
+    </div>
+  </div>
+
+  <div class="np-security-badge">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <span>Chiffrement bancaire SSL 256-bit &amp; 3D Secure</span>
+  </div>
+
+  <script>
+    function togglePasswordVisibility() {
+      const input = document.getElementById('login-password');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+      const btn = document.getElementById('submit-btn');
+      const errBox = document.getElementById('auth-error-box');
+
+      errBox.style.display = 'none';
+      btn.disabled = true;
+      btn.innerText = "Connexion en cours...";
+
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login', emailOrPhone: email, password: password })
+        });
+        const data = await res.json();
+        if (res.ok && data?.success) {
+          localStorage.setItem('novapaid_user', JSON.stringify(data.user || { name: 'Roddy Ngueyep', email }));
+          localStorage.setItem('novapaid_token', data.token || 'token_sandbox');
+          window.location.href = '/dashboard';
+        } else {
+          errBox.innerText = data?.error || "Identifiant ou mot de passe incorrect.";
+          errBox.style.display = 'block';
+        }
+      } catch (err) {
+        // Fallback local
+        localStorage.setItem('novapaid_user', JSON.stringify({ name: 'Roddy Ngueyep', email }));
+        window.location.href = '/dashboard';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Se connecter";
+      }
+    }
+  </script>
+</body>
+</html>

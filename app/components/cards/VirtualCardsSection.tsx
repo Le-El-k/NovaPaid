@@ -1,899 +1,828 @@
-﻿"use client";
+"use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import {
   AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  BadgeCheck,
+  AlertTriangle,
   Check,
-  CheckCircle2,
-  CircleX,
-  Clock3,
+  ChevronRight,
   CreditCard,
+  Eye,
+  EyeOff,
   Info,
-  LockKeyhole,
-  Mail,
-  MessageCircle,
-  Monitor,
+  Lock,
+  Plus,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
+  Unlock,
   X,
+  Zap,
 } from "lucide-react";
-import { playError, playModalClose, playModalOpen, playStep, playTap } from "@/app/lib/sound";
-import { getAssetPath } from "@/app/lib/asset-path";
+import { playTap } from "@/app/lib/sound";
+import { useLanguage } from "@/app/lib/i18n";
 import { SoleasPayCheckoutV3 } from "@/app/components/payments/SoleasPayCheckoutV3";
+import { payWithBkpay } from "@/app/lib/payments/pay-with-bkpay";
 
-import {
-  ALL_COUNTRIES,
-  POPULAR_COUNTRIES,
-  detectUserCountry,
-  dialCodes,
-  formatFullPhoneNumber,
-} from "@/app/lib/countries";
-
-type Language = "fr" | "en";
 type CardBrand = "visa" | "mastercard";
+type CardStatus = "active" | "frozen" | "cancelled" | "closed";
 
-type VirtualCard = {
-  id: string;
+interface CardData {
+  id: number;
+  label: string;
+  maskedPan: string;
+  cardType: string;
+  status: CardStatus;
+  balanceUsd: number;
   brand: CardBrand;
-  name: { fr: string; en: string };
-  description: { fr: string; en: string };
-  price: number;
-  recommended?: boolean;
-  tone: "blue" | "teal" | "green" | "slate";
-  features: Array<{ kind: "positive" | "negative"; fr: string; en: string }>;
-};
-
-const cards: VirtualCard[] = [
-  {
-    id: "visa-basic",
-    brand: "visa",
-    name: { fr: "VISA BASIQUE", en: "BASIC VISA" },
-    description: {
-      fr: "Parfait pour commencer - Carte virtuelle prépayée sans frais mensuels",
-      en: "Perfect to get started — prepaid virtual card with no monthly fees",
-    },
-    price: 5000,
-    tone: "blue",
-    features: [
-      { kind: "positive", fr: "Carte prépayée", en: "Prepaid card" },
-      { kind: "positive", fr: "3D Secure", en: "3D Secure" },
-      { kind: "positive", fr: "Sans vérification KYC", en: "No KYC verification" },
-      { kind: "positive", fr: "Sans frais mensuels", en: "No monthly fees" },
-      { kind: "positive", fr: "3 années de validité", en: "3-year validity" },
-      { kind: "positive", fr: "Idéal pour les achats en ligne", en: "Ideal for online purchases" },
-    ],
-  },
-  {
-    id: "mastercard-basic",
-    brand: "mastercard",
-    name: { fr: "MASTERCARD BASIQUE", en: "BASIC MASTERCARD" },
-    description: {
-      fr: "Notre recommandation - Offre le meilleur rapport qualité/prix",
-      en: "Our recommendation — the best value for money",
-    },
-    price: 6000,
-    recommended: true,
-    tone: "teal",
-    features: [
-      { kind: "positive", fr: "Carte prépayée", en: "Prepaid card" },
-      { kind: "positive", fr: "3D Secure", en: "3D Secure" },
-      { kind: "positive", fr: "Sans vérification KYC", en: "No KYC verification" },
-      { kind: "positive", fr: "Sans frais mensuels", en: "No monthly fees" },
-      { kind: "positive", fr: "3 années de validité", en: "3-year validity" },
-      { kind: "positive", fr: "Acceptée partout", en: "Accepted everywhere" },
-    ],
-  },
-  {
-    id: "mastercard-premium",
-    brand: "mastercard",
-    name: { fr: "MASTERCARD PREMIUM", en: "PREMIUM MASTERCARD" },
-    description: {
-      fr: "Fonctionnalités avancées - Idéal pour des achats plus importants",
-      en: "Advanced features — ideal for larger purchases",
-    },
-    price: 8500,
-    tone: "green",
-    features: [
-      { kind: "positive", fr: "Carte de débit", en: "Debit card" },
-      { kind: "positive", fr: "3D Secure", en: "3D Secure" },
-      { kind: "positive", fr: "Achats sur Amazon", en: "Amazon purchases" },
-      { kind: "positive", fr: "Achats sur Alibaba", en: "Alibaba purchases" },
-      { kind: "positive", fr: "Retraits possibles (Cameroun uniquement)", en: "Withdrawals available (Cameroon only)" },
-      { kind: "positive", fr: "Compatible PayPal", en: "PayPal compatible" },
-      { kind: "negative", fr: "Ne prend pas en charge les retraits PayPal", en: "PayPal withdrawals are not supported" },
-    ],
-  },
-  {
-    id: "mastercard-platinum",
-    brand: "mastercard",
-    name: { fr: "MASTERCARD PLATINIUM", en: "PLATINUM MASTERCARD" },
-    description: {
-      fr: "Expérience premium - Sans limite avec des avantages exclusifs",
-      en: "Premium experience — generous limits and exclusive benefits",
-    },
-    price: 15000,
-    tone: "slate",
-    features: [
-      { kind: "positive", fr: "Carte de débit", en: "Debit card" },
-      { kind: "positive", fr: "3D Secure", en: "3D Secure" },
-      { kind: "positive", fr: "Aucun plafond sur les recharges", en: "No top-up limit" },
-      { kind: "positive", fr: "Compatible Google Pay", en: "Google Pay compatible" },
-      { kind: "positive", fr: "Compatible Apple Pay", en: "Apple Pay compatible" },
-      { kind: "positive", fr: "🎁 Bonus de $5 offert", en: "🎁 $5 bonus included" },
-    ],
-  },
-];
-
-const labels = {
-  fr: {
-    title: "Cartes virtuelles Nova Paid",
-    chooseTitle: "Choisissez votre carte",
-    subtitle: "Choisissez la carte qui correspond à vos besoins et commencez à payer en ligne en toute sécurité.",
-    noticeTitle: "Note importante",
-    notice: "Les cartes ne sont pas acceptées sur les sites de cryptomonnaies, les plateformes de paris sportifs comme Bet9ja, Wise et les sites pour adultes.",
-    features: "Caractéristiques",
-    validity: "Validité : 3 ans",
-    buy: "Acheter maintenant",
-    recommended: "Populaire",
-    secure: "Paiement sécurisé",
-    instant: "Livraison instantanée",
-    support: "Support 24/7",
-    usageTitle: "Notes d’utilisation",
-    usageIntro: "Veuillez lire attentivement avant de continuer.",
-    cardInfo: "CARTES VIRTUELLES",
-    usageDescription: "Nous émettons des cartes virtuelles Mastercard et Visa (USD) qui fonctionnent sur toutes les plateformes à l’exception des plateformes de paris sportifs, de crypto monnaie, Wise et des films pour adulte.",
-    transactionLimit: "Limite par transaction",
-    balanceLimit: "Limite du solde",
-    failureFee: "Frais d’échec",
-    threeYears: "3 ans",
-    tenThousand: "10 000 $",
-    oneHundredThousand: "100 000 $",
-    thirtyCents: "0.3 $ par transaction",
-    warningOne: "Les cartes sont résiliées après 3 à 5 refus successifs",
-    warningTwo: "Les cartes sont résiliées si elles ne sont pas rechargées 3 semaines après leur achat",
-    refuse: "Refuser",
-    accept: "Accepter et continuer",
-    coordinates: "Vos coordonnées",
-    coordinatesIntro: "Renseignez votre e-mail et votre numéro WhatsApp.",
-    email: "Adresse e-mail",
-    whatsapp: "Numéro WhatsApp",
-    emailPlaceholder: "vous@exemple.com",
-    whatsappPlaceholder: "+237 6 00 00 00 00",
-    previous: "Précédent",
-    back: "Retour",
-    continue: "Continuer",
-    next: "Suivant",
-    chooseProvider: "Choisir un provider",
-    chooseProviderIntro: "Sélectionnez le service qui traitera votre paiement.",
-    selectedCard: "Carte sélectionnée",
-    providerLabel: "Choisir un prestataire",
-    pay: "Payer",
-    invalid: "Renseignez un e-mail et un numéro WhatsApp valides.",
-    emailRequiredWarning: "Veuillez renseigner une adresse e-mail valide.",
-    whatsappRequiredWarning: "Veuillez renseigner votre numéro WhatsApp (au moins 6 chiffres).",
-    whatsappHint: "Pour vous contacter en cas de besoin",
-    popularCountries: "Pays populaires",
-    allCountries: "Tous les pays (A-Z)",
-    paymentNotice: "Le paiement sécurisé est traité par SoleasPay.",
-    contactSupport: "Contacter le support",
-    close: "Fermer",
-    choose: "Choisir",
-    obtain: "Obtenir ma carte",
-    creationFee: "Frais de création",
-    included: "Tout ce qui est inclus",
-    cardType: "CARTE VIRTUELLE",
-    usd: "Visa - USD",
-    helpCard: "Besoin d'aide pour votre carte virtuelle ?",
-    watchTutorial: "Regardez ce tutoriel",
-    secureWith: "Paiement sécurisé avec",
-  },
-  en: {
-    title: "Nova Paid virtual cards",
-    chooseTitle: "Choose your card",
-    subtitle: "Choose the card that fits your needs and start paying online securely.",
-    noticeTitle: "Important note",
-    notice: "Cards are not accepted on cryptocurrency websites, sports betting platforms such as Bet9ja, Wise or adult websites.",
-    features: "Features",
-    validity: "Validity: 3 years",
-    buy: "Buy now",
-    recommended: "Popular",
-    secure: "Secure payment",
-    instant: "Instant delivery",
-    support: "24/7 support",
-    usageTitle: "Usage notes",
-    usageIntro: "Please read carefully before continuing.",
-    cardInfo: "VIRTUAL CARDS",
-    usageDescription: "We issue Mastercard and Visa (USD) virtual cards that work on most platforms except sports betting, cryptocurrency, Wise and adult websites.",
-    transactionLimit: "Transaction limit",
-    balanceLimit: "Balance limit",
-    failureFee: "Failure fee",
-    threeYears: "3 years",
-    tenThousand: "$10,000",
-    oneHundredThousand: "$100,000",
-    thirtyCents: "$0.3 per transaction",
-    warningOne: "Cards are terminated after 3 to 5 consecutive declines",
-    warningTwo: "Cards are terminated if they are not topped up for 3 weeks after purchase",
-    refuse: "Decline",
-    accept: "Accept and continue",
-    coordinates: "Your details",
-    coordinatesIntro: "Enter your email and WhatsApp number.",
-    email: "Email address",
-    whatsapp: "WhatsApp number",
-    emailPlaceholder: "you@example.com",
-    whatsappPlaceholder: "+237 6 00 00 00 00",
-    previous: "Back",
-    back: "Back",
-    continue: "Continue",
-    next: "Next",
-    chooseProvider: "Choose a provider",
-    chooseProviderIntro: "Select the service that will process your payment.",
-    selectedCard: "Selected card",
-    providerLabel: "Choose a provider",
-    pay: "Pay",
-    invalid: "Enter a valid email and WhatsApp number.",
-    emailRequiredWarning: "Please enter a valid email address.",
-    whatsappRequiredWarning: "Please enter your WhatsApp number (at least 6 digits).",
-    whatsappHint: "So we can contact you about the order",
-    popularCountries: "Popular countries",
-    allCountries: "All countries (A-Z)",
-    paymentNotice: "Secure payment is processed by SoleasPay.",
-    contactSupport: "Contact support",
-    close: "Close",
-    choose: "Choose",
-    obtain: "Get my card",
-    creationFee: "Creation fee",
-    included: "Everything included",
-    cardType: "VIRTUAL CARD",
-    usd: "Visa - USD",
-    helpCard: "Need help with your virtual card?",
-    watchTutorial: "Watch this tutorial",
-    secureWith: "Secure payment with",
-  },
-} as const;
-
-function formatPrice(value: number, language: Language): string {
-  return `${new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US").format(value)} FCFA`;
 }
 
-function BrandMark({ brand }: { brand: CardBrand }) {
-  return brand === "visa" ? (
-    <span className="virtual-card-brand visa-brand" aria-label="Visa">VISA</span>
-  ) : (
-    <span className="virtual-card-brand mastercard-brand" aria-label="Mastercard">
+const MAX_CARDS = 3;
+const MIN_AMOUNT = 1;
+const MAX_AMOUNT = 100;
+const CREATION_FEE = 9;
+// Taux de conversion utilisé par le portefeuille pour créditer les cartes (cf. fundCard côté serveur).
+const USD_XAF_RATE = 610;
+
+function fmt(n: number) {
+  return "$" + n.toFixed(2);
+}
+
+function VisaMark() {
+  return <span className="npvc-brand-visa" aria-label="Visa">VISA</span>;
+}
+
+function MastercardMark() {
+  return (
+    <span className="npvc-brand-mc" aria-label="Mastercard">
       <i /><i />
       <small>mastercard</small>
     </span>
   );
 }
 
-function VirtualCardArt({ card, detail = false }: { card: VirtualCard; detail?: boolean }) {
+function CardChip() {
   return (
-    <div className={`virtual-card-art tone-${card.tone}${detail ? " detail" : ""}`} aria-hidden="true">
-      <span className="virtual-card-art-mark">N</span>
-      <span className="virtual-card-art-chip" />
-      <span className="virtual-card-art-wave" />
-      <span className="virtual-card-art-label">VIRTUAL / USD</span>
-      <BrandMark brand={card.brand} />
+    <svg className="npvc-chip" viewBox="0 0 34 26" fill="none" aria-hidden="true">
+      <rect width="34" height="26" rx="4" fill="rgba(255,255,255,.18)" />
+      <rect x="13" width="8" height="26" fill="rgba(255,255,255,.1)" />
+      <rect y="9" width="34" height="8" fill="rgba(255,255,255,.1)" />
+      <rect x="1" y="1" width="32" height="24" rx="3" stroke="rgba(255,255,255,.25)" strokeWidth=".5" fill="none" />
+    </svg>
+  );
+}
+
+function CardWidget({ card, flipped, onFlip, hidden }: {
+  card: CardData; flipped: boolean; onFlip: () => void; hidden: boolean;
+}) {
+  const isVisa = card.brand === "visa";
+  const statusColor = card.status === "active" ? "#22c55e" : card.status === "frozen" ? "#60a5fa" : "#f87171";
+  const statusLabel = card.status === "active" ? "ACTIVE" : card.status === "frozen" ? "GELÉE" : "FERMÉE";
+
+  return (
+    <div className="npvc-card-scene">
+      <button
+        className={"npvc-card-3d" + (flipped ? " is-flipped" : "") + (card.status !== "active" ? " is-dim" : "")}
+        type="button" onClick={onFlip} aria-label="Retourner la carte"
+      >
+        <span className={"npvc-card-face npvc-card-front npvc-brand-bg-" + card.brand}>
+          <span className="npvc-card-glow" />
+          <span className="npvc-card-row npvc-card-row-top">
+            <CardChip />
+            {isVisa ? <VisaMark /> : <MastercardMark />}
+          </span>
+          <span className="npvc-card-pan">{hidden ? "•••• •••• •••• ••••" : card.maskedPan}</span>
+          <span className="npvc-card-row npvc-card-row-bottom">
+            <span className="npvc-card-field"><small>SOLDE</small><b>{hidden ? "••••" : fmt(card.balanceUsd)}</b></span>
+            <span className="npvc-card-field"><small>EXPIRE</small><b>10/29</b></span>
+            <span className="npvc-card-field"><small>STATUT</small><b style={{ color: statusColor }}>{statusLabel}</b></span>
+          </span>
+        </span>
+        <span className="npvc-card-face npvc-card-back">
+          <span className="npvc-card-stripe" />
+          <span className="npvc-card-cvv-row">
+            <span className="npvc-card-cvv-tape" />
+            <span className="npvc-card-cvv-box"><small>CVV</small><b>•••</b></span>
+          </span>
+          <span className="npvc-card-back-brand">{isVisa ? <VisaMark /> : <MastercardMark />}</span>
+        </span>
+      </button>
     </div>
   );
 }
 
-export function VirtualCardsSection({ language }: { language: Language }) {
-  const t = labels[language];
-  const [selectedCard, setSelectedCard] = useState<VirtualCard | null>(null);
-  const [detailCard, setDetailCard] = useState<VirtualCard | null>(null);
-  const [videoModalOpen, setVideoModalOpen] = useState(false);
-  const [step, setStep] = useState<"notes" | "details" | "provider">("notes");
-  const [email, setEmail] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [countryCode, setCountryCode] = useState("CM");
-  const [dialCode, setDialCode] = useState("+237");
-  const [provider, setProvider] = useState("soleaspay");
-  const [paymentOrderId, setPaymentOrderId] = useState("");
-  const [error, setError] = useState(false);
-  const [emailError, setEmailError] = useState(false);
-  const [whatsappError, setWhatsappError] = useState(false);
-  const emailInputRef = useRef<HTMLInputElement>(null);
-  const whatsappInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    void detectUserCountry()
-      .then((detected) => {
-        if (!isMounted || !detected) return;
-        setCountryCode(detected.countryCode);
-        setDialCode(detected.dialCode);
-      })
-      .catch(() => {
-        // Geolocation is optional
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedCard && !detailCard) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [selectedCard, detailCard]);
-
-  // Persist card detail view across page refreshes via URL hash & sessionStorage
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hash = window.location.hash;
-    let cardId: string | null = null;
-    if (hash.includes("card=")) {
-      cardId = hash.split("card=")[1]?.split("&")[0] || null;
-    } else if (hash.startsWith("#card-")) {
-      cardId = hash.replace("#card-", "");
-    }
-    if (!cardId) {
-      try {
-        cardId = window.sessionStorage.getItem("nova_detail_card");
-      } catch {}
-    }
-    if (cardId) {
-      const found = cards.find((c) => c.id === cardId);
-      if (found && window.matchMedia("(max-width: 700px)").matches) {
-        setDetailCard(found);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (detailCard) {
-      window.history.replaceState(null, "", "#cards?card=" + detailCard.id);
-      try {
-        window.sessionStorage.setItem("nova_detail_card", detailCard.id);
-      } catch {}
-    } else {
-      try {
-        window.sessionStorage.removeItem("nova_detail_card");
-      } catch {}
-      if (window.location.hash.includes("card=")) {
-        window.history.replaceState(null, "", "#cards");
-      }
-    }
-  }, [detailCard]);
-
-  // Handle browser back button: close card detail view when navigating back
-  useEffect(() => {
-    const onHashChange = () => {
-      const hash = window.location.hash;
-      if (!hash.includes("card=") && !hash.startsWith("#card-") && detailCard) {
-        setDetailCard(null);
-      }
-    };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, [detailCard]);
-
-  const selectedName = useMemo(
-    () => selectedCard ? selectedCard.name[language] : "",
-    [selectedCard, language],
-  );
-
-  const openCard = (card: VirtualCard) => {
-    playTap();
-    // Mobile keeps the detailed card preview; desktop goes straight to checkout.
-    if (window.matchMedia("(max-width: 700px)").matches) {
-      setDetailCard(card);
-      return;
-    }
-    openCheckout(card);
-  };
-
-  const openCheckout = (card: VirtualCard) => {
-    playModalOpen();
-    setDetailCard(null);
-    setSelectedCard(card);
-    setStep("notes");
-    setPaymentOrderId("");
-    setError(false);
-  };
-
-  const close = () => {
-    playModalClose();
-    setSelectedCard(null);
-    setStep("notes");
-    setPaymentOrderId("");
-    setError(false);
-  };
-
-  const closeDetails = () => {
-    playTap();
-    setDetailCard(null);
-  };
-
-  const nextStep = () => {
-    if (step === "notes") {
-      playStep(true);
-      setStep("details");
-      return;
-    }
-    if (step === "details") {
-      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-      const validWhatsapp = whatsapp.replace(/\D/g, "").length >= 6;
-      if (!validEmail || !validWhatsapp) {
-        playError();
-        setError(true);
-        return;
-      }
-      playStep(true);
-      setError(false);
-      setPaymentOrderId(createCardOrderId());
-      setStep("provider");
-    }
-  };
-
-  const createCardOrderId = () => `NOVA-CARD-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+function EmptyCards({ onCreate }: { onCreate: () => void }) {
+  const { t } = useLanguage();
 
   return (
-    <section className="virtual-cards-section" id="cards" aria-labelledby="virtual-cards-title">
-      {detailCard ? (
-        <div className="virtual-card-detail-view">
-          <div className="virtual-card-detail-topbar">
-            <button type="button" onClick={closeDetails} aria-label={t.previous}><ArrowLeft size={20} /></button>
-            <strong>{language === "fr" ? "Votre future carte" : "Your future card"}</strong>
-            <span className="virtual-card-detail-device" aria-hidden="true"><Monitor size={16} /></span>
-            <span>{language === "fr" ? "FR" : "EN"}</span>
-          </div>
-          <div className="virtual-card-detail-scroll">
-          <VirtualCardArt card={detailCard} detail />
-          <div className="virtual-card-detail-copy">
-            <span className="virtual-card-detail-kicker">{detailCard.brand === "visa" ? "VISA" : "MASTERCARD"} · {t.cardType}</span>
-            <h1>{detailCard.name[language]}</h1>
-            <p>{detailCard.description[language]}</p>
-          </div>
-          <div className="virtual-card-detail-facts">
-            <div><span>{t.creationFee}</span><strong>{formatPrice(detailCard.price, language)}</strong></div>
-            <div><span>{t.validity}</span><strong>{t.threeYears}</strong></div>
-          </div>
-          <h2 className="virtual-card-included-title">{t.included}</h2>
-          <ul className="virtual-card-detail-features">
-            {detailCard.features.map((feature) => (
-              <li className={feature.kind === "negative" ? "negative" : ""} key={`detail-${feature.fr}`}>
-                {feature.kind === "negative" ? <CircleX size={16} /> : <Check size={16} />}
-                <span>{feature[language]}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="virtual-card-detail-warning"><Info size={17} /><span>{t.notice} {language === "fr" ? "Les conditions complètes sont présentées à la prochaine étape." : "Full terms are shown at the next step."}</span></div>
-          <div className="virtual-card-detail-provider"><LockKeyhole size={14} /> {t.secureWith} SoleasPay</div>
-          </div>
-          <div className="virtual-card-detail-sticky">
-            <div><span>{t.creationFee}</span><strong>{formatPrice(detailCard.price, language)}</strong></div>
-            <button type="button" onClick={() => openCheckout(detailCard)}>{t.obtain} <ArrowRight size={17} /></button>
-          </div>
-        </div>
-      ) : (
-      <>
-      <div className="virtual-cards-heading">
-        <div>
-          <span className="section-kicker"><CreditCard size={16} /> {t.cardInfo}</span>
-          <h1 id="virtual-cards-title">
-            <span className="desktop-card-title">{t.title}</span>
-            <span className="mobile-card-title">{t.chooseTitle}</span>
-          </h1>
-          <p>{t.subtitle}</p>
-        </div>
-        <div className="virtual-cards-security"><ShieldCheck size={18} /> 3D Secure</div>
+    <div className="npvc-empty">
+      <div className="npvc-empty-icon">
+        <CreditCard size={36} />
+        <span className="npvc-empty-sparkle"><Sparkles size={14} /></span>
       </div>
-
-      <div className="virtual-cards-notice">
-        <CircleX size={19} aria-hidden="true" />
-        <p><strong>{t.noticeTitle} :</strong> {t.notice}</p>
-      </div>
-
-      
-      <div className="help-video-banner">
-        <div className="help-video-banner-left">
-          <div className="help-video-title-row">
-            <span className="help-video-dot" aria-hidden="true" />
-            <h2>{t.helpCard}</h2>
-          </div>
-          <p>{t.watchTutorial}</p>
-        </div>
-
-        <button
-          type="button"
-          className="help-video-trigger"
-          onClick={() => {
-            playModalOpen();
-            setVideoModalOpen(true);
-          }}
-          aria-label={t.watchTutorial}
-        >
-          <Image
-            src={getAssetPath("/tutorial-thumbnail.jpg")}
-            alt={t.helpCard}
-            className="help-video-thumbnail"
-            fill
-            sizes="(max-width: 760px) 100vw, 360px"
-            unoptimized
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "https://img.youtube.com/vi/GAQgxNcMlpI/sddefault.jpg";
-            }}
-          />
-          <div className="help-video-overlay" />
-          <div className="help-video-play-btn" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="help-video-play-icon" width="18" height="18">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </button>
-      </div>
-
-      <div className="virtual-cards-grid">
-        {cards.map((card) => (
-          <article className={`virtual-card-card tone-${card.tone}${card.recommended ? " is-recommended" : ""}`} key={card.id} onClick={() => openCard(card)} style={{ cursor: "pointer" }}>
-            {card.recommended && <span className="virtual-card-badge"><BadgeCheck size={13} /> {t.recommended}</span>}
-            <div className="virtual-card-hero">
-              <VirtualCardArt card={card} />
-              <div className="virtual-card-topline">
-                <h2>{card.name[language]}</h2>
-                <BrandMark brand={card.brand} />
-              </div>
-              <p>{card.description[language]}</p>
-              <div className="virtual-card-price-row">
-                <div className="virtual-card-mobile-price">
-                  <small>{t.creationFee}</small>
-                  <strong>{formatPrice(card.price, language)}</strong>
-                </div>
-                <span><Clock3 size={14} /> {t.validity}</span>
-              </div>
-            </div>
-            <div className="virtual-card-body">
-              <h3><ShieldCheck size={15} /> {t.features}</h3>
-              <ul>
-                {card.features.map((feature) => (
-                  <li className={feature.kind === "negative" ? "negative" : ""} key={feature.fr}>
-                    {feature.kind === "negative" ? <CircleX size={14} /> : <Check size={14} />}
-                    <span>{feature[language]}</span>
-                  </li>
-                ))}
-              </ul>
-              <button type="button" className="virtual-card-buy" onClick={() => openCard(card)}>
-                <Sparkles size={16} /> <span className="desktop-buy-label">{t.buy}</span><span className="mobile-buy-label">{t.choose}</span> <ArrowRight size={16} />
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <div className="virtual-cards-benefits" aria-label={t.cardInfo}>
-        <span><CheckCircle2 size={18} /> {t.secure}</span>
-        <span><Sparkles size={18} /> {t.instant}</span>
-        <span><MessageCircle size={18} /> {t.support}</span>
-      </div>
-      </>
-      )}
-
-      {selectedCard && (
-        <div
-          className="checkout-overlay"
-          role="presentation"
-          onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}
-        >
-          <section className="checkout-panel" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
-            <button type="button" className="close-checkout" onClick={close} aria-label={t.close}>
-              <X />
-            </button>
-
-            <div className="checkout-progress" aria-label={step === "notes" ? "1 / 3" : step === "details" ? "2 / 3" : "3 / 3"}>
-              <span className="active" />
-              <span className={step === "details" || step === "provider" ? "active" : ""} />
-              <span className={step === "provider" ? "active" : ""} />
-            </div>
-
-            {step === "notes" && (
-              <div className="checkout-step step-instructions">
-                <div className="instructions-header">
-                  <span className="modal-kicker">{language === "fr" ? "ÉTAPE 1 SUR 3" : "STEP 1 OF 3"}</span>
-                  <h2 id="checkout-title">{t.usageTitle}</h2>
-                  <p className="instructions-intro">{t.usageIntro}</p>
-                </div>
-
-                <div className="instruction-cards">
-                  <div className="instruction-card">
-                    <div className="instruction-card-icon"><CreditCard size={20} /></div>
-                    <div>
-                      <strong>{t.cardInfo}</strong>
-                      <p>{t.usageDescription}</p>
-                    </div>
-                  </div>
-
-                  <div className="instruction-card warning">
-                    <div className="instruction-card-icon"><Info size={20} /></div>
-                    <div>
-                      <strong>{t.noticeTitle}</strong>
-                      <p>{t.notice}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="instructions-actions">
-                  <button type="button" className="modal-secondary" onClick={close}>{t.refuse}</button>
-                  <button
-                    type="button"
-                    className="modal-primary"
-                    onClick={() => {
-                      playStep(true);
-                      setStep("details");
-                    }}
-                  >
-                    {t.accept} <ArrowRight size={18} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {step === "details" && (
-              <div className="checkout-step step-form">
-                <button
-                  type="button"
-                  className="back-button"
-                  onClick={() => {
-                    playStep(false);
-                    setStep("notes");
-                  }}
-                >
-                  <ArrowLeft size={15} /> {t.back}
-                </button>
-
-                <div className="form-header">
-                  <div>
-                    <span className="modal-kicker">{language === "fr" ? "ÉTAPE 2 SUR 3" : "STEP 2 OF 3"}</span>
-                    <h2 id="checkout-title">{t.coordinates}</h2>
-                  </div>
-                  <div className="form-header-pack">
-                    <span>{selectedName}</span> · <strong>{formatPrice(selectedCard.price, language)}</strong>
-                  </div>
-                </div>
-
-                <label className="field-label">
-                  <span>
-                    {t.email} <span className="required">*</span>
-                  </span>
-                  <div className={"field" + (emailError ? " field-error" : "")}>
-                    <span><Mail size={16} /></span>
-                    <input
-                      ref={emailInputRef}
-                      form="soleaspay-card-checkout"
-                      type="email"
-                      value={email}
-                      onChange={(event) => {
-                        setEmail(event.target.value);
-                        if (emailError && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(event.target.value.trim())) {
-                          setEmailError(false);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-                          setEmailError(true);
-                        }
-                      }}
-                      placeholder={t.emailPlaceholder}
-                      autoComplete="email"
-                    />
-                  </div>
-                  {emailError && (
-                    <div className="field-error-notice" role="alert">
-                      <AlertCircle size={13} />
-                      <span>{t.emailRequiredWarning}</span>
-                    </div>
-                  )}
-                </label>
-
-                <label className="field-label">
-                  <span>
-                    {t.whatsapp} <span className="required">*</span>{" "}
-                    <span className="field-hint">— {t.whatsappHint}</span>
-                  </span>
-                  <div className={"field country-phone-field" + (whatsappError ? " field-error" : "")}>
-                    <select
-                      className="country-select"
-                      value={countryCode}
-                      onChange={(event) => {
-                        const nextCode = event.target.value;
-                        setCountryCode(nextCode);
-                        if (dialCodes[nextCode]) {
-                          setDialCode(dialCodes[nextCode]);
-                        }
-                      }}
-                      aria-label={language === "fr" ? "Pays" : "Country"}
-                    >
-                      <optgroup label={t.popularCountries}>
-                        {POPULAR_COUNTRIES.map((country) => (
-                          <option key={"card-pop-" + country.code} value={country.code}>
-                            {country.flag} {country.dialCode} ({country.name})
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label={t.allCountries}>
-                        {ALL_COUNTRIES.map((country) => (
-                          <option key={"card-all-" + country.code} value={country.code}>
-                            {country.flag} {country.dialCode} ({country.name})
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                    <input
-                      ref={whatsappInputRef}
-                      form="soleaspay-card-checkout"
-                      type="tel"
-                      value={whatsapp}
-                      onChange={(event) => {
-                        const val = event.target.value.replace(/\D/g, "");
-                        setWhatsapp(val);
-                        if (whatsappError && val.length >= 6) {
-                          setWhatsappError(false);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (whatsapp.replace(/\D/g, "").length < 6) {
-                          setWhatsappError(true);
-                        }
-                      }}
-                      placeholder="6 00 00 00 00"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      autoComplete="tel"
-                      required
-                    />
-                  </div>
-                  {whatsappError && (
-                    <div className="field-error-notice" role="alert">
-                      <AlertCircle size={13} />
-                      <span>{t.whatsappRequiredWarning}</span>
-                    </div>
-                  )}
-                </label>
-
-                <button
-                  type="button"
-                  className="modal-primary"
-                  onClick={nextStep}
-                >
-                  {t.continue} <ArrowRight size={18} />
-                </button>
-              </div>
-            )}
-
-            {step === "provider" && (
-              <div className="checkout-step">
-                <button
-                  type="button"
-                  className="back-button"
-                  onClick={() => {
-                    playStep(false);
-                    setStep("details");
-                  }}
-                >
-                  <ArrowLeft size={15} /> {t.back}
-                </button>
-                <span className="modal-kicker">{language === "fr" ? "ÉTAPE 3 SUR 3" : "STEP 3 OF 3"}</span>
-                <h2 id="checkout-title">{t.chooseProvider}</h2>
-
-                <div className="checkout-summary">
-                  <div><span>{t.selectedCard}</span><strong>{selectedName}</strong></div>
-                  <div><span>{t.creationFee}</span><strong>{formatPrice(selectedCard.price, language)}</strong></div>
-                  <div><span>{t.validity}</span><strong>{t.threeYears}</strong></div>
-                </div>
-
-                <div className="payment-provider-selector">
-                  <span className="payment-provider-selector-label">{t.providerLabel}</span>
-                  <div
-                    className="payment-provider-options"
-                    role="radiogroup"
-                    aria-label={t.providerLabel}
-                  >
-                    <button
-                      type="button"
-                      className={"payment-provider-option" + (provider === "soleaspay" ? " selected" : "")}
-                      role="radio"
-                      aria-checked={provider === "soleaspay"}
-                      onClick={() => {
-                        playTap();
-                        setProvider("soleaspay");
-                      }}
-                    >
-                      <span className="payment-logo-wrap" aria-hidden="true">
-                        <Image
-                          src={getAssetPath("/soleaspay-logo.png")}
-                          alt="SoleasPay"
-                          width={44}
-                          height={28}
-                          className="payment-logo-img"
-                        />
-                      </span>
-                      <strong className="payment-provider-name">SoleasPay</strong>
-                      <span className="payment-provider-radio" aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-
-                <p className="virtual-card-api-notice" style={{ marginTop: "14px" }}>
-                  <ShieldCheck size={15} /> {t.paymentNotice}
-                </p>
-
-                {selectedCard && (
-                  <SoleasPayCheckoutV3
-                    formId="soleaspay-card-checkout"
-                    language={language}
-                    amount={selectedCard.price}
-                    orderId={paymentOrderId}
-                    description={"Carte Virtuelle " + selectedName}
-                    username={selectedName}
-                    whatsapp={whatsapp}
-                    dialCode={dialCode}
-                    country={(() => { const c = ALL_COUNTRIES.find((c) => c.code === countryCode); return c ? (c.flag + " " + c.name + " (" + c.dialCode + ")") : countryCode; })()}
-                    email={email}
-                    coins={1}
-                    requireEmail
-                    productType="card"
-                    productLabel={selectedName}
-                    isEmailValid={/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())}
-                    onRequireEmail={() => setEmailError(true)}
-                  />
-                )}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-      {videoModalOpen && (
-        <div
-          className="video-modal-overlay"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              playModalClose();
-              setVideoModalOpen(false);
-            }
-          }}
-        >
-          <section
-            className="video-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="video-modal-title"
-          >
-            <div className="video-modal-header">
-              <h2 id="video-modal-title">{t.watchTutorial}</h2>
-              <button
-                type="button"
-                className="close-video-modal"
-                onClick={() => {
-                  playModalClose();
-                  setVideoModalOpen(false);
-                }}
-                aria-label={t.close}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="video-modal-body">
-              <div className="video-player-frame">
-                <iframe
-                  src="https://www.youtube.com/embed/GAQgxNcMlpI?autoplay=1&rel=0"
-                  title={t.watchTutorial}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
-    </section>
+      <h2>{t("no_cards_available")}</h2>
+      <p>{t("no_cards_desc")}</p>
+      <button className="npvc-create-btn" type="button" onClick={onCreate}>
+        <Plus size={16} />
+        {t("create_first_card")}
+      </button>
+    </div>
   );
 }
+
+function CardListItem({ card, active, onClick }: { card: CardData; active: boolean; onClick: () => void }) {
+  const statusClass = card.status === "active" ? "is-active-status" : card.status === "frozen" ? "is-frozen-status" : "is-closed-status";
+
+  return (
+    <button
+      className={"npvc-card-thumb" + (active ? " is-active" : "") + (card.status !== "active" ? " is-dim" : "")}
+      type="button" onClick={onClick}
+    >
+      <span className={"npvc-card-thumb-bg npvc-brand-bg-" + card.brand}>
+        <span className="npvc-card-thumb-mark">
+          {card.brand === "visa" ? <VisaMark /> : <MastercardMark />}
+        </span>
+      </span>
+      <span className="npvc-card-thumb-info">
+        <span className="npvc-card-thumb-label">{card.label}</span>
+        <span className="npvc-card-thumb-pan">{card.maskedPan.slice(-9)}</span>
+      </span>
+      <span className="npvc-card-thumb-right">
+        <span className="npvc-card-thumb-balance">{fmt(card.balanceUsd)}</span>
+        <span className={"npvc-card-thumb-status " + statusClass}>
+          {card.status === "active" ? "Active" : card.status === "frozen" ? "Gelée" : "Fermée"}
+        </span>
+      </span>
+      <ChevronRight size={14} className="npvc-card-thumb-chevron" />
+    </button>
+  );
+}
+
+function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount, profile }: {
+  open: boolean; onClose: () => void;
+  onCreated: (card: CardData) => void; walletBalance: number; currentCount: number;
+  profile: { name: string; phone: string };
+}) {
+  const { t, language } = useLanguage();
+  const [brand, setBrand] = useState<CardBrand>("visa");
+  const [amount, setAmount] = useState(MIN_AMOUNT);
+  const [amountInput, setAmountInput] = useState("1.00");
+  const [flipped, setFlipped] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [spOrder, setSpOrder] = useState<{ orderRef: string; amountXaf: number; description: string } | null>(null);
+  const [phone, setPhone] = useState("");
+  const [bkLoading, setBkLoading] = useState(false);
+
+  useEffect(() => { if (profile.phone) setPhone((p) => p || profile.phone); }, [profile.phone]);
+
+  const total = CREATION_FEE + amount;
+  const isLimitReached = currentCount >= MAX_CARDS;
+
+  const previewCard: CardData = {
+    id: 0,
+    label: brand === "visa" ? "Carte Visa" : "Carte Mastercard",
+    maskedPan: (brand === "visa" ? "4" : "5") + "*** •••• •••• ****",
+    cardType: "virtual",
+    status: "active",
+    balanceUsd: amount,
+    brand,
+  };
+
+  const updateAmount = (v: number) => {
+    const n = Number.isFinite(v) ? Math.min(MAX_AMOUNT, Math.max(MIN_AMOUNT, v)) : MIN_AMOUNT;
+    setAmount(n);
+    setAmountInput(n.toFixed(2));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLimitReached) {
+      setError("Limite maximale de 3 cartes atteinte.");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      // Creation fee + initial load are collected via SoleasPay; the webhook
+      // issues the card once payment is confirmed.
+      const res = await fetch("/api/payments/soleaspay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "card_creation", brand, amountUsd: amount, label: previewCard.label }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Initialisation du paiement impossible.");
+      setSpOrder({ orderRef: data.orderRef, amountXaf: data.amountXaf, description: data.description });
+    } catch (err: any) {
+      setError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!open) return null;
+
+  if (spOrder) {
+    return (
+      <div className="npvc-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setSpOrder(null); onClose(); } }}>
+        <div className="npvc-confirm-dialog" style={{ maxWidth: "420px", margin: "auto" }}>
+          <div className="npvc-confirm-icon is-info"><CreditCard size={26} /></div>
+          <h3>Payer la création de votre carte</h3>
+          <p>Payez <strong>{spOrder.amountXaf.toLocaleString("fr-FR")} FCFA</strong> par Mobile Money. Votre carte {brand === "visa" ? "Visa" : "Mastercard"} sera créée automatiquement après confirmation du paiement.</p>
+          <label className="npvc-freeze-field" style={{ width: "100%" }}>
+            <span>Numéro Mobile Money</span>
+            <input type="tel" className="np-text-input" style={{ width: "100%", fontWeight: 600 }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+237 6XX XX XX XX" />
+          </label>
+          <p className="npvc-pay-choice-label">Choisissez votre moyen de paiement</p>
+          <div className="npvc-soleaspay-wrap" style={{ width: "100%" }}>
+            <SoleasPayCheckoutV3
+              language={language}
+              amount={spOrder.amountXaf}
+              orderId={spOrder.orderRef}
+              description={spOrder.description}
+              username={profile.name || "Client"}
+              whatsapp={phone}
+              coins={0}
+              productType="card"
+              buttonLabel="Payer avec SoleasPay"
+            />
+          </div>
+          <button
+            type="button"
+            className="npvc-bkpay-btn"
+            disabled={bkLoading}
+            onClick={async () => {
+              setBkLoading(true);
+              setError(null);
+              try { await payWithBkpay({ type: "card_creation", brand, amountUsd: amount, label: previewCard.label }); }
+              catch (e: any) { setError(e?.message || "BKApay indisponible."); setBkLoading(false); }
+            }}
+          >
+            {bkLoading ? "Redirection…" : "Payer avec BKApay"}
+          </button>
+          <button type="button" className="npvc-confirm-cancel" style={{ width: "100%", marginTop: "10px" }} onClick={() => setSpOrder(null)}>Retour</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="npvc-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="npvc-drawer" role="dialog" aria-modal="true" aria-label={t("new_card")}>
+        <div className="npvc-drawer-header">
+          <div>
+            <h2>{t("new_card")}</h2>
+            <span className="npvc-drawer-counter">{currentCount}/{MAX_CARDS} cartes</span>
+          </div>
+          <button className="npvc-drawer-close" type="button" onClick={onClose} aria-label={t("close")}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {isLimitReached ? (
+          <div className="npvc-drawer-limit-alert">
+            <AlertCircle size={22} />
+            <div>
+              <strong>{t("card_limit_reached")}</strong>
+              <p>{t("card_limit_warning")}</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="npvc-drawer-preview">
+              <CardWidget card={previewCard} flipped={flipped} onFlip={() => setFlipped(f => !f)} hidden={false} />
+              <p className="npvc-drawer-preview-hint">Appuyez sur la carte pour la retourner</p>
+            </div>
+            <form className="npvc-drawer-form" onSubmit={handleSubmit}>
+              <fieldset className="npvc-drawer-field">
+                <legend>Réseau de paiement</legend>
+                <div className="npvc-drawer-brand-opts">
+                  {(["visa", "mastercard"] as CardBrand[]).map((b) => (
+                    <button key={b} type="button"
+                      className={"npvc-drawer-brand-btn" + (brand === b ? " is-sel" : "")}
+                      onClick={() => { playTap(); setBrand(b); setFlipped(false); }}
+                    >
+                      {b === "visa" ? <VisaMark /> : <MastercardMark />}
+                      <span>{b === "visa" ? "Visa" : "Mastercard"}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <div className="npvc-drawer-field">
+                <label className="npvc-drawer-label">Montant initial (USD)</label>
+                <div className="npvc-drawer-amount-row">
+                  <span className="npvc-drawer-currency">$</span>
+                  <input type="number" min={MIN_AMOUNT} max={MAX_AMOUNT} step="0.01"
+                    value={amountInput}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      setAmountInput(e.target.value);
+                      const p = parseFloat(e.target.value);
+                      if (!isNaN(p) && p >= MIN_AMOUNT && p <= MAX_AMOUNT) setAmount(p);
+                    }}
+                    onBlur={() => updateAmount(parseFloat(amountInput))}
+                    className="npvc-drawer-amount-input"
+                  />
+                </div>
+                <input type="range" min={MIN_AMOUNT} max={MAX_AMOUNT} step="0.01"
+                  value={amount} onChange={(e) => updateAmount(parseFloat(e.target.value))}
+                  className="npvc-drawer-range"
+                />
+                <div className="npvc-drawer-range-labels"><small>$1</small><small>$100</small></div>
+              </div>
+              <div className="npvc-drawer-summary">
+                <div className="npvc-drawer-summary-row"><span>Frais d'émission</span><span>$9.00</span></div>
+                <div className="npvc-drawer-summary-row"><span>Montant crédité</span><span>{fmt(amount)}</span></div>
+                <div className="npvc-drawer-summary-total"><span>Total à payer</span><span>{fmt(total)}</span></div>
+              </div>
+              {error && <p className="npvc-drawer-error">{error}</p>}
+              <div className="npvc-drawer-footer">
+                <div className="npvc-drawer-security"><ShieldCheck size={13} /><span>3D Secure · PCI-DSS</span></div>
+                <button className="npvc-create-btn npvc-drawer-submit" type="submit" disabled={loading}>
+                  {loading ? <RefreshCw size={15} className="spin" /> : <Plus size={15} />}
+                  {loading ? "Création en cours…" : "Créer ma carte"}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function VirtualCardsSection({ language: _language }: { language?: any } = {}) {
+  const { t, language } = useLanguage();
+  const [cards, setCards] = useState<CardData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const [flipped, setFlipped] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+
+  // Freeze / Unfreeze confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; card: CardData | null; action: "freeze" | "unfreeze" }>({
+    open: false,
+    card: null,
+    action: "freeze",
+  });
+  const [isTogglingFreeze, setIsTogglingFreeze] = useState(false);
+  const [freezeReason, setFreezeReason] = useState("");
+  const [toggleFeedback, setToggleFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [cardTxs, setCardTxs] = useState<any[]>([]);
+  const [cardTxsLoading, setCardTxsLoading] = useState(false);
+  const [fundModal, setFundModal] = useState<{ open: boolean; card: CardData | null }>({ open: false, card: null });
+  const [fundAmount, setFundAmount] = useState("10");
+  const [funding, setFunding] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; phone: string }>({ name: "", phone: "" });
+  const [withdrawModal, setWithdrawModal] = useState<{ open: boolean; card: CardData | null }>({ open: false, card: null });
+  const [withdrawAmount, setWithdrawAmount] = useState("10");
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const activeCard = cards.find(c => c.id === activeId) ?? cards[0] ?? null;
+  const isLimitReached = cards.length >= MAX_CARDS;
+
+  const loadCards = useCallback(async () => {
+    try {
+      const [cr, wr] = await Promise.all([
+        fetch("/api/cards").then(r => r.json()),
+        fetch("/api/wallet").then(r => r.json()),
+      ]);
+      if (cr.success && Array.isArray(cr.cards)) {
+        setCards(cr.cards);
+        if (cr.cards.length > 0) {
+          setActiveId((curr) => (curr && cr.cards.some((c: CardData) => c.id === curr) ? curr : cr.cards[0].id));
+        }
+      }
+      if (wr.success) setWalletBalance(wr.wallet?.balanceXaf ?? 0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadCards(); }, [loadCards]);
+
+  useEffect(() => {
+    fetch("/api/auth")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.success && d.user) {
+          setProfile({ name: d.user.name || "", phone: d.user.phone || "" });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!activeId) return;
+    setCardTxsLoading(true);
+    fetch(`/api/cards?cardId=${activeId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.transactions)) setCardTxs(data.transactions);
+        else setCardTxs([]);
+      })
+      .catch(() => setCardTxs([]))
+      .finally(() => setCardTxsLoading(false));
+  }, [activeId]);
+
+  const handleCreated = (card: CardData) => {
+    setCards(prev => [card, ...prev]);
+    setActiveId(card.id);
+  };
+
+  const openFreezeModal = (card: CardData) => {
+    const action = card.status === "frozen" ? "unfreeze" : "freeze";
+    setConfirmModal({ open: true, card, action });
+  };
+
+  const closeFund = () => {
+    setFundModal({ open: false, card: null });
+  };
+
+  // Recharge is now served directly from the main wallet balance ("Solde
+  // disponible"). We debit the XAF wallet and credit the card's USD balance in a
+  // single server-side transaction (NovaDbService.fundCard), so no external
+  // Mobile Money payment is required when the wallet already holds funds.
+  const handleConfirmRecharge = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!fundModal.card) return;
+    const amount = Number(fundAmount);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000) {
+      setToggleFeedback({ type: "error", text: "Montant de recharge invalide (1 - 1 000 USD)." });
+      return;
+    }
+    const costXaf = Math.ceil(amount * USD_XAF_RATE);
+    if (walletBalance < costXaf) {
+      setToggleFeedback({
+        type: "error",
+        text: `Solde portefeuille insuffisant. Il vous faut ${costXaf.toLocaleString("fr-FR")} FCFA (disponible : ${walletBalance.toLocaleString("fr-FR")} FCFA). Rechargez d'abord votre portefeuille.`,
+      });
+      return;
+    }
+    setFunding(true);
+    setToggleFeedback(null);
+    try {
+      const res = await fetch("/api/cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fund", cardId: fundModal.card.id, amountUsd: amount }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || "Recharge impossible.");
+      if (data.card) setCards(prev => prev.map(c => c.id === data.card.id ? data.card : c));
+      if (typeof data.newWalletBalanceXaf === "number") {
+        setWalletBalance(data.newWalletBalanceXaf);
+        // Keep the dashboard "Solde disponible" in sync with the debit.
+        window.dispatchEvent(new CustomEvent("novapay:balance-changed", { detail: { balance: data.newWalletBalanceXaf } }));
+      }
+      setToggleFeedback({ type: "success", text: `Carte rechargée de $${amount.toFixed(2)} (−${costXaf.toLocaleString("fr-FR")} FCFA depuis votre portefeuille).` });
+      closeFund();
+      // Refresh card transactions
+      fetch(`/api/cards?cardId=${fundModal.card.id}`).then(r => r.json()).then(d => { if (d.success) setCardTxs(d.transactions); }).catch(() => {});
+    } catch (e: any) {
+      setToggleFeedback({ type: "error", text: e?.message || "Erreur lors de la recharge." });
+    } finally {
+      setFunding(false);
+    }
+  };
+
+  const handleConfirmWithdraw = async () => {
+    if (!withdrawModal.card) return;
+    const amount = Number(withdrawAmount);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000) {
+      setToggleFeedback({ type: "error", text: "Montant de rapatriement invalide (1 - 1 000 USD)." });
+      return;
+    }
+    setWithdrawing(true);
+    try {
+      const res = await fetch("/api/cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "withdraw", cardId: withdrawModal.card.id, amountUsd: amount }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || "Rapatriement impossible.");
+      setCards(prev => prev.map(c => c.id === withdrawModal.card!.id ? data.card : c));
+      if (typeof data.newWalletBalanceXaf === "number") setWalletBalance(data.newWalletBalanceXaf);
+      setToggleFeedback({ type: "success", text: `Fonds rapatriés avec succès vers le portefeuille (-$${amount.toFixed(2)} USD).` });
+      setWithdrawModal({ open: false, card: null });
+      // Refresh txs
+      fetch(`/api/cards?cardId=${withdrawModal.card.id}`).then(r => r.json()).then(d => { if (d.success) setCardTxs(d.transactions); });
+    } catch (e: any) {
+      setToggleFeedback({ type: "error", text: e?.message || "Erreur lors du rapatriement." });
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const handleConfirmToggleFreeze = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!confirmModal.card || isTogglingFreeze) return;
+    setIsTogglingFreeze(true);
+    setToggleFeedback(null);
+    try {
+      const res = await fetch("/api/cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggle_freeze",
+          cardId: confirmModal.card.id,
+          reason: freezeReason.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.card) {
+        throw new Error(data.error || "Impossible de modifier l'état de la carte.");
+      }
+      setCards(prev => prev.map(c => c.id === data.card.id ? { ...c, status: data.card.status } : c));
+      setToggleFeedback({
+        type: "success",
+        text: data.card.status === "frozen"
+          ? "Carte gelée avec succès. Vos paiements en ligne sont suspendus."
+          : "Carte réactivée avec succès.",
+      });
+      setConfirmModal({ open: false, card: null, action: "freeze" });
+      setFreezeReason("");
+    } catch (err: any) {
+      setToggleFeedback({ type: "error", text: err?.message || "Erreur de connexion." });
+    } finally {
+      setIsTogglingFreeze(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="npvc-loading">
+        <RefreshCw size={22} className="spin" />
+        <span>{t("loading")}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="npvc-root">
+      <header className="npvc-header">
+        <div>
+          <div className="npvc-title-row">
+            <h1 className="npvc-title">{t("cards_title")}</h1>
+            <span className={"npvc-counter-badge " + (isLimitReached ? "is-limit" : "")}>
+              {cards.length}/{MAX_CARDS} {t("card_limit_badge")}
+            </span>
+          </div>
+          <p className="npvc-subtitle">
+            {cards.length} {t("card_limit_badge")} · Solde portefeuille : {walletBalance.toLocaleString("fr-FR")} FCFA
+          </p>
+        </div>
+
+        {isLimitReached ? (
+          <button
+            className="npvc-create-btn npvc-header-btn is-limit-reached"
+            type="button"
+            disabled
+            title={t("card_limit_warning")}
+          >
+            <Lock size={15} />
+            <span>{t("card_limit_reached")}</span>
+          </button>
+        ) : (
+          <button className="npvc-create-btn npvc-header-btn" type="button" onClick={() => setDrawerOpen(true)}>
+            <Plus size={15} />
+            <span>{t("new_card")}</span>
+          </button>
+        )}
+      </header>
+
+      {/* Operation Feedback */}
+      {toggleFeedback && (
+        <div className={"npvc-feedback-banner " + toggleFeedback.type}>
+          {toggleFeedback.type === "success" ? <Check size={16} /> : <AlertTriangle size={16} />}
+          <span>{toggleFeedback.text}</span>
+          <button type="button" onClick={() => setToggleFeedback(null)} aria-label="Fermer"><X size={14} /></button>
+        </div>
+      )}
+
+      {cards.length === 0 ? (
+        <EmptyCards onCreate={() => setDrawerOpen(true)} />
+      ) : (
+        <div className="npvc-layout npvc-layout--solo">
+          {activeCard && (
+            <div className="npvc-detail">
+              <div className="npvc-detail-card-wrap">
+                <CardWidget card={activeCard} flipped={flipped} onFlip={() => setFlipped(f => !f)} hidden={hidden} />
+                <div className="npvc-detail-card-actions">
+                  <button type="button" className="npvc-icon-btn" onClick={() => setHidden(h => !h)}>
+                    {hidden ? <Eye size={15} /> : <EyeOff size={15} />}
+                    <span>{hidden ? t("show_details") : t("hide_details")}</span>
+                  </button>
+                  {activeCard.status === "frozen" ? (
+                    <button
+                      type="button"
+                      className="npvc-icon-btn is-unfreeze"
+                      onClick={() => openFreezeModal(activeCard)}
+                      title={t("unfreeze_card")}
+                    >
+                      <Unlock size={15} />
+                      <span>{t("unfreeze_card")}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="npvc-icon-btn is-freeze"
+                      onClick={() => openFreezeModal(activeCard)}
+                      title={t("freeze_card")}
+                    >
+                      <Lock size={15} />
+                      <span>{t("freeze_card")}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="npvc-info-panel">
+                {/* Complete Card Actions Bar (Recharger, Geler, Rapatrier) */}
+                <div className="npvc-actions-bar">
+                  <button
+                    type="button"
+                    className="npvc-act-btn npvc-act-btn--fund npvc-action-fund-btn"
+                    onClick={() => { setFundModal({ open: true, card: activeCard }); setFundAmount("10"); }}
+                    disabled={activeCard.status !== "active"}
+                    title="Recharger la carte depuis votre solde"
+                  >
+                    <Zap size={15} />
+                    <span>Recharger</span>
+                  </button>
+
+                  {activeCard.status === "frozen" ? (
+                    <button
+                      type="button"
+                      className="npvc-act-btn npvc-act-btn--unfreeze"
+                      onClick={() => openFreezeModal(activeCard)}
+                      disabled={isTogglingFreeze}
+                      title={t("unfreeze_card")}
+                    >
+                      <Unlock size={15} />
+                      <span>{t("unfreeze_card")}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="npvc-act-btn npvc-act-btn--freeze"
+                      onClick={() => openFreezeModal(activeCard)}
+                      disabled={isTogglingFreeze}
+                      title={t("freeze_card")}
+                    >
+                      <Lock size={15} />
+                      <span>{t("freeze_card")}</span>
+                    </button>
+                  )}
+
+                </div>
+
+                <div className="npvc-info-security">
+                  <ShieldCheck size={16} />
+                  <div>
+                    <p className="npvc-security-title">Protection & Sécurité bancaire</p>
+                    <ul>
+                      <li><Check size={12} />Authentification 3D Secure active</li>
+                      <li><Check size={12} />Plafond et blocage instantané</li>
+                      <li><Check size={12} />Normes PCI-DSS bancaires</li>
+                    </ul>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Freeze / Unfreeze form (action applied at Maplerad when the provider is active) */}
+      {confirmModal.open && confirmModal.card && (
+        <div
+          className="npvc-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !isTogglingFreeze) setConfirmModal({ open: false, card: null, action: "freeze" }); }}
+        >
+          <form className="npvc-confirm-dialog npvc-freeze-form" onSubmit={handleConfirmToggleFreeze}>
+            <div className={"npvc-confirm-icon " + (confirmModal.action === "freeze" ? "is-warn" : "is-info")}>
+              {confirmModal.action === "freeze" ? <Lock size={26} /> : <Unlock size={26} />}
+            </div>
+            <h3>
+              {confirmModal.action === "freeze"
+                ? "Geler la carte " + confirmModal.card.label
+                : "Réactiver la carte " + confirmModal.card.label}
+            </h3>
+            <p>
+              {confirmModal.action === "freeze"
+                ? "Vos paiements en ligne avec cette carte seront immédiatement suspendus. Vous pourrez la débloquer à tout moment."
+                : "Votre carte sera immédiatement dégelée et prête pour tous vos achats en ligne."}
+            </p>
+
+            <label className="npvc-freeze-field">
+              <span>{confirmModal.action === "freeze" ? "Motif du gel (facultatif)" : "Motif de la réactivation (facultatif)"}</span>
+              <textarea
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+                rows={2}
+                maxLength={200}
+                disabled={isTogglingFreeze}
+                placeholder={confirmModal.action === "freeze" ? "Ex : carte perdue, activité suspecte…" : "Ex : carte retrouvée…"}
+              />
+            </label>
+
+            <div className="npvc-confirm-actions">
+              <button
+                type="button"
+                className="npvc-confirm-cancel"
+                onClick={() => { setConfirmModal({ open: false, card: null, action: "freeze" }); setFreezeReason(""); }}
+                disabled={isTogglingFreeze}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="submit"
+                className={"npvc-confirm-btn " + (confirmModal.action === "freeze" ? "is-freeze-action" : "is-unfreeze-action")}
+                disabled={isTogglingFreeze}
+              >
+                {isTogglingFreeze ? (
+                  <RefreshCw size={15} className="spin" />
+                ) : confirmModal.action === "freeze" ? (
+                  <Lock size={15} />
+                ) : (
+                  <Unlock size={15} />
+                )}
+                <span>
+                  {isTogglingFreeze
+                    ? "Traitement…"
+                    : confirmModal.action === "freeze"
+                    ? "Geler la carte"
+                    : "Réactiver la carte"}
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Recharge Modal — débité directement du portefeuille principal (Solde disponible) */}
+      {fundModal.open && fundModal.card && (() => {
+        const rechargeAmount = Number(fundAmount) || 0;
+        const rechargeCostXaf = Math.ceil(rechargeAmount * USD_XAF_RATE);
+        const insufficient = rechargeAmount >= 1 && walletBalance < rechargeCostXaf;
+        return (
+          <div className="npvc-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(e) => { if (e.target === e.currentTarget && !funding) closeFund(); }}>
+            <div className="npvc-confirm-dialog" style={{ maxWidth: "420px" }}>
+              <div className="npvc-confirm-icon is-info">
+                <Zap size={26} />
+              </div>
+              <h3>Recharger {fundModal.card.label}</h3>
+              <form className="npvc-freeze-form" onSubmit={handleConfirmRecharge} style={{ width: "100%" }}>
+                <p>Transférez des fonds de votre <strong>portefeuille principal</strong> vers cette carte. Taux : 1 USD = {USD_XAF_RATE} FCFA.</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f1f5f9", borderRadius: "10px", marginBottom: "12px", fontSize: "13px" }}>
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>Solde disponible</span>
+                  <strong style={{ color: "#0f172a" }}>{walletBalance.toLocaleString("fr-FR")} FCFA</strong>
+                </div>
+                <label className="npvc-freeze-field">
+                  <span>Montant en USD ($)</span>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="number" min="1" max="1000" step="1" className="np-text-input"
+                      style={{ width: "100%", paddingLeft: "28px", fontWeight: 700 }}
+                      value={fundAmount} onChange={(e) => setFundAmount(e.target.value)} placeholder="10"
+                    />
+                    <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 700 }}>$</span>
+                  </div>
+                </label>
+                <small style={{ display: "block", margin: "-6px 0 10px", color: insufficient ? "#dc2626" : "#64748b", fontSize: "11px" }}>
+                  Débité du portefeuille : <strong>{rechargeCostXaf.toLocaleString("fr-FR")} FCFA</strong>
+                  {insufficient && " — solde insuffisant"}
+                </small>
+                <div className="npvc-confirm-actions">
+                  <button type="button" className="npvc-confirm-cancel" onClick={closeFund} disabled={funding}>{t("cancel")}</button>
+                  <button type="submit" className="npvc-confirm-btn is-unfreeze-action npvc-action-fund-btn" disabled={funding || rechargeAmount < 1 || insufficient}>
+                    {funding ? <RefreshCw size={15} className="spin" /> : <Zap size={15} />}
+                    <span>{funding ? "Recharge…" : "Recharger la carte"}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
+
+      <CreateDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onCreated={handleCreated}
+        walletBalance={walletBalance}
+        currentCount={cards.length}
+        profile={profile}
+      />
+    </div>
+  );
+}
+
+export default VirtualCardsSection;

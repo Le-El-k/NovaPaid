@@ -1,0 +1,2498 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NovaPaid — Cartes Virtuelles USD, Paiements Mondiaux &amp; Avis Clients Certifiés</title>
+  <meta name="description" content="Plateforme leader en Afrique francophone : cartes virtuelles Visa/Mastercard en USD sans blocage pour Facebook Ads et ChatGPT, recharges TikTok et gaming en FCFA via Orange Money, MTN MoMo et Wave.">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" href="/novapaid-logo-96.png" type="image/png" sizes="96x96">
+  <link rel="apple-touch-icon" href="/novapaid-logo-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM EMBARQUÉ ET AUTONOME — GARANTI SANS ERREUR DE CHARGEMENT
+       ========================================================================== */
+    :root {
+      --np-primary: #1870eb;
+      --np-primary-dark: #1255b9;
+      --np-primary-light: #eff6ff;
+      --np-emerald: #10b981;
+      --np-emerald-dark: #059669;
+      --np-emerald-light: #ecfdf5;
+      --np-amber: #f59e0b;
+      --np-amber-light: #fef3c7;
+      --np-dark: #090d16;
+      --np-dark-surface: #0f172a;
+      --np-dark-border: #1e293b;
+      --np-text-main: #0f172a;
+      --np-text-muted: #64748b;
+      --np-text-body: #334155;
+      --np-border: #e2e8f0;
+      --np-border-strong: #cbd5e1;
+      --np-radius-sm: 8px;
+      --np-radius-md: 12px;
+      --np-radius-lg: 16px;
+      --np-radius-xl: 22px;
+      --np-radius-full: 9999px;
+      --np-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
+      --np-shadow-md: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+      --np-shadow-lg: 0 20px 48px -12px rgba(15, 23, 42, 0.12);
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      overflow-x: hidden;
+      background-color: #ffffff;
+      color: var(--np-text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    .np-landing-wrapper {
+      width: 100%;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .np-landing-container {
+      width: 100% !important;
+      max-width: 1280px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      padding-left: 24px !important;
+      padding-right: 24px !important;
+      box-sizing: border-box !important;
+    }
+
+    @media (max-width: 768px) {
+      .np-landing-container {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+      }
+    }
+
+    /* 1. NAVBAR (MAX-WIDTH 1280px IDENTIQUE AU RESTE DU SITE) */
+    .np-landing-navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--np-border);
+      height: 72px;
+      width: 100%;
+      display: block;
+    }
+
+    @media (max-width: 640px) {
+      .np-landing-navbar {
+        height: 62px;
+      }
+    }
+
+    .np-landing-nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      height: 72px;
+    }
+
+    @media (max-width: 640px) {
+      .np-landing-nav-inner {
+        height: 62px;
+      }
+    }
+
+    .np-landing-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .np-landing-logo-box {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--np-radius-md);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(24, 112, 235, 0.18);
+      background: #ffffff;
+    }
+
+    @media (max-width: 640px) {
+      .np-landing-logo-box {
+        width: 36px;
+        height: 36px;
+      }
+    }
+
+    .np-landing-real-logo {
+      width: 38px;
+      height: 38px;
+      object-fit: contain;
+    }
+
+    @media (max-width: 640px) {
+      .np-landing-real-logo {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
+    .np-landing-brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .np-landing-brand-text strong {
+      font-size: 19px;
+      font-weight: 850;
+      color: var(--np-text-main);
+      letter-spacing: -0.5px;
+      line-height: 1.15;
+    }
+
+    @media (max-width: 640px) {
+      .np-landing-brand-text strong {
+        font-size: 17px;
+      }
+    }
+
+    .np-landing-brand-text strong span {
+      color: var(--np-primary);
+    }
+
+    .np-landing-brand-text small {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--np-text-muted);
+    }
+
+    @media (max-width: 480px) {
+      .np-landing-brand-text small {
+        display: none;
+      }
+    }
+
+    .np-landing-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    @media (max-width: 880px) {
+      .np-landing-nav-links {
+        display: none;
+      }
+    }
+
+    .np-landing-nav-links a {
+      text-decoration: none;
+      color: #334155;
+      font-size: 13.5px;
+      font-weight: 650;
+      transition: color 0.15s ease;
+    }
+
+    .np-landing-nav-links a:hover {
+      color: var(--np-primary);
+    }
+
+    .np-landing-nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* BOUTON MENU MOBILE (Conforme Image 8) */
+    .np-mobile-menu-btn {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 15px;
+      border-radius: var(--np-radius-md);
+      border: 1.5px solid var(--np-border);
+      background: #ffffff;
+      color: var(--np-text-main);
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: 0.8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .np-mobile-menu-btn:hover,
+    .np-mobile-menu-btn.open {
+      background: #f8fafc;
+      border-color: var(--np-border-strong);
+    }
+
+    .np-menu-bars {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      width: 16px;
+      height: 12px;
+    }
+
+    .np-menu-bars .bar {
+      display: block;
+      width: 100%;
+      height: 2px;
+      background: var(--np-text-main);
+      border-radius: 2px;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .np-mobile-menu-btn.open .np-menu-bars .bar:first-child {
+      transform: translateY(3px) rotate(45deg);
+    }
+
+    .np-mobile-menu-btn.open .np-menu-bars .bar:last-child {
+      transform: translateY(-3px) rotate(-45deg);
+    }
+
+    /* TIROIR DÉROULANT MOBILE (Conforme Image 9) */
+    .np-mobile-drawer {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 2px solid var(--np-border);
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+      padding: 16px 20px 24px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      animation: npSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 99;
+    }
+
+    @keyframes npSlideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .np-mobile-drawer.open {
+      display: flex !important;
+    }
+
+    .np-mobile-drawer-links {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .np-mobile-drawer-links a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--np-radius-md);
+      color: #1e293b;
+      font-size: 15px;
+      font-weight: 750;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .np-mobile-drawer-links a:hover,
+    .np-mobile-drawer-links a:active {
+      background: #f1f5f9;
+      color: var(--np-primary);
+    }
+
+    .np-mobile-drawer-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 14px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .np-mobile-login-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: var(--np-radius-md);
+      border: 1.5px solid var(--np-border);
+      background: #ffffff;
+      color: var(--np-text-main);
+      font-size: 14px;
+      font-weight: 750;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .np-mobile-login-btn:hover {
+      background: #f8fafc;
+    }
+
+    .np-mobile-register-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px;
+      border-radius: var(--np-radius-md);
+      border: 0;
+      background: var(--np-primary);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(24, 112, 235, 0.28);
+      transition: all 0.15s;
+    }
+
+    .np-mobile-register-btn:hover {
+      background: var(--np-primary-dark);
+    }
+
+    .np-mobile-scrim {
+      position: fixed;
+      inset: 72px 0 0 0;
+      background: rgba(9, 13, 22, 0.35);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      z-index: 98;
+    }
+
+    @media (max-width: 640px) {
+      .np-mobile-scrim {
+        inset: 62px 0 0 0;
+      }
+    }
+
+    /* RÈGLES RESPONSIVE HEADER : BOUTON 'MENU ═' SUR MOBILE/TABLETTE */
+    @media (max-width: 880px) {
+      .np-landing-nav-links {
+        display: none !important;
+      }
+      .np-landing-nav-actions {
+        display: none !important;
+      }
+      .np-mobile-menu-btn {
+        display: inline-flex !important;
+      }
+      .np-landing-nav-inner {
+        justify-content: space-between !important;
+      }
+    }
+
+    .np-landing-login-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: var(--np-radius-md);
+      border: 1px solid var(--np-border);
+      background: #ffffff;
+      color: var(--np-text-body);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .np-landing-login-btn:hover {
+      background: #f8fafc;
+      color: var(--np-text-main);
+      border-color: var(--np-border-strong);
+    }
+
+    @media (max-width: 480px) {
+      .np-landing-login-btn {
+        padding: 7px 12px;
+        font-size: 11.5px;
+      }
+    }
+
+    .np-landing-cta-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: var(--np-radius-md);
+      border: 0;
+      background: var(--np-primary);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+      box-shadow: 0 4px 14px rgba(24, 112, 235, 0.25);
+      white-space: nowrap;
+    }
+
+    .np-landing-cta-primary:hover {
+      background: var(--np-primary-dark);
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 480px) {
+      .np-landing-cta-primary {
+        padding: 8px 14px;
+        font-size: 12px;
+      }
+    }
+
+    .np-landing-cta-primary.full {
+      width: 100%;
+      padding: 14px;
+      font-size: 14px;
+    }
+
+    /* 2. HERO SECTION */
+    .np-landing-hero {
+      padding: 60px 0 68px;
+      background: radial-gradient(circle at 85% 15%, rgba(24, 112, 235, 0.06) 0%, transparent 60%),
+                  radial-gradient(circle at 10% 75%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                  #ffffff;
+      position: relative;
+    }
+
+    @media (max-width: 768px) {
+      .np-landing-hero {
+        padding: 32px 0 40px;
+      }
+    }
+
+    .np-landing-hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 52px;
+      align-items: center;
+    }
+
+    @media (max-width: 960px) {
+      .np-landing-hero-grid {
+        grid-template-columns: 1fr;
+        gap: 36px;
+      }
+    }
+
+    .np-landing-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--np-radius-full);
+      font-size: 12px;
+      font-weight: 750;
+      margin-bottom: 18px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    @media (max-width: 480px) {
+      .np-landing-hero-badge {
+        font-size: 11px;
+        padding: 5px 12px;
+      }
+    }
+
+    .np-landing-hero-title {
+      font-size: clamp(28px, 4.4vw, 52px);
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      color: var(--np-text-main);
+      margin: 0 0 18px;
+    }
+
+    .np-landing-hero-title span {
+      color: var(--np-primary);
+      background: linear-gradient(135deg, #1870eb, #059669);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .np-landing-hero-subtitle {
+      font-size: 16.5px;
+      line-height: 1.65;
+      color: #475569;
+      max-width: 580px;
+      margin: 0 0 32px;
+    }
+
+    @media (max-width: 480px) {
+      .np-landing-hero-subtitle {
+        font-size: 14px;
+        line-height: 1.55;
+        margin-bottom: 24px;
+      }
+    }
+
+    .np-landing-hero-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 640px) {
+      .np-landing-hero-buttons {
+        flex-direction: column;
+        width: 100%;
+        margin-bottom: 28px;
+        gap: 10px;
+      }
+    }
+
+    .np-landing-btn-hero {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 13.5px 22px;
+      border-radius: var(--np-radius-lg);
+      font-size: 14.5px;
+      font-weight: 750;
+      cursor: pointer;
+      text-decoration: none;
+      font-family: inherit;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    @media (max-width: 640px) {
+      .np-landing-btn-hero {
+        width: 100%;
+        padding: 13px 18px;
+      }
+    }
+
+    .np-landing-btn-hero.primary {
+      background: var(--np-primary);
+      color: #ffffff;
+      box-shadow: 0 8px 22px rgba(24, 112, 235, 0.28);
+    }
+
+    .np-landing-btn-hero.primary:hover {
+      background: var(--np-primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .np-landing-btn-hero.secondary {
+      background: #ffffff;
+      color: var(--np-text-main);
+      border: 1px solid var(--np-border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .np-landing-btn-hero.secondary:hover {
+      background: #f8fafc;
+      border-color: var(--np-border-strong);
+    }
+
+    /* Baromètre de confiance */
+    .np-landing-trust-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      padding-top: 24px;
+      border-top: 1px solid var(--np-border);
+    }
+
+    @media (max-width: 768px) {
+      .np-landing-trust-bar {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px 10px;
+        padding-top: 20px;
+      }
+    }
+
+    .np-trust-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .np-trust-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .np-trust-icon.star { background: #fef3c7; color: #d97706; }
+    .np-trust-icon.zap { background: #dbeafe; color: #2563eb; }
+    .np-trust-icon.shield { background: #dcfce7; color: #16a34a; }
+    .np-trust-icon.phone { background: #f3e8ff; color: #9333ea; }
+
+    .np-trust-item strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 850;
+      color: var(--np-text-main);
+      line-height: 1.15;
+    }
+
+    .np-trust-item small {
+      font-size: 11px;
+      color: var(--np-text-muted);
+    }
+
+    /* Carte 3D Hero */
+    .np-landing-hero-visual {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .np-hero-card-glow {
+      position: absolute;
+      inset: -15px;
+      background: radial-gradient(circle, rgba(24, 112, 235, 0.22) 0%, rgba(16, 185, 129, 0.08) 60%, transparent 80%);
+      filter: blur(40px);
+      pointer-events: none;
+    }
+
+    .np-hero-card-3d {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 480px) {
+      .np-hero-card-3d {
+        max-width: 320px;
+      }
+    }
+
+    .np-hero-card-face {
+      background: linear-gradient(135deg, #091124 0%, #112347 50%, #0d1e3a 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--np-radius-xl);
+      padding: 28px 24px;
+      color: #ffffff;
+      box-shadow: 0 20px 50px rgba(9, 17, 36, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    @media (max-width: 480px) {
+      .np-hero-card-face {
+        padding: 20px 18px;
+        border-radius: var(--np-radius-lg);
+      }
+    }
+
+    .np-hero-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 26px;
+    }
+
+    .np-hero-card-chip-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .np-card-gold-chip {
+      width: 42px;
+      height: 30px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, #eab308, #ca8a04);
+      border: 1px solid #fef08a;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+    }
+
+    .np-card-contactless-waves {
+      display: flex;
+      gap: 3px;
+    }
+
+    .np-card-contactless-waves span {
+      width: 2.5px;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.45);
+      border-radius: 2px;
+    }
+
+    .np-hero-card-network {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .np-hero-card-number {
+      font-family: "SF Mono", Menlo, Consolas, Monaco, monospace;
+      font-size: 19px;
+      letter-spacing: 2.8px;
+      color: rgba(255, 255, 255, 0.95);
+      margin-bottom: 26px;
+    }
+
+    @media (max-width: 480px) {
+      .np-hero-card-number {
+        font-size: 15px;
+        letter-spacing: 2px;
+        margin-bottom: 20px;
+      }
+    }
+
+    .np-hero-card-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .np-hero-card-details small {
+      display: block;
+      font-size: 8.5px;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .np-hero-card-details strong {
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .np-hero-operators-dock {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .np-op-pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #ffffff;
+      border: 1px solid var(--np-border);
+      border-radius: var(--np-radius-full);
+      padding: 7px 14px;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: var(--np-text-main);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      transition: all 0.15s;
+    }
+
+    .np-op-pill-badge:hover {
+      border-color: var(--np-border-strong);
+      transform: translateY(-1px);
+    }
+
+    .np-operator-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .np-operator-dot.orange { background: #f97316; }
+    .np-operator-dot.yellow { background: #eab308; }
+    .np-operator-dot.cyan { background: #06b6d4; }
+
+    /* 3. TICKER LIVE */
+    .np-ticker-wrap {
+      background: var(--np-dark);
+      color: #cbd5e1;
+      padding: 12px 0;
+      border-top: 1px solid var(--np-dark-border);
+      border-bottom: 1px solid var(--np-dark-border);
+      font-size: 12.5px;
+    }
+
+    .np-ticker-inner {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .np-ticker-inner::-webkit-scrollbar { display: none; }
+
+    .np-pulse-live {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: npPulseRing 1.8s infinite cubic-bezier(0.66, 0, 0, 1);
+    }
+
+    @keyframes npPulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* 4. SECTIONS COMMUNES */
+    .np-landing-section {
+      padding: 68px 0;
+    }
+
+    @media (max-width: 768px) {
+      .np-landing-section {
+        padding: 44px 0;
+      }
+    }
+
+    .np-landing-section.alt-bg {
+      background: #f8fafc;
+    }
+
+    .np-section-header {
+      margin-bottom: 36px;
+    }
+
+    .np-section-header.center {
+      text-align: center;
+    }
+
+    .np-section-header.center p {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .np-section-kicker {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 1.5px;
+      color: var(--np-primary);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .np-section-header h2 {
+      font-size: clamp(24px, 3.2vw, 36px);
+      font-weight: 850;
+      letter-spacing: -0.8px;
+      color: var(--np-text-main);
+      margin: 0 0 10px;
+    }
+
+    .np-section-header p {
+      font-size: 15px;
+      color: var(--np-text-muted);
+      max-width: 620px;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    /* 5. AVIS CLIENTS ALLÉGÉS & SPOTLIGHT */
+    .np-reviews-header-compact {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+      .np-reviews-header-compact {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+    }
+
+    .np-reviews-header-titles h2 {
+      font-size: clamp(24px, 3.2vw, 34px);
+      font-weight: 850;
+      letter-spacing: -0.8px;
+      color: var(--np-text-main);
+      margin: 0 0 8px;
+    }
+
+    .np-reputation-compact-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid var(--np-border);
+      padding: 6px 16px;
+      border-radius: var(--np-radius-full);
+      font-size: 12.5px;
+      font-weight: 750;
+      color: #334155;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+    }
+
+    .np-pill-group-score {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .np-score-num {
+      white-space: nowrap;
+      color: var(--np-text-main);
+    }
+
+    .np-pill-count {
+      white-space: nowrap;
+      color: #475569;
+    }
+
+    .np-pill-badge {
+      color: var(--np-emerald-dark);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .np-pill-sep {
+      color: #cbd5e1;
+      font-weight: 400;
+    }
+
+    @media (max-width: 640px) {
+      .np-reputation-compact-pill {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        padding: 9px 14px;
+        gap: 6px 14px;
+        border-radius: var(--np-radius-lg);
+        font-size: 11.5px;
+        background: #ffffff;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+      }
+      .np-pill-sep {
+        display: none;
+      }
+    }
+
+    .np-reputation-compact-pill .gold-stars {
+      color: var(--np-amber);
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+
+    .np-reviews-filter-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      margin-bottom: 22px;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .np-reviews-filter-bar::-webkit-scrollbar { display: none; }
+
+    /* SUPPRESSION DE LA BARRE DE FILTRE SUR MOBILE (Image 10) */
+    @media (max-width: 768px) {
+      .np-reviews-filter-bar {
+        display: none !important;
+      }
+    }
+
+    .np-filter-btn {
+      padding: 7px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 750;
+      border: 1px solid var(--np-border);
+      background: #ffffff;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .np-filter-btn.active, .np-filter-btn:hover {
+      background: var(--np-text-main);
+      color: #ffffff;
+      border-color: var(--np-text-main);
+    }
+
+    .np-reviews-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 960px) {
+      .np-reviews-grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .np-reviews-grid-3 {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+    }
+
+    .np-review-card-item {
+      background: #ffffff;
+      border: 1px solid var(--np-border);
+      border-radius: var(--np-radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: var(--np-shadow-sm);
+      transition: all 0.15s;
+    }
+
+    .np-review-card-item:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--np-shadow-md);
+      border-color: var(--np-border-strong);
+    }
+
+    .np-review-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .np-stars-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      color: var(--np-amber);
+      font-size: 13px;
+    }
+
+    .np-verified-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 750;
+      color: var(--np-emerald-dark);
+      background: var(--np-emerald-light);
+      padding: 3px 8px;
+      border-radius: var(--np-radius-sm);
+      border: 1px solid #a7f3d0;
+    }
+
+    .np-review-text {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: #334155;
+      font-style: italic;
+      margin: 0 0 16px;
+    }
+
+    .np-review-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid #f1f5f9;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .np-review-author-wrap {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .np-review-avatar-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1870eb, #059669);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 11.5px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .np-review-author-info strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--np-text-main);
+      line-height: 1.15;
+    }
+
+    .np-review-author-info small {
+      display: block;
+      font-size: 10.5px;
+      color: var(--np-text-muted);
+    }
+
+    .np-tag-chip {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 700;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid var(--np-border);
+    }
+
+    .np-see-more-reviews-wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: 24px;
+    }
+
+    .np-see-more-reviews-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      border-radius: var(--np-radius-full);
+      border: 1px solid var(--np-border);
+      background: #ffffff;
+      color: #334155;
+      font-size: 12.5px;
+      font-weight: 750;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+    }
+
+    .np-see-more-reviews-btn:hover {
+      background: #f8fafc;
+      color: var(--np-primary);
+      border-color: #cbd5e1;
+    }
+
+    /* 6. VALEUR CONCRÈTE — BENTO GRID MODERNE */
+    .np-bento-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .np-bento-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+    }
+
+    @media (max-width: 580px) {
+      .np-bento-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+    }
+
+    .np-bento-card {
+      background: #ffffff;
+      border: 1px solid var(--np-border);
+      border-radius: var(--np-radius-xl);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: var(--np-shadow-sm);
+      transition: all 0.15s;
+    }
+
+    .np-bento-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--np-shadow-md);
+      border-color: var(--np-border-strong);
+    }
+
+    .np-bento-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .np-bento-icon-box {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--np-radius-md);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .np-bento-icon-box.blue { background: #eff6ff; color: #2563eb; }
+    .np-bento-icon-box.purple { background: #faf5ff; color: #9333ea; }
+    .np-bento-icon-box.amber { background: #fef3c7; color: #d97706; }
+    .np-bento-icon-box.emerald { background: #ecfdf5; color: #059669; }
+
+    .np-bento-stat {
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--np-text-main);
+      background: #f8fafc;
+      padding: 4px 10px;
+      border-radius: var(--np-radius-full);
+      border: 1px solid var(--np-border);
+      letter-spacing: -0.5px;
+    }
+
+    .np-bento-stat.emerald {
+      color: var(--np-emerald-dark);
+      background: var(--np-emerald-light);
+      border-color: #a7f3d0;
+    }
+
+    .np-bento-title {
+      font-size: 16px;
+      font-weight: 850;
+      color: var(--np-text-main);
+      margin: 0 0 6px;
+      line-height: 1.25;
+    }
+
+    .np-bento-text {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #475569;
+      margin: 0 0 16px;
+    }
+
+    .np-bento-pill {
+      align-self: flex-start;
+      font-size: 10.5px;
+      font-weight: 750;
+      color: #059669;
+      background: #ecfdf5;
+      padding: 3px 8px;
+      border-radius: 5px;
+      border: 1px solid #d1fae5;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 7. FAQ ACCORDÉON — REPLI GARANTI */
+    .np-faq-accordion-landing {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .np-faq-row-item {
+      background: #ffffff;
+      border: 1px solid var(--np-border);
+      border-radius: var(--np-radius-lg);
+      overflow: hidden;
+      transition: all 0.15s;
+    }
+
+    .np-faq-row-item.open {
+      border-color: var(--np-border-strong);
+      box-shadow: var(--np-shadow-sm);
+    }
+
+    .np-faq-row-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      text-align: left;
+      gap: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .np-faq-row-header {
+        padding: 16px 18px;
+      }
+    }
+
+    .np-faq-row-header strong {
+      font-size: 14.5px;
+      font-weight: 750;
+      color: var(--np-text-main);
+      line-height: 1.35;
+    }
+
+    @media (max-width: 480px) {
+      .np-faq-row-header strong {
+        font-size: 13.5px;
+      }
+    }
+
+    .np-faq-caret {
+      transition: transform 0.2s ease;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    .np-faq-caret.rotate {
+      transform: rotate(180deg);
+      color: var(--np-primary);
+    }
+
+    /* REPLIÉ PAR DÉFAUT */
+    .np-faq-row-body {
+      display: none !important;
+      padding: 0 22px 18px;
+    }
+
+    .np-faq-row-item.open .np-faq-row-body {
+      display: block !important;
+      animation: npFadeIn 0.2s ease-out;
+    }
+
+    .np-faq-row-body p {
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: #475569;
+    }
+
+    @keyframes npFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Bandeau WhatsApp */
+    .np-landing-whatsapp-cta {
+      background: linear-gradient(135deg, #091124 0%, #064e3b 100%);
+      border-radius: var(--np-radius-xl);
+      padding: 26px 32px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: 0 14px 32px rgba(6, 78, 59, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .np-landing-whatsapp-cta {
+        flex-direction: column;
+        text-align: center;
+        padding: 22px 20px;
+      }
+      .np-landing-whatsapp-cta > div {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+    }
+
+    .np-wa-icon-large {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #10b981;
+      color: #042f2e;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .np-landing-whatsapp-cta h3 {
+      font-size: 17px;
+      font-weight: 800;
+      margin: 0 0 3px;
+    }
+
+    .np-landing-whatsapp-cta p {
+      font-size: 12.5px;
+      color: #a7f3d0;
+      margin: 0;
+    }
+
+    .np-wa-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: var(--np-radius-md);
+      background: #10b981;
+      color: #042f2e;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+      transition: all 0.15s;
+    }
+
+    @media (max-width: 768px) {
+      .np-wa-btn {
+        width: 100%;
+      }
+    }
+
+    .np-wa-btn:hover {
+      background: #34d399;
+    }
+
+    /* 8. FOOTER */
+    .np-landing-footer {
+      background: var(--np-dark-surface);
+      color: #94a3b8;
+      padding: 56px 0 28px;
+      border-top: 1px solid var(--np-dark-border);
+    }
+
+    .np-footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 36px;
+      margin-bottom: 40px;
+    }
+
+    .np-footer-nav-row-mobile {
+      display: contents;
+    }
+
+    @media (max-width: 860px) {
+      .np-footer-top {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      .np-footer-col-about {
+        width: 100%;
+      }
+
+      /* RANGE SOLUTIONS ET ESPACE CLIENT SUR LA MÊME LIGNE EN FLEX */
+      .np-footer-nav-row-mobile {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        width: 100% !important;
+        gap: 24px !important;
+      }
+
+      .np-footer-nav-row-mobile .np-footer-nav-col {
+        flex: 1 !important;
+      }
+    }
+
+    .np-footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .np-footer-brand strong {
+      font-size: 19px;
+      color: #ffffff;
+      font-weight: 850;
+    }
+
+    .np-footer-brand strong span {
+      color: #38bdf8;
+    }
+
+    .np-footer-desc {
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #64748b;
+      max-width: 380px;
+      margin: 0 0 18px;
+    }
+
+    /* BADGES OPÉRATEURS SUR UNE SEULE ET MÊME LIGNE */
+    .np-footer-payments-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap !important;
+      white-space: nowrap !important;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 2px;
+    }
+
+    .np-footer-payments-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .np-footer-payments-row span {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 5px;
+      background: #1e293b;
+      color: #cbd5e1;
+      white-space: nowrap !important;
+      flex-shrink: 0;
+    }
+
+    .np-footer-nav-col h4 {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 0 0 14px;
+    }
+
+    .np-footer-nav-col ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .np-footer-nav-col a,
+    .np-footer-nav-col span {
+      font-size: 12.5px;
+      color: #94a3b8;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .np-footer-nav-col a:hover {
+      color: #ffffff;
+    }
+
+    .np-footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 24px;
+      border-top: 1px solid #1e293b;
+      font-size: 11.5px;
+      color: #64748b;
+    }
+
+    .np-footer-legal-links span {
+      color: #34d399;
+      font-weight: 750;
+    }
+
+    /* 9. MODALES — STRICTEMENT MASQUÉES PAR DÉFAUT */
+    .np-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 13, 22, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .np-modal-dialog {
+      background: #ffffff;
+      border-radius: var(--np-radius-xl);
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px 24px;
+      box-shadow: var(--np-shadow-lg);
+      position: relative;
+    }
+
+    @media (max-width: 480px) {
+      .np-modal-dialog {
+        padding: 22px 18px;
+        border-radius: var(--np-radius-lg);
+      }
+    }
+
+    .np-modal-close-btn {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 0;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 15px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .np-modal-close-btn:hover {
+      background: #e2e8f0;
+      color: var(--np-text-main);
+    }
+
+    .np-form-group {
+      margin-bottom: 12px;
+    }
+
+    .np-form-label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 750;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+
+    .np-form-input,
+    .np-form-select,
+    .np-form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--np-border);
+      border-radius: var(--np-radius-md);
+      font-size: 13px;
+      color: var(--np-text-main);
+      background: #ffffff;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+
+    .np-form-input:focus,
+    .np-form-select:focus,
+    .np-form-textarea:focus {
+      border-color: var(--np-primary);
+      box-shadow: 0 0 0 3px rgba(24, 112, 235, 0.1);
+    }
+
+    .np-form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 480px) {
+      .np-form-row-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .np-form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .np-form-btn-secondary {
+      padding: 9px 16px;
+      border-radius: var(--np-radius-md);
+      border: 1px solid var(--np-border);
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .np-form-btn-secondary:hover {
+      background: #f1f5f9;
+    }
+
+    .np-form-btn-primary {
+      padding: 9px 18px;
+      border-radius: var(--np-radius-md);
+      border: 0;
+      background: var(--np-primary);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(24, 112, 235, 0.25);
+    }
+
+    .np-form-btn-primary:hover {
+      background: var(--np-primary-dark);
+    }
+  </style>
+  <link rel="stylesheet" href="/platform-refresh.css">
+</head>
+<body class="np-landing-body">
+  <div class="np-landing-wrapper">
+    <!-- =========================================================
+         1. NAVBAR SANS AUCUN BOUTON ADMIN (STRICTEMENT PRIVÉ)
+         ========================================================= -->
+    <header class="np-landing-navbar">
+      <div class="np-landing-container np-landing-nav-inner">
+        <a href="/" class="np-landing-brand" aria-label="NovaPaid - Accueil">
+          <div class="np-landing-logo-box">
+            <img src="/novapaid-logo-96.png" alt="NovaPaid Logo Officiel" width="42" height="42" class="np-landing-real-logo">
+          </div>
+          <div class="np-landing-brand-text">
+            <strong>Nova<span>Paid</span></strong>
+          </div>
+        </a>
+
+        <!-- Navigation centrale fluide et élégante -->
+        <nav class="np-landing-nav-links" aria-label="Navigation principale">
+          <a href="#reviews">Avis Clients</a>
+          <a href="#solutions">Nos Solutions</a>
+          <a href="#faq">Questions Fréquentes</a>
+          <a href="https://wa.me/237682018364" target="_blank" rel="noopener noreferrer">Assistance 24/7</a>
+        </nav>
+
+        <div class="np-landing-nav-actions">
+          <a href="/login" class="np-landing-login-btn" style="text-decoration:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>Connexion</span>
+          </a>
+
+          <a href="/register" class="np-landing-cta-primary" style="text-decoration:none;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>Créer un compte</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+        </div>
+
+        <!-- Bouton MENU Mobile Épuré (Conforme Image 8) -->
+        <button type="button" class="np-mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu de navigation" aria-expanded="false">
+          <span>MENU</span>
+          <span class="np-menu-bars">
+            <span class="bar"></span>
+            <span class="bar"></span>
+          </span>
+        </button>
+      </div>
+
+      <!-- Menu Déroulant Mobile Élégant (Conforme Image 9) -->
+      <div id="np-mobile-menu-drawer" class="np-mobile-drawer" style="display: none;">
+        <nav class="np-mobile-drawer-links" aria-label="Navigation mobile">
+          <a href="#reviews" onclick="closeMobileMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span>Avis Clients</span>
+          </a>
+          <a href="#solutions" onclick="closeMobileMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+            <span>Nos Solutions</span>
+          </a>
+          <a href="#faq" onclick="closeMobileMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>Questions Fréquentes</span>
+          </a>
+          <a href="https://wa.me/237682018364" target="_blank" rel="noopener noreferrer" onclick="closeMobileMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            <span>Assistance 24/7</span>
+          </a>
+        </nav>
+
+        <div class="np-mobile-drawer-actions">
+          <a href="/login" class="np-mobile-login-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>Connexion</span>
+          </a>
+        </div>
+      </div>
+      <div id="np-mobile-nav-scrim" class="np-mobile-scrim" style="display: none;" onclick="closeMobileMenu()"></div>
+    </header>
+
+    <!-- =========================================================
+         2. HERO SECTION : CENTRÉE SUR LA PREUVE & L'UTILITÉ CONCRÈTE
+         ========================================================= -->
+    <section class="np-landing-hero">
+      <div class="np-landing-container np-landing-hero-grid">
+        <div class="np-landing-hero-content">
+          <div class="np-landing-hero-badge">
+            <span class="np-pulse-live"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <span>Certifié par +15 000 entrepreneurs et créateurs en Afrique</span>
+          </div>
+
+          <h1 class="np-landing-hero-title">
+            Payez partout dans le monde en FCFA. <span>Sans blocage bancaire</span>.
+          </h1>
+
+          <p class="np-landing-hero-subtitle">
+            Générez des cartes virtuelles Visa &amp; Mastercard en USD pour vos achats et publicités, rechargez vos forfaits digitaux et transférez des fonds instantanément de votre compte vers une autre carte ou vers d'autres utilisateurs. Le tout crédité en direct par <strong>Orange Money</strong>, <strong>MTN MoMo</strong> et <strong>Wave</strong>.
+          </p>
+
+          <div class="np-landing-hero-buttons">
+            <a href="/register" class="np-landing-btn-hero primary" style="text-decoration:none;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Créer un compte</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </a>
+
+            <a href="#reviews" class="np-landing-btn-hero secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>Lire les avis certifiés (4.9/5)</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Démonstrateur visuel : L'application NovaPaid vivante -->
+        <div class="np-landing-hero-visual">
+          <div class="np-hero-card-glow"></div>
+          <div class="np-hero-card-3d">
+            <div class="np-hero-card-face">
+              <!-- Ligne supérieure : Puce dorée + ondes sans contact à gauche, Réseau à droite -->
+              <div class="np-hero-card-top">
+                <div class="np-hero-card-chip-group">
+                  <div class="np-card-gold-chip"></div>
+                  <div class="np-card-contactless-waves">
+                    <span></span><span></span><span></span>
+                  </div>
+                </div>
+                <span class="np-hero-card-network">MASTERCARD</span>
+              </div>
+
+              <!-- Numéro masqué -->
+              <div class="np-hero-card-number">
+                <span>5412</span>
+                <span>••••</span>
+                <span>••••</span>
+                <span>8800</span>
+              </div>
+
+              <!-- Détails : Titulaire, Expiration, CVV, Solde USD -->
+              <div class="np-hero-card-details">
+                <div>
+                  <small>TITULAIRE</small>
+                  <strong>MEMBRE NOVAPAID</strong>
+                </div>
+                <div>
+                  <small>EXPIRATION</small>
+                  <strong>12/30</strong>
+                </div>
+                <div>
+                  <small>CVV</small>
+                  <strong style="letter-spacing:1px;">842</strong>
+                </div>
+                <div>
+                  <small>SOLDE USD</small>
+                  <strong style="color:#34d399;">$150.00</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="np-hero-operators-dock">
+              <span class="np-op-pill-badge"><span class="np-operator-dot orange"></span> Orange Money</span>
+              <span class="np-op-pill-badge"><span class="np-operator-dot yellow"></span> MTN MoMo</span>
+              <span class="np-op-pill-badge"><span class="np-operator-dot cyan"></span> Wave Money</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         3. TICKER EN DIRECT (FLUX D'ACTIVITÉ EN TEMPS RÉEL)
+         ========================================================= -->
+    <div class="np-ticker-wrap">
+      <div class="np-landing-container">
+        <div class="np-ticker-inner">
+          <span style="color:#10b981;font-weight:800;display:flex;align-items:center;gap:6px;">
+            <span class="np-pulse-live"></span> EN DIRECT :
+          </span>
+          <span>Il y a 2 min · <strong>Carte Mastercard USD</strong> émise pour Facebook Ads (Douala)</span>
+          <span style="color:#475569;">·</span>
+          <span>Il y a 5 min · <strong>1 400 Pièces TikTok</strong> livrées via Wave (Abidjan)</span>
+          <span style="color:#475569;">·</span>
+          <span>Il y a 9 min · <strong>ChatGPT Plus</strong> activé avec succès (Yaoundé)</span>
+          <span style="color:#475569;">·</span>
+          <span>Il y a 14 min · <strong>1 080 Diamants Free Fire</strong> crédités en 2 min (Dakar)</span>
+          <span style="color:#475569;">·</span>
+          <span>Il y a 19 min · <strong>Transfert vers carte &amp; utilisateurs</strong> à 0 FCFA validé (Libreville)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         4. SECTION AVIS CLIENTS VÉRIFIÉS — CONDENSÉE & PRESTIGIEUSE
+         ========================================================= -->
+    <section class="np-landing-section alt-bg" id="reviews">
+      <div class="np-landing-container">
+        <!-- En-tête compact unifié avec note certifiée et bouton d'avis -->
+        <div class="np-reviews-header-compact">
+          <div class="np-reviews-header-titles">
+            <span class="np-section-kicker">PREUVE SOCIALE &amp; AVIS VÉRIFIÉS</span>
+            <h2>Ce que disent nos utilisateurs</h2>
+            <div class="np-reviews-proof-strip">
+              <div class="np-reputation-compact-pill">
+                <span class="np-pill-group-score">
+                  <span class="gold-stars">★★★★★</span>
+                  <strong class="np-score-num">4.9 / 5</strong>
+                </span>
+                <span class="np-pill-sep">·</span>
+                <span class="np-pill-count">1 420+ avis certifiés</span>
+                <span class="np-pill-sep">·</span>
+                <span class="np-pill-badge">99.4% recommandent</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="np-landing-cta-primary" onclick="openReviewModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>+ Laisser mon avis</span>
+          </button>
+        </div>
+
+        <!-- Filtres par catégories compacts -->
+        <div class="np-reviews-filter-bar">
+          <button type="button" class="np-filter-btn active" onclick="filterReviews('all', this)">Tous les avis</button>
+          <button type="button" class="np-filter-btn" onclick="filterReviews('Carte', this)">Cartes &amp; Meta Ads</button>
+          <button type="button" class="np-filter-btn" onclick="filterReviews('TikTok', this)">TikTok &amp; Jeux</button>
+          <button type="button" class="np-filter-btn" onclick="filterReviews('Abonnements', this)">Abonnements &amp; P2P</button>
+        </div>
+
+        <!-- Grille d'avis vivante (3 avis spotlight par défaut) -->
+        <div id="reviews-container" class="np-reviews-grid-3">
+          <!-- Chargé dynamiquement via renderReviews() -->
+        </div>
+
+        <!-- Bouton élégant pour afficher plus d'avis sans alourdir la page -->
+        <div class="np-see-more-reviews-wrap">
+          <button type="button" id="toggle-more-reviews-btn" class="np-see-more-reviews-btn" onclick="toggleShowMoreReviews()">
+            <span>Afficher plus de témoignages (+3)</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         5. VALEUR CONCRÈTE — FORMAT BENTO SHOWCASE PERCUTANT
+         ========================================================= -->
+    <section class="np-landing-section" id="solutions">
+      <div class="np-landing-container">
+        <div class="np-section-header center" style="margin-bottom:32px;">
+          <span class="np-section-kicker">VALEUR CONCRÈTE</span>
+          <h2>4 solutions concrètes pour vos paiements</h2>
+          <p>Zéro démarche bancaire lourde. Vos opérations validées en moins de 2 minutes.</p>
+        </div>
+
+        <div class="np-bento-grid">
+          <!-- Bento 1 -->
+          <div class="np-bento-card">
+            <div>
+              <div class="np-bento-top">
+                <div class="np-bento-icon-box blue">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                </div>
+                <span class="np-bento-stat emerald">0 rejet</span>
+              </div>
+              <h3 class="np-bento-title">Publicités Meta &amp; Google</h3>
+              <p class="np-bento-text">Cartes Visa &amp; Mastercard USD prépayées avec 3D Secure pour vos campagnes sans blocage.</p>
+            </div>
+            <span class="np-bento-pill">✓ Recharge Orange &amp; MTN 30s</span>
+          </div>
+
+          <!-- Bento 2 -->
+          <div class="np-bento-card">
+            <div>
+              <div class="np-bento-top">
+                <div class="np-bento-icon-box purple">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                </div>
+                <span class="np-bento-stat">0 F/mois</span>
+              </div>
+              <h3 class="np-bento-title">Abonnements Mondiaux &amp; IA</h3>
+              <p class="np-bento-text">ChatGPT Plus, Netflix, Spotify et Canva Pro activés instantanément sans compte étranger.</p>
+            </div>
+            <span class="np-bento-pill">✓ CVV sécurisé immédiat</span>
+          </div>
+
+          <!-- Bento 3 -->
+          <div class="np-bento-card">
+            <div>
+              <div class="np-bento-top">
+                <div class="np-bento-icon-box amber">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path></svg>
+                </div>
+                <span class="np-bento-stat emerald">-35% coût</span>
+              </div>
+              <h3 class="np-bento-title">Pièces TikTok &amp; Gaming</h3>
+              <p class="np-bento-text">Forfaits TikTok officiels et recharges Free Fire / PUBG réglés directement par Mobile Money.</p>
+            </div>
+            <span class="np-bento-pill">✓ Livraison directe sur ID</span>
+          </div>
+
+          <!-- Bento 4 -->
+          <div class="np-bento-card">
+            <div>
+              <div class="np-bento-top">
+                <div class="np-bento-icon-box emerald">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                </div>
+                <span class="np-bento-stat emerald">0 FCFA</span>
+              </div>
+              <h3 class="np-bento-title">Transferts vers Cartes &amp; Utilisateurs</h3>
+              <p class="np-bento-text">Transférez des fonds en un instant de votre compte vers une autre carte ou vers d'autres utilisateurs.</p>
+            </div>
+            <span class="np-bento-pill">✓ Transferts instantanés en direct</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         7. FAQ & SUPPORT DIRECT WHATSAPP
+         ========================================================= -->
+    <section class="np-landing-section" id="faq">
+      <div class="np-landing-container">
+        <div class="np-section-header center">
+          <span class="np-section-kicker">AIDE &amp; ASSISTANCE</span>
+          <h2>Questions fréquemment posées</h2>
+          <p>Tout ce que vous devez savoir pour démarrer avec NovaPaid en toute sérénité.</p>
+        </div>
+
+        <div class="np-faq-accordion-landing" style="margin-bottom:36px;">
+          <div class="np-faq-row-item open">
+            <button type="button" class="np-faq-row-header" onclick="toggleFaq(this)">
+              <strong>Mes cartes Visa ou Mastercard NovaPaid fonctionnent-elles sur Facebook Ads et ChatGPT ?</strong>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="np-faq-caret rotate"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="np-faq-row-body">
+              <p>Oui, à 100%. Nos cartes virtuelles en USD sont équipées du protocole bancaire international 3D Secure actif. Elles passent sans aucun blocage sur Meta Ads (Facebook/Instagram), Google Ads, ChatGPT Plus, Canva Pro, Netflix, Spotify, Amazon et Alibaba.</p>
+            </div>
+          </div>
+
+          <div class="np-faq-row-item">
+            <button type="button" class="np-faq-row-header" onclick="toggleFaq(this)">
+              <strong>Comment s'effectue le rechargement de ma carte ou de mon compte ?</strong>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="np-faq-caret"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="np-faq-row-body">
+              <p>Vous réglez directement par Mobile Money depuis votre téléphone : Orange Money, MTN MoMo ou Wave. Le débit est instantané et votre solde en USD ou FCFA est crédité en moins de 30 secondes.</p>
+            </div>
+          </div>
+
+          <div class="np-faq-row-item">
+            <button type="button" class="np-faq-row-header" onclick="toggleFaq(this)">
+              <strong>Comment transférer des fonds vers une autre carte ou un autre utilisateur ?</strong>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="np-faq-caret"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="np-faq-row-body">
+              <p>Depuis votre compte NovaPaid, vous pouvez transférer instantanément vos fonds vers une autre carte ou vers d'autres utilisateurs via leur identifiant ou numéro, sans aucun frais de commission (0 FCFA).</p>
+            </div>
+          </div>
+
+          <div class="np-faq-row-item">
+            <button type="button" class="np-faq-row-header" onclick="toggleFaq(this)">
+              <strong>Comment joindre l'assistance si j'ai un doute lors de ma commande ?</strong>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="np-faq-caret"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="np-faq-row-body">
+              <p>Notre service client humain est disponible 24h/24 et 7j/7 directement sur WhatsApp. Vous échangez avec un conseiller qui valide vos transactions en temps réel.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bandeau WhatsApp Concierge -->
+        <div class="np-landing-whatsapp-cta">
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div class="np-wa-icon-large">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            </div>
+            <div>
+              <h3>Besoin d'une assistance en direct ?</h3>
+              <p>Notre équipe est à votre écoute 24h/24 et 7j/7 directement sur WhatsApp.</p>
+            </div>
+          </div>
+          <a href="https://wa.me/237682018364?text=Bonjour%20NovaPaid,%20je%20souhaite%20des%20informations%20sur%20vos%20services." target="_blank" rel="noopener noreferrer" class="np-wa-btn">
+            <span>Échanger sur WhatsApp</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- =========================================================
+       9. MODAL : LAISSER UN AVIS CLIENT VÉRIFIÉ (MASQUÉE PAR DÉFAUT)
+       ========================================================= -->
+  <div id="review-modal" class="np-modal-backdrop" style="display: none;" onclick="closeReviewModalOnBackdrop(event)">
+    <div class="np-modal-dialog">
+      <button type="button" class="np-modal-close-btn" onclick="closeReviewModal()">✕</button>
+
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#fef3c7;color:#d97706;display:grid;place-items:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#d97706" stroke="#d97706" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div>
+          <h3 style="font-size:18px;font-weight:850;color:#0f172a;margin:0 0 4px 0;">Partager votre retour d'expérience</h3>
+          <p style="font-size:12px;color:#64748b;margin:0;">Votre témoignage aide les entrepreneurs de la communauté.</p>
+        </div>
+      </div>
+
+      <div id="review-success-alert" style="display:none;padding:16px;border-radius:12px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;font-size:13px;font-weight:750;text-align:center;margin-bottom:18px;">
+        ✓ Merci ! Votre avis a été enregistré et publié avec succès.
+      </div>
+
+      <form id="new-review-form" onsubmit="submitNewReview(event)">
+        <div class="np-form-row-2">
+          <div class="np-form-group">
+            <label class="np-form-label" for="rev-name">Votre nom / prénom</label>
+            <input type="text" id="rev-name" required placeholder="Ex: Patrice K." class="np-form-input">
+          </div>
+          <div class="np-form-group">
+            <label class="np-form-label" for="rev-location">Ville &amp; Pays</label>
+            <input type="text" id="rev-location" required placeholder="Ex: Douala, Cameroun" value="Douala, Cameroun" class="np-form-input">
+          </div>
+        </div>
+
+        <div class="np-form-row-2">
+          <div class="np-form-group">
+            <label class="np-form-label" for="rev-rating">Note globale</label>
+            <select id="rev-rating" class="np-form-select">
+              <option value="5">★★★★★ (5/5 Exceptionnel)</option>
+              <option value="4">★★★★☆ (4/5 Très bon)</option>
+              <option value="3">★★★☆☆ (3/5 Bon)</option>
+            </select>
+          </div>
+          <div class="np-form-group">
+            <label class="np-form-label" for="rev-service">Service utilisé</label>
+            <select id="rev-service" class="np-form-select">
+              <option value="Carte Mastercard USD">Carte Mastercard USD</option>
+              <option value="Carte Visa USD">Carte Visa USD</option>
+              <option value="Pièces TikTok">Pièces TikTok</option>
+              <option value="Gaming Free Fire">Gaming Free Fire</option>
+              <option value="Transferts P2P">Transferts P2P</option>
+              <option value="Abonnements &amp; Logiciels">Abonnements &amp; Logiciels</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="np-form-group">
+          <label class="np-form-label" for="rev-text">Votre témoignage détaillé</label>
+          <textarea id="rev-text" required rows="3" placeholder="Expliquez comment NovaPaid vous a permis de régler vos paiements en ligne..." class="np-form-textarea"></textarea>
+        </div>
+
+        <div class="np-form-actions">
+          <button type="button" onclick="closeReviewModal()" class="np-form-btn-secondary">Annuler</button>
+          <button type="submit" id="rev-submit-btn" class="np-form-btn-primary">Publier mon avis</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT JAVASCRIPT DU SITE EN DIRECT -->
+  <script>
+    // 1. GESTION DES AVIS CLIENTS
+    let allReviews = [
+      {
+        id: 1,
+        authorName: "Yannick M.",
+        authorLocation: "Douala, Cameroun",
+        rating: 5,
+        serviceTag: "Carte Mastercard USD",
+        reviewText: "Fini les rejets sur Facebook Ads et Google Ads avec ma carte NovaPaid. Mes campagnes tournent 24h/24 sans suspension. Les recharges par Orange Money passent en 30 secondes chrono."
+      },
+      {
+        id: 2,
+        authorName: "Aminata Diop",
+        authorLocation: "Abidjan, Côte d'Ivoire",
+        rating: 5,
+        serviceTag: "Pièces TikTok",
+        reviewText: "Je recharge mes pièces TikTok chaque semaine pour mes lives et cadeaux. Le tarif en FCFA est nettement plus avantageux qu'en direct sur l'application, et le paiement Wave passe à la seconde."
+      },
+      {
+        id: 3,
+        authorName: "Christian Kamdem",
+        authorLocation: "Yaoundé, Cameroun",
+        rating: 5,
+        serviceTag: "Abonnements & Logiciels",
+        reviewText: "Abonnement ChatGPT Plus et Canva Pro activés sans aucune difficulté avec ma carte Visa NovaPaid. Le service client sur WhatsApp m'a guidé en moins de 2 minutes pour la première commande."
+      },
+      {
+        id: 4,
+        authorName: "Fatou Ndiaye",
+        authorLocation: "Dakar, Sénégal",
+        rating: 5,
+        serviceTag: "Transferts vers Cartes & Utilisateurs",
+        reviewText: "Transfert instantané envoyé à ma collègue à Abidjan directement sur son compte en quelques secondes. C'est fluide, rapide et transparent."
+      },
+      {
+        id: 5,
+        authorName: "Boris Ebolo",
+        authorLocation: "Douala, Cameroun",
+        rating: 5,
+        serviceTag: "Gaming Free Fire",
+        reviewText: "1 080 Diamants Free Fire livrés directement sur mon Player ID en 2 minutes chrono. Pas besoin de donner mon mot de passe de compte. Fiable à 100%."
+      },
+      {
+        id: 6,
+        authorName: "Grace Kouamé",
+        authorLocation: "Bouaké, Côte d'Ivoire",
+        rating: 5,
+        serviceTag: "E-Commerce & Amazon",
+        reviewText: "J'ai passé commande sur Alibaba et AliExpress avec ma Mastercard Premium. Aucun blocage bancaire, débit transparent avec relevé instantané sur mon téléphone."
+      }
+    ];
+
+    let showAllReviews = false;
+    let currentFilter = "all";
+
+    function renderReviews(filter = "all") {
+      currentFilter = filter;
+      const container = document.getElementById("reviews-container");
+      if (!container) return;
+
+      const filtered = allReviews.filter(r => {
+        if (filter === "all") return true;
+        return (r.serviceTag || "").toLowerCase().includes(filter.toLowerCase());
+      });
+
+      const isMobile = window.innerWidth <= 768;
+      const defaultCount = isMobile ? 2 : 3;
+
+      // 2 avis sur mobile, 3 sur desktop par défaut. Le reste s'affiche au clic.
+      const toShow = showAllReviews || (filter !== "all" && !isMobile) ? filtered : filtered.slice(0, defaultCount);
+
+      container.innerHTML = toShow.map(r => `
+        <article class="np-review-card-item">
+          <div>
+            <div class="np-review-card-top">
+              <div class="np-stars-row">
+                ${'★'.repeat(r.rating || 5)}${'☆'.repeat(5 - (r.rating || 5))}
+              </div>
+              <span class="np-verified-badge">✓ Vérifié</span>
+            </div>
+            <p class="np-review-text">
+              « ${escapeHtml(r.reviewText)} »
+            </p>
+          </div>
+
+          <div class="np-review-footer">
+            <div class="np-review-author-wrap">
+              <div class="np-review-avatar-circle">
+                ${escapeHtml(r.authorName.slice(0, 2).toUpperCase())}
+              </div>
+              <div class="np-review-author-info">
+                <strong>${escapeHtml(r.authorName)}</strong>
+                <small>${escapeHtml(r.authorLocation)}</small>
+              </div>
+            </div>
+            <span class="np-tag-chip">${escapeHtml(r.serviceTag)}</span>
+          </div>
+        </article>
+      `).join("");
+
+      const moreBtn = document.getElementById("toggle-more-reviews-btn");
+      if (moreBtn) {
+        if (filtered.length <= defaultCount) {
+          moreBtn.style.display = "none";
+        } else {
+          moreBtn.style.display = "inline-flex";
+          moreBtn.innerHTML = showAllReviews
+            ? '<span>Réduire les avis</span>'
+            : `<span>Afficher plus de témoignages (+${filtered.length - defaultCount})</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
+        }
+      }
+    }
+
+    // Réévaluation au redimensionnement
+    window.addEventListener('resize', () => {
+      renderReviews(currentFilter);
+    });
+
+    function toggleShowMoreReviews() {
+      showAllReviews = !showAllReviews;
+      renderReviews(currentFilter);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    function filterReviews(tag, btn) {
+      document.querySelectorAll('.np-filter-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderReviews(tag);
+    }
+
+    // Charger les avis depuis l'API backend
+    async function loadApiReviews() {
+      try {
+        const res = await fetch('/api/reviews');
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.reviews) && data.reviews.length > 0) {
+          allReviews = data.reviews;
+        }
+      } catch (err) {}
+      renderReviews();
+    }
+    loadApiReviews();
+
+    // Modale Laisser un avis
+    function openReviewModal() {
+      const modal = document.getElementById('review-modal');
+      modal.style.display = 'flex';
+      modal.classList.add('open');
+    }
+    function closeReviewModal() {
+      const modal = document.getElementById('review-modal');
+      modal.style.display = 'none';
+      modal.classList.remove('open');
+    }
+    function closeReviewModalOnBackdrop(e) {
+      if (e.target.id === 'review-modal') closeReviewModal();
+    }
+
+    async function submitNewReview(e) {
+      e.preventDefault();
+      const name = document.getElementById('rev-name').value;
+      const location = document.getElementById('rev-location').value;
+      const rating = parseInt(document.getElementById('rev-rating').value) || 5;
+      const service = document.getElementById('rev-service').value;
+      const text = document.getElementById('rev-text').value;
+
+      const submitBtn = document.getElementById('rev-submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Publication...";
+
+      try {
+        const res = await fetch('/api/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            authorName: name,
+            authorLocation: location,
+            rating: rating,
+            serviceTag: service,
+            reviewText: text
+          })
+        });
+        const data = await res.json();
+        if (data?.success) {
+          allReviews.unshift({
+            id: data.id || Date.now(),
+            authorName: name,
+            authorLocation: location,
+            rating: rating,
+            serviceTag: service,
+            reviewText: text
+          });
+          renderReviews();
+
+          document.getElementById('review-success-alert').style.display = 'block';
+          document.getElementById('new-review-form').reset();
+          setTimeout(() => {
+            document.getElementById('review-success-alert').style.display = 'none';
+            closeReviewModal();
+          }, 1800);
+        }
+      } catch (err) {
+        alert("Une erreur est survenue lors de l'enregistrement de votre avis.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Publier mon avis";
+      }
+    }
+
+    // 2. FAQ ACCORDÉON - REPLI ET DÉPLI INSTANTANÉ
+    function toggleFaq(btn) {
+      const row = btn.closest('.np-faq-row-item');
+      if (!row) return;
+      const isOpen = row.classList.contains('open');
+
+      // Fermer tous les éléments
+      document.querySelectorAll('.np-faq-row-item').forEach(r => {
+        r.classList.remove('open');
+        const c = r.querySelector('.np-faq-caret');
+        if (c) c.classList.remove('rotate');
+      });
+
+      // Si l'élément cliqué n'était PAS ouvert, on l'ouvre
+      if (!isOpen) {
+        row.classList.add('open');
+        const caret = row.querySelector('.np-faq-caret');
+        if (caret) caret.classList.add('rotate');
+      }
+    }
+
+    // 3. MENU MOBILE DÉROULANT (Images 8 & 9)
+    function toggleMobileMenu() {
+      const drawer = document.getElementById('np-mobile-menu-drawer');
+      const scrim = document.getElementById('np-mobile-nav-scrim');
+      const btn = document.querySelector('.np-mobile-menu-btn');
+      if (!drawer) return;
+      const isOpen = drawer.classList.contains('open');
+      if (isOpen) {
+        closeMobileMenu();
+      } else {
+        drawer.style.display = 'flex';
+        drawer.classList.add('open');
+        if (scrim) scrim.style.display = 'block';
+        if (btn) {
+          btn.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      }
+    }
+
+    function closeMobileMenu() {
+      const drawer = document.getElementById('np-mobile-menu-drawer');
+      const scrim = document.getElementById('np-mobile-nav-scrim');
+      const btn = document.querySelector('.np-mobile-menu-btn');
+      if (drawer) {
+        drawer.classList.remove('open');
+        drawer.style.display = 'none';
+      }
+      if (scrim) scrim.style.display = 'none';
+      if (btn) {
+        btn.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+  </script>
+</body>
+</html>

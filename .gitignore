@@ -33,6 +33,9 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.local
+.env.admin.local
+.env.geny.local
+.env.maplerad.local
 worker/.dev.vars*
 !worker/.dev.vars.example
 
@@ -52,3 +55,9 @@ skills-lock.json
 *.onnx
 *.wav
 *.m4a
+
+# Local runtime SQLite databases — contain real user data & password hashes. Never commit.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
