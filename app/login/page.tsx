@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [returnTo, setReturnTo] = useState("/boutique");
+  const [returnTo, setReturnTo] = useState("/dashboard");
   const [step, setStep] = useState<"credentials" | "code">("credentials");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [emailMasked, setEmailMasked] = useState("");

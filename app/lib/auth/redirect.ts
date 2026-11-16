@@ -24,18 +24,18 @@ const AUTH_RETURN_PATHS = new Set([
 export function resolveAuthRedirect(search: string): string {
   const requested = new URLSearchParams(search).get("redirect");
   if (!requested || !requested.startsWith("/") || requested.startsWith("//")) {
-    return "/boutique";
+    return "/dashboard";
   }
 
   try {
     const target = new URL(requested, "https://novapaid.invalid");
     const pathname = target.pathname.replace(/\/+$/, "") || "/";
     if (target.origin !== "https://novapaid.invalid" || !AUTH_RETURN_PATHS.has(pathname)) {
-      return "/boutique";
+      return "/dashboard";
     }
 
     return `${pathname}${target.search}${target.hash}`;
   } catch {
-    return "/boutique";
+    return "/dashboard";
   }
 }
