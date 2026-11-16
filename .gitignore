@@ -57,3 +57,6 @@ skills-lock.json
 *.db-shm
 *.db-wal
 *.sqlite
+
+# Généré à chaque build (vinext) : ne pas suivre, sinon git pull est bloqué sur le serveur.
+next-env.d.ts
