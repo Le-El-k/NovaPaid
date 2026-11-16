@@ -24388,3 +24388,206 @@ html[data-theme="dark"] .np-svc-unavailable-card p, html[data-theme="mixed"] .np
   .np-auth-page .np-text-input { font-size: 16px; min-height: 50px; }
   .np-auth-page .np-otp-input { font-size: 22px; letter-spacing: 8px; }
 }
+
+/* ============================================================
+   ADMIN — Mise en page unique (source de vérité)
+   Plusieurs couches plus haut (rail 74px, « dark pro » 220px, PrismCard 250px,
+   tiroir mobile) se contredisaient : menu large de 250px mais contenu décalé de
+   220px → contenu masqué sous le menu, logo dupliqué, tableaux coupés.
+   Ce bloc, placé en dernier, fixe la géométrie pour toutes les largeurs.
+   Les couleurs restent celles du thème PrismCard ci-dessus.
+   ============================================================ */
+.np-admin-app {
+  --np-admin-side: 250px;
+  display: block !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+/* Menu latéral : toujours libellés complets, jamais en « rail » d'icônes. */
+.np-admin-app .np-admin-sidebar {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  z-index: 220;
+  width: var(--np-admin-side) !important;
+  height: 100vh;
+  height: 100dvh;
+  padding: 16px 12px 12px !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transform: none;
+  visibility: visible;
+  pointer-events: auto;
+}
+.np-admin-app .np-admin-brand { justify-content: flex-start; margin: 0 0 10px; padding: 0 6px 14px; }
+.np-admin-app .np-admin-brand-copy { display: block; }
+.np-admin-app .np-admin-nav { flex: 1 1 auto; min-height: 0; flex-direction: column; overflow-x: hidden; overflow-y: auto; padding: 0 0 8px; }
+.np-admin-app .np-admin-nav-section-label { display: block !important; }
+.np-admin-app .np-admin-nav > button {
+  width: 100%;
+  min-height: 38px;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  margin: 0;
+  transform: none;
+}
+.np-admin-app .np-admin-nav > button > span:first-of-type,
+.np-admin-app .np-admin-nav > button > span:not(.np-admin-nav-count):not(.np-admin-nav-badge) {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.np-admin-app .np-admin-nav-count,
+.np-admin-app .np-admin-nav-badge {
+  position: static;
+  display: inline-flex;
+  margin-left: auto;
+}
+.np-admin-app .np-admin-sidebar-bottom { flex: 0 0 auto; flex-direction: column; align-items: stretch; }
+.np-admin-app .np-admin-sidebar-bottom > button,
+.np-admin-app .np-admin-sidebar-bottom > a,
+.np-admin-app .np-admin-back-client,
+.np-admin-app .np-admin-logout-btn {
+  width: 100% !important;
+  height: auto;
+  min-height: 38px;
+  justify-content: flex-start !important;
+}
+.np-admin-app .np-admin-sidebar-bottom span,
+.np-admin-app .np-admin-back-client span,
+.np-admin-app .np-admin-logout-btn span,
+.np-admin-app .np-admin-session-info > div { display: block; }
+.np-admin-app .np-admin-session-info { justify-content: flex-start; }
+
+/* Zone principale : toujours décalée exactement de la largeur du menu. */
+.np-admin-app .np-admin-main {
+  display: flex;
+  flex-direction: column;
+  width: auto !important;
+  min-width: 0;
+  min-height: 100vh;
+  margin-left: var(--np-admin-side) !important;
+}
+.np-admin-app .np-admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: auto;
+  min-height: 64px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 28px !important;
+}
+.np-admin-app .np-admin-menu-toggle,
+.np-admin-app .np-admin-top-brand,
+.np-admin-app .np-admin-sidebar-close,
+.np-admin-app .np-admin-mobile-scrim { display: none; }
+.np-admin-app .np-admin-top-actions { margin-left: auto; }
+.np-admin-app .np-admin-content {
+  width: 100%;
+  max-width: 1600px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 24px 28px 40px !important;
+}
+.np-admin-app .np-admin-content > * { min-width: 0; max-width: 100%; }
+
+/* Contenus larges : défilement horizontal dans leur cadre, jamais de la page. */
+.np-admin-app .np-admin-table-wrap,
+.np-admin-app .np-admin-fees-table-wrap { max-width: 100%; overflow-x: auto; }
+.np-admin-app .np-panel,
+.np-admin-app .np-admin-table-panel { min-width: 0; max-width: 100%; }
+.np-admin-app :is(.np-admin-fees-tabs, .np-admin-advanced-tabs, .np-admin-subtabs, [role="tablist"]) {
+  max-width: 100%;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: thin;
+}
+.np-admin-app :is(.np-admin-fees-tabs, .np-admin-advanced-tabs, .np-admin-subtabs, [role="tablist"]) > * { flex: 0 0 auto; }
+
+/* Tablette et mobile (< 1024px) : menu en tiroir, logo dans la barre du haut. */
+@media (max-width: 1023px) {
+  .np-admin-app .np-admin-sidebar {
+    width: min(290px, calc(100vw - 48px)) !important;
+    transform: translateX(-105%);
+    visibility: hidden;
+    pointer-events: none;
+    box-shadow: 18px 0 42px rgba(0, 0, 0, .35) !important;
+    transition: transform .22s ease, visibility .22s ease;
+  }
+  .np-admin-app .np-admin-sidebar.is-open { transform: translateX(0); visibility: visible; pointer-events: auto; }
+  .np-admin-app .np-admin-mobile-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 210;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgba(5, 9, 18, .55);
+    cursor: pointer;
+  }
+  .np-admin-app .np-admin-main { margin-left: 0 !important; }
+  .np-admin-app .np-admin-sidebar-close { width: 36px; height: 36px; display: grid; flex: 0 0 auto; place-items: center; margin-left: auto; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; color: #e5eaf7; background: rgba(255,255,255,.06); cursor: pointer; }
+  .np-admin-app .np-admin-menu-toggle {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 10px;
+    color: var(--prism-text-bright, #f0f6fc);
+    background: rgba(255, 255, 255, .06);
+    cursor: pointer;
+  }
+  .np-admin-app .np-admin-top-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .np-admin-app .np-admin-top-brand strong { color: var(--prism-text-bright, #f0f6fc); font-size: 15px; white-space: nowrap; }
+  .np-admin-app .np-admin-topbar { min-height: 60px; padding: 10px 16px !important; }
+  .np-admin-app .np-admin-content { padding: 18px 16px 32px !important; }
+  .np-admin-app .np-admin-page-title h1 { font-size: clamp(17px, 4.4vw, 22px); overflow-wrap: anywhere; }
+}
+@media (max-width: 520px) {
+  .np-admin-app .np-admin-topbar { gap: 8px; padding: 8px 12px !important; }
+  .np-admin-app .np-admin-top-actions .np-outline-button span { display: none; }
+  .np-admin-app .np-admin-content { padding: 14px 12px 28px !important; }
+  .np-admin-app .np-admin-kpi-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-admin-app .np-admin-sidebar { transition: none !important; }
+}
+
+/* Admin → Intégrations */
+.np-admin-integrations { display: grid; gap: 18px; }
+.np-admin-integrations-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.np-admin-integrations-head p { max-width: 720px; margin: 0; color: var(--prism-text-muted, #8b949e); font-size: 13px; line-height: 1.55; }
+.np-admin-integrations-head code { padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, .08); }
+.np-admin-integrations-msg { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; font-size: 13px; }
+.np-admin-integrations-msg.is-ok { color: #4ade80; background: rgba(74, 222, 128, .1); border: 1px solid rgba(74, 222, 128, .25); }
+.np-admin-integrations-msg.is-error { color: #f87171; background: rgba(239, 68, 68, .1); border: 1px solid rgba(239, 68, 68, .25); }
+.np-admin-integrations-empty { color: var(--prism-text-muted, #8b949e); }
+.np-admin-integrations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+.np-admin-integration-card { display: grid; gap: 16px; padding: 20px !important; }
+.np-admin-integration-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.np-admin-integration-card h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; color: var(--prism-text-bright, #f0f6fc); font-size: 16px; }
+.np-admin-integration-card header p { margin: 0; color: var(--prism-text-muted, #8b949e); font-size: 12px; line-height: 1.5; }
+.np-admin-integration-badge { flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; color: #8b949e; background: rgba(255, 255, 255, .06); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.np-admin-integration-badge.is-on { color: #4ade80; background: rgba(74, 222, 128, .12); }
+.np-admin-integration-fields { display: grid; gap: 12px; }
+.np-admin-integration-field { display: grid; gap: 6px; min-width: 0; }
+.np-admin-integration-field .np-form-label { display: flex; align-items: center; gap: 6px; margin: 0; }
+.np-admin-integration-tag { padding: 1px 6px; border-radius: 4px; color: #fbbf24; background: rgba(251, 191, 36, .12); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.np-admin-integration-tag.is-public { color: #60a5fa; background: rgba(96, 165, 250, .12); }
+.np-admin-integration-input { display: flex; gap: 8px; min-width: 0; }
+.np-admin-integration-input > :first-child { flex: 1 1 auto; min-width: 0; width: 100%; }
+.np-admin-integration-help { color: var(--prism-text-muted, #8b949e); font-size: 11px; line-height: 1.45; }
+.np-admin-integration-card > footer { display: flex; justify-content: flex-end; }

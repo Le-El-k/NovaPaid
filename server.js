@@ -5,37 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load runtime server secrets from local (git-ignored) env files so that keys
-// such as GENY_API_KEY are available via process.env without ever living in the
-// committed repository. Existing process.env values always win.
-function loadEnvFile(relativePath) {
-  try {
-    const full = path.join(__dirname, relativePath);
-    if (!fs.existsSync(full)) return;
-    const content = fs.readFileSync(full, "utf-8");
-    for (const rawLine of content.split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith("#")) continue;
-      const eq = line.indexOf("=");
-      if (eq < 1) continue;
-      const key = line.slice(0, eq).trim();
-      if (key in process.env) continue;
-      let value = line.slice(eq + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      process.env[key] = value;
-    }
-  } catch {
-    // Env file loading is best-effort; never block startup on it.
-  }
-}
-loadEnvFile(".env.geny.local");
-loadEnvFile(".env.admin.local");
-loadEnvFile(".env.maplerad.local");
-loadEnvFile(".env.soleaspay.local");
-loadEnvFile(".env.bkpay.local");
-loadEnvFile(".env.mailjet.local");
+// Aucune configuration n'est lue depuis des fichiers .env : les clés des
+// fournisseurs sont stockées en base (admin → Intégrations, app/lib/integrations.ts).
 
 const PORT = process.env.PORT || 3000;
 const CLIENT_DIST = path.join(__dirname, "dist", "client");
@@ -144,6 +115,8 @@ async function loadApiHandler(endpoint) {
       return await import("./api-routes/notifications/route.ts");
     case "platform-status":
       return await import("./api-routes/platform-status/route.ts");
+    case "public-config":
+      return await import("./api-routes/public-config/route.ts");
     case "shops":
       return await import("./api-routes/shops/route.ts");
     case "security":

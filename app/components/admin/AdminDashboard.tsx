@@ -14,6 +14,7 @@ import { AdminActivities } from "./AdminActivities";
 import { AdminMarketplace } from "./AdminMarketplace";
 import { AdminShops } from "./AdminShops";
 import { AdminSecurity } from "./AdminSecurity";
+import { AdminIntegrations } from "./AdminIntegrations";
 import { AdminCommunication } from "./AdminCommunication";
 import { AdminExtras } from "./AdminExtras";
 import AdminAnalytics from "./AdminAnalytics";
@@ -63,11 +64,12 @@ import {
   ShoppingBag,
   Send,
   Tag,
+  KeyRound,
 } from "lucide-react";
 
-type AdminTab = "overview" | "analytics" | "transactions" | "support" | "reviews" | "users" | "admins" | "approvals" | "kyc" | "cards" | "audit" | "settings" | "shop" | "resellers" | "announcements" | "ads" | "fees" | "revenue" | "advanced" | "activities" | "marketplace" | "user_shops" | "security" | "communication" | "extras";
+type AdminTab = "overview" | "analytics" | "transactions" | "support" | "reviews" | "users" | "admins" | "approvals" | "kyc" | "cards" | "audit" | "settings" | "shop" | "resellers" | "announcements" | "ads" | "fees" | "revenue" | "advanced" | "activities" | "marketplace" | "user_shops" | "security" | "communication" | "extras" | "integrations";
 
-const ADMIN_TABS: AdminTab[] = ["overview", "analytics", "transactions", "support", "reviews", "users", "admins", "approvals", "kyc", "cards", "audit", "settings", "shop", "resellers", "announcements", "ads", "fees", "revenue", "advanced", "activities", "marketplace", "user_shops", "security", "communication", "extras"];
+const ADMIN_TABS: AdminTab[] = ["overview", "analytics", "transactions", "support", "reviews", "users", "admins", "approvals", "kyc", "cards", "audit", "settings", "shop", "resellers", "announcements", "ads", "fees", "revenue", "advanced", "activities", "marketplace", "user_shops", "security", "communication", "extras", "integrations"];
 
 function readAdminTab(search: string): AdminTab {
   const requested = new URLSearchParams(search).get("section");
@@ -94,6 +96,10 @@ export default function AdminDashboard() {
   const wasMobileSidebarOpen = useRef(false);
   const [loading, setLoading] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  // Première installation : aucun admin n'a encore de mot de passe en base.
+  const [setupRequired, setSetupRequired] = useState(false);
+  const [setupName, setSetupName] = useState("");
+  const [setupConfirm, setSetupConfirm] = useState("");
   const [adminIdentity, setAdminIdentity] = useState<any>(null);
   const [adminEmailInput, setAdminEmailInput] = useState("");
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
@@ -241,6 +247,7 @@ export default function AdminDashboard() {
         if (!active) return;
         setAdminIdentity(data?.admin || null);
         setIsUnlocked(Boolean(data?.authenticated));
+        setSetupRequired(Boolean(data?.setupRequired));
       })
       .catch(() => {
         if (active) setIsUnlocked(false);
@@ -267,6 +274,37 @@ export default function AdminDashboard() {
         showNotification(t("adm_session_unlocked"));
       } else {
         setLoginError(data?.error || t("adm_invalid_credentials"));
+      }
+    } catch (error: any) {
+      setLoginError(error?.message || t("adm_admin_service_unavailable"));
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleAdminSetup = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoginError("");
+    if (adminPasswordInput.length < 12) { setLoginError("Le mot de passe doit contenir au moins 12 caractères."); return; }
+    if (adminPasswordInput !== setupConfirm) { setLoginError("Les deux mots de passe ne correspondent pas."); return; }
+    setAuthLoading(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setup", name: setupName.trim(), email: adminEmailInput.trim(), password: adminPasswordInput }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setSetupRequired(false);
+        setIsUnlocked(true);
+        setAdminIdentity(data.admin || null);
+        setAdminPasswordInput("");
+        setSetupConfirm("");
+        showNotification("Installation terminée : compte super administrateur créé.");
+      } else {
+        if (res.status === 409) setSetupRequired(false);
+        setLoginError(data?.error || t("adm_admin_service_unavailable"));
       }
     } catch (error: any) {
       setLoginError(error?.message || t("adm_admin_service_unavailable"));
@@ -920,12 +958,65 @@ export default function AdminDashboard() {
             <span className="np-admin-login-kicker">
               {t("admin_secure_portal")}
             </span>
-            <h1 className="np-admin-login-title">{t("admin_control_space")}</h1>
+            <h1 className="np-admin-login-title">{setupRequired ? "Installation de la console" : t("admin_control_space")}</h1>
             <p className="np-admin-login-description">
-              {t("admin_login_desc")}
+              {setupRequired
+                ? "Aucun administrateur n’existe encore. Créez le compte super administrateur : cet écran ne s’affichera plus ensuite."
+                : t("admin_login_desc")}
             </p>
           </div>
 
+          {setupRequired ? (
+          <form onSubmit={handleAdminSetup} className="np-admin-login-form">
+            <div>
+              <label htmlFor="admin-setup-name" className="np-admin-login-label">Nom</label>
+              <div className="np-admin-login-field">
+                <input id="admin-setup-name" type="text" autoComplete="name" autoFocus value={setupName}
+                  onChange={(e) => { setSetupName(e.target.value); if (loginError) setLoginError(""); }}
+                  className="np-admin-login-input" />
+                <UserCheck size={16} className="np-admin-login-field-icon" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="admin-setup-email" className="np-admin-login-label">{t("admin_email_label")}</label>
+              <div className="np-admin-login-field">
+                <input id="admin-setup-email" type="email" autoComplete="username" placeholder="vous@exemple.com" value={adminEmailInput}
+                  onChange={(e) => { setAdminEmailInput(e.target.value); if (loginError) setLoginError(""); }}
+                  className="np-admin-login-input" />
+                <Mail size={16} className="np-admin-login-field-icon" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="admin-setup-password" className="np-admin-login-label">Mot de passe (12 caractères minimum)</label>
+              <div className="np-admin-login-field">
+                <input id="admin-setup-password" type="password" autoComplete="new-password" value={adminPasswordInput}
+                  onChange={(e) => { setAdminPasswordInput(e.target.value); if (loginError) setLoginError(""); }}
+                  className="np-admin-login-input" />
+                <Lock size={16} className="np-admin-login-field-icon" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="admin-setup-confirm" className="np-admin-login-label">Confirmer le mot de passe</label>
+              <div className="np-admin-login-field">
+                <input id="admin-setup-confirm" type="password" autoComplete="new-password" value={setupConfirm}
+                  onChange={(e) => { setSetupConfirm(e.target.value); if (loginError) setLoginError(""); }}
+                  className="np-admin-login-input" />
+                <Lock size={16} className="np-admin-login-field-icon" />
+              </div>
+              {loginError && (
+                <p className="np-admin-login-error">
+                  <AlertTriangle size={12} /> {loginError}
+                </p>
+              )}
+            </div>
+            <button type="submit"
+              disabled={authLoading || !setupName.trim() || !adminEmailInput.trim() || !adminPasswordInput || !setupConfirm}
+              className="np-admin-login-submit">
+              <ShieldCheck size={16} />
+              <span>{authLoading ? t("admin_checking") : "Créer le compte et ouvrir la console"}</span>
+            </button>
+          </form>
+          ) : (
           <form onSubmit={handleAdminLogin} className="np-admin-login-form">
             <div>
               <label htmlFor="admin-login-email" className="np-admin-login-label">{t("admin_email_label")}</label>
@@ -979,6 +1070,7 @@ export default function AdminDashboard() {
             </button>
 
           </form>
+          )}
 
           <div className="np-admin-login-bottom">
             <Link href="/" className="np-admin-login-back">
@@ -1226,6 +1318,12 @@ export default function AdminDashboard() {
             <DollarSign size={18} />
             <span>{t("admin_fees_rates")}</span>
           </button>
+          {adminIdentity?.role === "super_admin" && (
+            <button type="button" aria-label="Intégrations" title="Intégrations" className={activeTab === "integrations" ? "active" : ""} onClick={() => selectTab("integrations")}>
+              <KeyRound size={18} />
+              <span>Intégrations</span>
+            </button>
+          )}
           <button type="button" aria-label={t("admin_advanced_config")} title={t("admin_advanced_config")} className={activeTab === "advanced" ? "active" : ""} onClick={() => selectTab("advanced")}>
             <Settings size={18} />
             <span>{t("admin_advanced_config")}</span>
@@ -1350,6 +1448,7 @@ export default function AdminDashboard() {
               {activeTab === "security" && t("admin_title_security")}
               {activeTab === "communication" && t("admin_title_communication")}
               {activeTab === "extras" && t("admin_title_extras")}
+              {activeTab === "integrations" && "Intégrations"}
               {activeTab === "analytics" && t("admin_title_analytics")}
             </h1>
           </div>
@@ -2968,6 +3067,10 @@ export default function AdminDashboard() {
 
           {activeTab === "security" && (
             <AdminSecurity />
+          )}
+
+          {activeTab === "integrations" && (
+            <AdminIntegrations />
           )}
 
           {activeTab === "communication" && (

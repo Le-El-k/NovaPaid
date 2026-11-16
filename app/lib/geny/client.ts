@@ -1,21 +1,22 @@
 // Server-only Geny partner API client.
 //
-// SECURITY: this module reads GENY_API_KEY from the runtime environment and must
+// SECURITY: this module reads the Geny API key from the database and must
 // NEVER be imported into client bundles. It is only used from api-routes/geny.
 // The key is sent as a Bearer token, server to server, exactly as the Geny docs
 // require ("Call the API from your server only: never put a key in a web page").
 
+import { getIntegrationValue } from "../integrations.ts";
 import type { GenyOrder, GenyOperator, GenyPlan } from "./types.ts";
 
 const DEFAULT_BASE = "https://geny.payool.net/api/v1/partner/";
 
 function getBaseUrl(): string {
-  const base = (process.env.GENY_API_BASE || DEFAULT_BASE).trim();
+  const base = (getIntegrationValue("geny", "api_base") || DEFAULT_BASE);
   return base.endsWith("/") ? base : `${base}/`;
 }
 
 function getApiKey(): string {
-  return (process.env.GENY_API_KEY || "").trim();
+  return getIntegrationValue("geny", "api_key");
 }
 
 export function isGenyConfigured(): boolean {

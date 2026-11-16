@@ -10,6 +10,7 @@
 // status via BKApay's authenticated status API before crediting — authoritative
 // even if the webhook secret is not configured yet.
 
+import { getIntegrationValue } from "../../../app/lib/integrations.ts";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
   completeSoleaspayOrder,
@@ -27,7 +28,7 @@ function constantTimeEquals(a: string, b: string): boolean {
 
 /** Verify x-bkapay-signature = HMAC-SHA256(rawBody, BKAPAY_WEBHOOK_SECRET). */
 function signatureState(request: Request, rawBody: string): "valid" | "invalid" | "no-secret" {
-  const secret = (process.env.BKAPAY_WEBHOOK_SECRET || "").trim();
+  const secret = getIntegrationValue("bkpay", "webhook_secret");
   if (!secret) return "no-secret";
   const header = (request.headers.get("x-bkapay-signature") || "").trim();
   if (!header) return "invalid";

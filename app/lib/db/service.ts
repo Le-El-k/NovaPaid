@@ -1908,6 +1908,51 @@ export const NovaDbService = {
     return { success: true };
   },
 
+  /** Vrai tant qu'aucun administrateur n'a de mot de passe : /admin affiche alors l'écran d'installation. */
+  adminSetupRequired() {
+    const row = getDatabase().prepare("SELECT count(*) as c FROM admins WHERE password_hash LIKE 'scrypt$%'").get() as any;
+    return Number(row?.c || 0) === 0;
+  },
+
+  /** Crée le premier super admin (une seule fois), puis ouvre sa session. */
+  completeAdminSetup(input: { name: string; email: string; password: string }, context: { ipAddress?: string | null } = {}) {
+    const db = getDatabase();
+    const name = String(input.name || "").trim();
+    const email = String(input.email || "").trim().toLowerCase();
+    const password = String(input.password || "");
+    if (name.length < 2 || name.length > 120) throw new Error("Indiquez un nom (2 à 120 caractères).");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new Error("Adresse email invalide.");
+    if (password.length < 12 || password.length > 200) throw new Error("Le mot de passe doit contenir au moins 12 caractères.");
+
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      if (!this.adminSetupRequired()) throw new Error("L’installation est déjà terminée. Connectez-vous.");
+      const conflict = db.prepare("SELECT id FROM users WHERE lower(email) = ? LIMIT 1").get(email);
+      if (conflict) throw new Error("Cette adresse est déjà utilisée par un compte client.");
+      const root = db.prepare("SELECT id FROM admins WHERE role = 'super_admin' ORDER BY id LIMIT 1").get() as any;
+      let adminId: number;
+      if (root) {
+        db.prepare(`
+          UPDATE admins SET name = ?, email = ?, password_hash = ?, permissions = 'all', status = 'active', updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(name, email, hashSecret(password), root.id);
+        adminId = Number(root.id);
+      } else {
+        const res = db.prepare(`
+          INSERT INTO admins (name, email, role, password_hash, permissions, status)
+          VALUES (?, ?, 'super_admin', ?, 'all', 'active')
+        `).run(name, email, hashSecret(password));
+        adminId = Number(res.lastInsertRowid);
+      }
+      writeAdminAudit(db, adminId, "super_admin", "admin_setup", `admin:${adminId}`, "Installation : premier super administrateur créé");
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+    return this.loginAdmin(email, password, context);
+  },
+
   loginAdmin(email: string, password: string, context: { ipAddress?: string | null } = {}) {
     const db = getDatabase();
     const cleanEmail = email.trim().toLowerCase();
@@ -3775,30 +3820,30 @@ export const NovaDbService = {
     const totalCards = (db.prepare("SELECT count(*) as c FROM cards").get() as any).c;
     const activeCards = (db.prepare("SELECT count(*) as c FROM cards WHERE status='active'").get() as any).c;
 
-    const totalTransactions = (db.prepare("SELECT count(*) as c FROM transactions").get() as any).c;
-    const todayTransactions = (db.prepare("SELECT count(*) as c FROM transactions WHERE date(created_at) = ?").get(todayStr) as any).c;
-    const weekTransactions = (db.prepare("SELECT count(*) as c FROM transactions WHERE date(created_at) >= ?").get(weekAgo) as any).c;
+    const totalTransactions = (db.prepare("SELECT count(*) as c FROM ledger_transactions").get() as any).c;
+    const todayTransactions = (db.prepare("SELECT count(*) as c FROM ledger_transactions WHERE date(created_at) = ?").get(todayStr) as any).c;
+    const weekTransactions = (db.prepare("SELECT count(*) as c FROM ledger_transactions WHERE date(created_at) >= ?").get(weekAgo) as any).c;
 
-    const totalVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM transactions WHERE status IN ('completed','approved')").get() as any).s;
-    const todayVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM transactions WHERE status IN ('completed','approved') AND date(created_at) = ?").get(todayStr) as any).s;
-    const weekVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM transactions WHERE status IN ('completed','approved') AND date(created_at) >= ?").get(weekAgo) as any).s;
+    const totalVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM ledger_transactions WHERE status IN ('succeeded','completed','approved')").get() as any).s;
+    const todayVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM ledger_transactions WHERE status IN ('succeeded','completed','approved') AND date(created_at) = ?").get(todayStr) as any).s;
+    const weekVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM ledger_transactions WHERE status IN ('succeeded','completed','approved') AND date(created_at) >= ?").get(weekAgo) as any).s;
 
-    const totalWalletBalance = (db.prepare("SELECT coalesce(sum(balance_minor), 0) as s FROM wallets").get() as any).s;
+    const totalWalletBalance = (db.prepare("SELECT coalesce(sum(available_minor), 0) as s FROM wallets").get() as any).s;
 
-    const pendingApprovals = (db.prepare("SELECT count(*) as c FROM withdrawal_approvals WHERE status='pending'").get() as any).c;
+    const pendingApprovals = (db.prepare("SELECT count(*) as c FROM admin_approvals WHERE status='pending'").get() as any).c;
     const pendingKyc = (db.prepare("SELECT count(*) as c FROM identity_verifications WHERE status='pending'").get() as any).c;
     const openTickets = (db.prepare("SELECT count(*) as c FROM support_tickets WHERE status IN ('open','waiting_admin')").get() as any).c;
 
     // Daily volume for last 7 days
     const dailyVolume = db.prepare(`
       SELECT date(created_at) as day, count(*) as count, coalesce(sum(amount_minor), 0) as volume
-      FROM transactions WHERE date(created_at) >= ? GROUP BY date(created_at) ORDER BY day
+      FROM ledger_transactions WHERE date(created_at) >= ? GROUP BY date(created_at) ORDER BY day
     `).all(weekAgo) as any[];
 
     // Transaction type breakdown
     const typeBreakdown = db.prepare(`
       SELECT type, count(*) as count, coalesce(sum(amount_minor), 0) as volume
-      FROM transactions WHERE status IN ('completed','approved')
+      FROM ledger_transactions WHERE status IN ('succeeded','completed','approved')
       GROUP BY type ORDER BY volume DESC
     `).all() as any[];
 
@@ -3847,7 +3892,7 @@ export const NovaDbService = {
 
   getLandingPageSettings() {
     const db = getDatabase();
-    const rows = db.prepare("SELECT * FROM landing_page_settings ORDER BY section_order, id").all() as any[];
+    const rows = db.prepare("SELECT * FROM landing_page_settings WHERE section_key IS NOT NULL ORDER BY section_order, id").all() as any[];
     return rows;
   },
 
@@ -4716,7 +4761,7 @@ export const NovaDbService = {
   // ── Shop Global Settings ──
 
   getShopGlobalSettings() {
-    const rows = getDatabase().prepare("SELECT * FROM settings WHERE setting_key LIKE 'shop_%'").all() as any[];
+    const rows = getDatabase().prepare("SELECT * FROM app_settings WHERE setting_key LIKE 'shop_%'").all() as any[];
     const map: Record<string, string> = {};
     for (const r of rows) map[r.setting_key] = r.setting_value;
     return {
@@ -4729,7 +4774,7 @@ export const NovaDbService = {
 
   updateShopGlobalSetting(key: string, value: string) {
     const db = getDatabase();
-    db.prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP").run(key, value);
+    db.prepare("INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP").run(key, value);
     return { success: true };
   },
 
@@ -5312,8 +5357,8 @@ export const NovaDbService = {
 
   // --- Card Termination Requests ---
   listCardTerminationRequests(status?: string) {
-    if (status) return getDatabase().prepare("SELECT ctr.*, u.name as user_name, c.card_number FROM card_termination_requests ctr LEFT JOIN users u ON u.id = ctr.user_id LEFT JOIN cards c ON c.id = ctr.card_id WHERE ctr.status = ? ORDER BY ctr.created_at DESC").all(status);
-    return getDatabase().prepare("SELECT ctr.*, u.name as user_name, c.card_number FROM card_termination_requests ctr LEFT JOIN users u ON u.id = ctr.user_id LEFT JOIN cards c ON c.id = ctr.card_id ORDER BY ctr.created_at DESC").all();
+    if (status) return getDatabase().prepare("SELECT ctr.*, u.name as user_name, c.masked_pan AS card_number FROM card_termination_requests ctr LEFT JOIN users u ON u.id = ctr.user_id LEFT JOIN cards c ON c.id = ctr.card_id WHERE ctr.status = ? ORDER BY ctr.created_at DESC").all(status);
+    return getDatabase().prepare("SELECT ctr.*, u.name as user_name, c.masked_pan AS card_number FROM card_termination_requests ctr LEFT JOIN users u ON u.id = ctr.user_id LEFT JOIN cards c ON c.id = ctr.card_id ORDER BY ctr.created_at DESC").all();
   },
 
   createCardTerminationRequest(cardId: number, userId: number, reason?: string) {

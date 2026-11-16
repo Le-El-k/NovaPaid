@@ -19,7 +19,16 @@ La base locale `novapaid` existe et comprend les tables de comptes, ledger, opé
 
 La boutique de cartes virtuelles, pièces TikTok et jeux vidéo est conservée à `/boutique/`. Les intégrations de paiement existantes restent dans cette section.
 
-Pour configurer les fournisseurs, copier `.env.example` vers `.env.local` et renseigner les valeurs nécessaires. Les secrets SebPay restent uniquement dans Cloudflare Workers (`worker/.dev.vars` en local, jamais dans le frontend).
+## Configuration : tout est en base
+
+Aucun fichier `.env` n'est utilisé. Toute la configuration est stockée dans la base de données :
+
+- **Premier administrateur** : au premier lancement, `/admin` affiche un écran d'installation pour créer le compte super administrateur. Il disparaît une fois le compte créé.
+- **Clés des fournisseurs** (Mailjet, SoleasPay, Maplerad, Geny, BKPay, EmailJS, URLs des proxys) : `/admin` → **Intégrations** (réservé au super administrateur). Les secrets ne sont jamais réaffichés ni envoyés au navigateur ; seuls les champs marqués « public » sont servis par `/api/public-config`.
+
+Seules deux variables d'environnement techniques, facultatives, restent lues au démarrage : `PORT` (3000 par défaut) et `NOVAPAID_DB_PATH` (emplacement de la base, `novapaid_app.db` par défaut).
+
+Les proxys Cloudflare (SebPay, LeekPay, Mailjet) gardent leurs propres secrets dans Cloudflare Workers (`wrangler secret put`), car ils ne s'exécutent pas sur ce serveur.
 
 SebPay passe par le proxy minimal situé dans `worker/sebpay-proxy.js`. Le navigateur affiche les informations de pays, d’opérateur et de numéro Mobile Money, puis interroge le statut de collecte par le proxy.
 

@@ -1,5 +1,4 @@
 import { DatabaseSync } from "node:sqlite";
-import { randomBytes, scryptSync } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -7,18 +6,6 @@ import { initialShopProducts, initialShopSections } from "../shop-catalog.ts";
 
 let dbInstance: DatabaseSync | null = null;
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../");
-const configuredBootstrapEmail = process.env.NOVAPAID_BOOTSTRAP_ADMIN_EMAIL;
-const configuredBootstrapPassword = process.env.NOVAPAID_BOOTSTRAP_ADMIN_PASSWORD;
-try {
-  process.loadEnvFile(path.join(projectRoot, ".env.admin.local"));
-} catch {}
-if (configuredBootstrapEmail !== undefined) process.env.NOVAPAID_BOOTSTRAP_ADMIN_EMAIL = configuredBootstrapEmail;
-if (configuredBootstrapPassword !== undefined) process.env.NOVAPAID_BOOTSTRAP_ADMIN_PASSWORD = configuredBootstrapPassword;
-
-function hashBootstrapPassword(password: string) {
-  const salt = randomBytes(16);
-  return `scrypt$${salt.toString("hex")}$${scryptSync(password, salt, 64).toString("hex")}`;
-}
 
 function getDbPath(): string {
   if (process.env.NOVAPAID_DB_PATH) return process.env.NOVAPAID_DB_PATH;
@@ -53,12 +40,10 @@ export function getDatabase(): DatabaseSync {
 }
 
 function initSchemaAndSeeds(db: DatabaseSync) {
-  const bootstrapEmail = (process.env.NOVAPAID_BOOTSTRAP_ADMIN_EMAIL || "service@novapaid.net").trim().toLowerCase();
-  const bootstrapPassword = process.env.NOVAPAID_BOOTSTRAP_ADMIN_PASSWORD || "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bootstrapEmail) || bootstrapEmail.length > 254) {
-    throw new Error("L’adresse email administrateur initiale est invalide.");
-  }
-  if (bootstrapPassword.length > 200) throw new Error("Le mot de passe administrateur initial dépasse la longueur autorisée.");
+  // Compte super admin réservé (id 1), créé suspendu et sans mot de passe.
+  // Il est activé une seule fois via l'écran d'installation de /admin
+  // (NovaDbService.completeAdminSetup) — aucun identifiant ne vient d'un .env.
+  const bootstrapEmail = "service@novapaid.net";
   // ============================================================
   // TABLES UTILISATEURS (séparées des tables admin)
   // ============================================================
@@ -1787,6 +1772,28 @@ function initSchemaAndSeeds(db: DatabaseSync) {
   ensureColumn(db, "promotional_ads", "created_by_id", "INTEGER");
   ensureColumn(db, "promotional_ads", "updated_by_id", "INTEGER");
 
+  // Clés et réglages des fournisseurs externes (remplace les fichiers .env).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS integration_settings (
+      provider TEXT NOT NULL,
+      setting_key TEXT NOT NULL,
+      setting_value TEXT NOT NULL,
+      updated_by INTEGER,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (provider, setting_key),
+      FOREIGN KEY (updated_by) REFERENCES admins (id)
+    );
+  `);
+
+  // Landing CMS par sections (onglet admin « Avancé ») : la table n'avait que
+  // les colonnes du modèle « ligne unique », d'où « no such column: section_order ».
+  ensureColumn(db, "landing_page_settings", "section_key", "TEXT");
+  ensureColumn(db, "landing_page_settings", "section_title", "TEXT");
+  ensureColumn(db, "landing_page_settings", "content", "TEXT");
+  ensureColumn(db, "landing_page_settings", "is_visible", "INTEGER NOT NULL DEFAULT 1");
+  ensureColumn(db, "landing_page_settings", "section_order", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "landing_page_settings", "metadata", "TEXT");
+
   const insertSection = db.prepare(`
     INSERT OR IGNORE INTO shop_sections (slug, name, description, icon, sort_order)
     VALUES (?, ?, ?, ?, ?)
@@ -1910,31 +1917,6 @@ function initSchemaAndSeeds(db: DatabaseSync) {
   const transferFeeCount = (db.prepare("SELECT count(*) as count FROM transfer_fees").get() as any)?.count || 0;
   if (transferFeeCount === 0) {
     db.prepare("INSERT INTO transfer_fees (fixed_amount, percentage_rate, min_amount, max_amount) VALUES (0, 2.0, 500, NULL)").run();
-  }
-
-  const bootstrapApplied = db.prepare("SELECT setting_key FROM app_settings WHERE setting_key = 'admin_bootstrap_applied'").get();
-  if (bootstrapPassword && !bootstrapApplied) {
-    const rootAdmin = db.prepare("SELECT id FROM admins WHERE role = 'super_admin' ORDER BY id LIMIT 1").get() as any;
-    if (rootAdmin) {
-      const emailConflict = db.prepare(`
-        SELECT id FROM admins WHERE id <> ? AND lower(email) = ?
-        UNION ALL SELECT id FROM users WHERE lower(email) = ? LIMIT 1
-      `).get(rootAdmin.id, bootstrapEmail, bootstrapEmail);
-      if (emailConflict) throw new Error("L’adresse administrateur initiale est déjà utilisée par un autre compte.");
-      db.prepare(`
-        UPDATE admins SET name = 'Service NovaPaid', email = ?, password_hash = ?, status = 'active', updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(bootstrapEmail, hashBootstrapPassword(bootstrapPassword), rootAdmin.id);
-      db.prepare("DELETE FROM admin_sessions WHERE admin_id = ?").run(rootAdmin.id);
-      db.prepare(`
-        INSERT INTO admin_audit_logs (admin_id, role, action, target, reason, request_id)
-        VALUES (?, 'super_admin', 'bootstrap_admin_credentials', ?, 'Identifiants initiaux appliqués', ?)
-      `).run(rootAdmin.id, `admin:${rootAdmin.id}`, randomBytes(16).toString("hex"));
-      db.prepare(`
-        INSERT INTO app_settings (setting_key, setting_value, version, updated_by)
-        VALUES ('admin_bootstrap_applied', 'true', 1, ?)
-      `).run(rootAdmin.id);
-    }
   }
 
   const adminColumns = db.prepare("PRAGMA table_info(admins)").all() as Array<{ name: string }>;

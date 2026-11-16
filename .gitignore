@@ -29,13 +29,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# Aucun fichier .env n'est utilisé : la configuration est en base (admin → Intégrations).
+# On ignore quand même tout .env* pour qu'aucun secret ne soit jamais commité.
 .env*
-!.env.example
-!.env.local
-.env.admin.local
-.env.geny.local
-.env.maplerad.local
 worker/.dev.vars*
 !worker/.dev.vars.example
 

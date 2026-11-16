@@ -1,3 +1,4 @@
+import { getIntegrationValue } from "../../../app/lib/integrations.ts";
 import { getAuthenticatedUser, isSameOriginRequest } from "../../../app/lib/auth/session.ts";
 import { NovaDbService } from "../../../app/lib/db/service.ts";
 import { createSoleaspayOrder, attachProviderSession, markSoleaspayOrderFailed, USD_XAF_RATE } from "../../../app/lib/payments/soleaspay/orders.ts";
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
 
     const order = createSoleaspayOrder({ userId: user.id, type: type as any, amountXaf, amountUsd, cardId, meta });
 
-    const base = (process.env.PUBLIC_BASE_URL || new URL(request.url).origin).replace(/\/$/, "");
+    const base = (getIntegrationValue("site", "public_base_url") || new URL(request.url).origin).replace(/\/$/, "");
     const session = await createPaymentSession({
       amount: order.amountXaf,
       currency: "XAF",
