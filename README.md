@@ -57,3 +57,15 @@ pnpm run build:vinext
 
 Les montants, cartes et transactions affichés dans le nouveau tableau de bord sont fictifs. Les actions financières n’exécutent aucun mouvement d’argent. La base locale n’est pas encore connectée à une API frontend. Les opérations réelles nécessitent l’intégration des API partenaires et les validations réglementaires décrites dans le cahier des charges.
 
+
+## Production (VPS)
+
+Le site tourne sur https://app.novapaid.net, dans le conteneur Docker `novapaid_app` (voir `docker-compose.yml`). Le dépôt est monté en volume ; la base SQLite est hors dépôt dans `/root/NovaPaid-data`.
+
+Mettre à jour la production, depuis le VPS :
+
+```bash
+cd /root/NovaPaid && git pull --ff-only origin main
+```
+
+Le hook `docker/git-hooks/post-merge` recompile et redémarre le site automatiquement. Seule une modification du `Dockerfile` ou de `docker/entrypoint.sh` demande `docker compose build && docker compose up -d`.
