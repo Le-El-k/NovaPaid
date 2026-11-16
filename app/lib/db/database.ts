@@ -1590,21 +1590,6 @@ function initSchemaAndSeeds(db: DatabaseSync) {
   // Support messages – colonnes enrichies
   ensureColumn(db, "support_ticket_messages", "attachments", "TEXT");
   ensureColumn(db, "support_ticket_messages", "reactions", "TEXT");
-
-  // Promotional ads – colonnes enrichies PrismCard parity
-  ensureColumn(db, "promotional_ads", "content", "TEXT");
-  ensureColumn(db, "promotional_ads", "type", "TEXT");
-  ensureColumn(db, "promotional_ads", "button_text", "TEXT");
-  ensureColumn(db, "promotional_ads", "button_url", "TEXT");
-  ensureColumn(db, "promotional_ads", "button_external", "INTEGER NOT NULL DEFAULT 0");
-  ensureColumn(db, "promotional_ads", "background_color", "TEXT");
-  ensureColumn(db, "promotional_ads", "text_color", "TEXT");
-  ensureColumn(db, "promotional_ads", "background_image", "TEXT");
-  ensureColumn(db, "promotional_ads", "start_date", "TEXT");
-  ensureColumn(db, "promotional_ads", "end_date", "TEXT");
-  ensureColumn(db, "promotional_ads", "click_count", "INTEGER NOT NULL DEFAULT 0");
-  ensureColumn(db, "promotional_ads", "created_by_id", "INTEGER");
-  ensureColumn(db, "promotional_ads", "updated_by_id", "INTEGER");
   db.prepare("DELETE FROM app_settings WHERE setting_key = 'admin_master_pin'").run();
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id, expires_at);
@@ -1784,6 +1769,23 @@ function initSchemaAndSeeds(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_help_articles_slug ON help_articles(slug);
     CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id, created_at DESC);
   `);
+
+  // Promotional ads – colonnes enrichies PrismCard parity.
+  // Doit s'exécuter après le CREATE TABLE ci-dessus : sur une base neuve,
+  // ALTER TABLE échouait ("no such table") et stoppait l'initialisation.
+  ensureColumn(db, "promotional_ads", "content", "TEXT");
+  ensureColumn(db, "promotional_ads", "type", "TEXT");
+  ensureColumn(db, "promotional_ads", "button_text", "TEXT");
+  ensureColumn(db, "promotional_ads", "button_url", "TEXT");
+  ensureColumn(db, "promotional_ads", "button_external", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "promotional_ads", "background_color", "TEXT");
+  ensureColumn(db, "promotional_ads", "text_color", "TEXT");
+  ensureColumn(db, "promotional_ads", "background_image", "TEXT");
+  ensureColumn(db, "promotional_ads", "start_date", "TEXT");
+  ensureColumn(db, "promotional_ads", "end_date", "TEXT");
+  ensureColumn(db, "promotional_ads", "click_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "promotional_ads", "created_by_id", "INTEGER");
+  ensureColumn(db, "promotional_ads", "updated_by_id", "INTEGER");
 
   const insertSection = db.prepare(`
     INSERT OR IGNORE INTO shop_sections (slug, name, description, icon, sort_order)
