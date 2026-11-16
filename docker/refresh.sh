@@ -9,7 +9,7 @@ flock -n 9 || { echo "NovaPaid : une mise à jour est déjà en cours." >&2; exi
 
 if ! sha256sum -c --status node_modules/.novapaid-lock.sha256 2>/dev/null; then
   echo "NovaPaid : package-lock.json a changé, npm ci…"
-  npm ci --no-audit --no-fund
+  npm ci --include=dev --no-audit --no-fund
   sha256sum package-lock.json > node_modules/.novapaid-lock.sha256
 fi
 
