@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getAssetPath } from "@/app/lib/asset-path";
 import { Shopfront } from "../boutique/Shopfront";
+import { MyInternetCodes } from "./MyInternetCodes";
 import { VirtualCardsSection } from "../cards/VirtualCardsSection";
 import { ResellerSection } from "../reseller/ResellerSection";
 import { TransferExperience } from "../transfers/TransferExperience";
@@ -14,15 +15,17 @@ import { WalletSection } from "../wallet/WalletSection";
 import { HistorySection } from "../history/HistorySection";
 import { SupportSection } from "../support/SupportSection";
 import { SettingsSection } from "../settings/SettingsSection";
-import { LanguageSelector, useLanguage } from "@/app/lib/i18n";
+import { ServiceUnavailable } from "../common/ServiceUnavailable";
+import { SERVICES_LIVE } from "@/app/lib/feature-flags";
+import { useLanguage } from "@/app/lib/i18n";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronDown,
-  ChevronRight, CheckCircle2, CircleHelp, CreditCard, Eye, Info,
+  ChevronRight, CheckCircle2, CircleHelp, Coins, CreditCard, Eye, Gamepad2, Info,
   History, Home, LockKeyhole, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingBag,
-  ShieldAlert, Smartphone, Sparkles, Wallet, Wifi, X,
+  ShieldAlert, Smartphone, Sparkles, Star, Wallet, Wifi, X,
 } from "lucide-react";
 
-type Section = "home" | "cards" | "wallet" | "transfers" | "funding" | "shop" | "reseller" | "history" | "support" | "settings";
+type Section = "home" | "cards" | "wallet" | "transfers" | "funding" | "shop" | "codes" | "reseller" | "history" | "support" | "settings";
 type Action = "deposit" | "withdraw" | null;
 type DashboardProfile = { name: string; email: string; phone: string | null; role: string; kycStatus: string };
 type UserNotification = {
@@ -42,6 +45,7 @@ const navItems: { id: Section; label: string; icon: typeof Home }[] = [
   { id: "transfers", label: "Transferts", icon: ArrowLeftRight },
   { id: "funding", label: "Dépôts / Retraits", icon: ArrowDownLeft },
   { id: "shop", label: "Boutique", icon: ShoppingBag },
+  { id: "codes", label: "Mes codes", icon: Wifi },
   { id: "reseller", label: "Revendeurs", icon: Sparkles },
   { id: "history", label: "Historique", icon: History },
   { id: "support", label: "Support", icon: CircleHelp },
@@ -56,7 +60,7 @@ const profileNavItem: { id: Section; label: string; icon: typeof Home } = {
 const navGroups: { label: string; items: { id: Section; label: string; icon: typeof Home }[] }[] = [
   { label: "PRINCIPAL", items: navItems.filter(({ id }) => id === "home" || id === "cards") },
   { label: "PORTEFEUILLE", items: navItems.filter(({ id }) => id === "wallet" || id === "funding" || id === "transfers" || id === "history") },
-  { label: "COMMERCE & AFFILIATION", items: navItems.filter(({ id }) => id === "shop" || id === "reseller") },
+  { label: "COMMERCE & AFFILIATION", items: navItems.filter(({ id }) => id === "shop" || id === "codes" || id === "reseller") },
   { label: "COMPTE", items: [...navItems.filter(({ id }) => id === "support"), profileNavItem] },
 ];
 
@@ -67,6 +71,7 @@ const sectionPaths: Record<Section, string> = {
   transfers: "/transfers",
   funding: "/funding",
   shop: "/dashboard/boutique",
+  codes: "/dashboard#codes",
   reseller: "/dashboard#reseller",
   history: "/history",
   support: "/support",
@@ -326,105 +331,26 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
           <button className="np-menu-button" type="button" aria-label="Ouvrir le menu" onClick={() => setMenuOpen(true)}><Menu size={21} /></button>
           <div className="np-breadcrumb"><span>{t("my_account")}</span><ChevronRight size={14} /><strong>{current.label}</strong></div>
           <div className="np-top-actions">
-            <LanguageSelector />
-            <div className="np-notification-wrap">
-              <button
-                type="button"
-                className="np-icon-button np-notification"
-                aria-label="Notifications"
-                aria-expanded={notificationsOpen}
-                onClick={() => setNotificationsOpen((open) => !open)}
-              >
-                <Bell size={19} />
-                {notifications.some((item) => !item.isRead) && <i aria-hidden="true" />}
-              </button>
-              {notificationsOpen && (
-                <section className="np-notification-menu" aria-label="Centre de notifications">
-                  <header>
-                    <div>
-                      <strong>{t("notifications")}</strong>
-                      <span>{notifications.filter((item) => !item.isRead).length} non lue(s)</span>
-                    </div>
-                    <button type="button" onClick={markNotificationsRead}>{t("all_read")}</button>
-                  </header>
-                  <div className="np-notification-list">
-                    {notifications.length === 0 ? (
-                      <p className="np-notification-empty">Vous n’avez aucune notification.</p>
-                    ) : notifications.slice(0, 8).map((item) => {
-                      const Icon = item.type === "success" ? CheckCircle2 : item.type === "security" ? ShieldAlert : item.type === "warning" ? Info : Bell;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={"np-notification-item " + (item.isRead ? "" : "is-unread")}
-                          onClick={() => openNotification(item)}
-                        >
-                          <span className={"np-notification-item-icon " + item.type}><Icon size={15} /></span>
-                          <span>
-                            <strong>{item.title}</strong>
-                            <small>{item.message}</small>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
-            </div>
-            <button
-              type="button"
-              className="np-icon-button"
-              onClick={handleLogout}
-              title="Se déconnecter"
-              aria-label="Se déconnecter"
-            >
-              <LogOut size={17} />
-            </button>
             <button type="button" className="np-top-user" onClick={() => selectSection("settings")}><span className="np-avatar">{userProfile.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}</span><ChevronDown size={14} /></button>
           </div>
         </header>
 
         <div className="np-content">
-          {active === "home" ? (
+          {(!SERVICES_LIVE && active !== "shop") ? (
+            <ServiceUnavailable embedded />
+          ) : active === "home" ? (
             <>
               <section className="np-overview-grid np-dashboard-overview" aria-label="Résumé du compte">
                 <div className="np-balance-wrap">
                 <article className="np-balance-card">
                   <div className="np-balance-top"><span className="np-balance-heading"><span>Solde disponible</span><span className="np-balance-account"><span className="np-account-dot" /> Compte principal</span></span><button type="button" aria-label={showBalance ? "Masquer le solde" : "Afficher le solde"} onClick={() => setShowBalance(!showBalance)}><Eye size={17} /></button></div>
                   <div className="np-balance-value">{showBalance ? walletBalance.toLocaleString("fr-FR") : "•••••••"} <small>FCFA</small></div>
-                  {userCards.length > 0 ? (
-                    <div
-                      className="np-card-active-preview"
-                      onClick={() => { selectSection("cards"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                      role="button"
-                      tabIndex={0}
-                      aria-label="Accéder à mes cartes virtuelles"
-                    >
-                      <div className={"np-card-preview-chip " + userCards[0].brand}>
-                        <CreditCard size={16} />
-                      </div>
-                      <div className="np-card-preview-info">
-                        <strong>{userCards[0].label}</strong>
-                        <small>{userCards[0].maskedPan} · ${Number(userCards[0].balanceUsd || 0).toFixed(2)} USD</small>
-                      </div>
-                      <span className={"np-card-preview-badge " + userCards[0].status}>
-                        {userCards[0].status === "active" ? "Active" : userCards[0].status === "frozen" ? "Gelée" : userCards[0].status}
-                      </span>
-                      <ChevronRight size={16} className="text-white/60 ml-auto" />
-                    </div>
-                  ) : (
-                    <button className="np-card-empty" type="button" onClick={() => { selectSection("cards"); window.scrollTo({ top: 0, behavior: "smooth" }); }} aria-label="Obtenir une carte virtuelle">
-                      <span className="np-card-empty-plus"><Plus size={18} /></span>
-                      <span className="np-card-empty-copy"><strong>Obtenir une carte</strong><small>Choisissez votre carte virtuelle</small></span>
-                      <ChevronRight size={17} />
-                    </button>
-                  )}
                   <div className="np-balance-orb np-orb-one" /><div className="np-balance-orb np-orb-two" />
                 </article>
                 <div className="np-balance-actions">
-                  <button type="button" onClick={() => openAction("deposit")}><Plus size={16} /> Recharger</button>
+                  <button type="button" onClick={() => selectSection("funding")}><Plus size={16} /> Recharger</button>
                   <button type="button" onClick={() => selectSection("transfers")}><ArrowUpRight size={16} /> Transférer</button>
-                  <button type="button" onClick={() => openAction("withdraw")}><ArrowDownLeft size={16} /> Retirer</button>
+                  <button type="button" onClick={() => selectSection("funding")}><ArrowDownLeft size={16} /> Retirer</button>
                 </div>
                 </div>
 
@@ -487,19 +413,9 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
                 </section>
               )}
 
-              <section className="np-dashboard-promo" aria-label="Forfaits Internet NovaPaid">
-                <div className="np-dashboard-promo-copy">
-                  <span className="np-dashboard-promo-kicker"><Wifi size={14} /> NOUVEAU DANS LA BOUTIQUE</span>
-                  <h2>Restez connecté, où que vous soyez.</h2>
-                  <p>Découvrez les forfaits Internet NovaPaid et choisissez la durée qui vous convient.</p>
-                  <button type="button" onClick={() => selectShopCategory("connexion-internet")}>Voir les forfaits <ChevronRight size={16} /></button>
-                </div>
-                <div className="np-dashboard-promo-art" aria-hidden="true"><Wifi size={76} strokeWidth={1.15} /><span /><span /></div>
-              </section>
-
               <section className="np-shortcuts" aria-label="Actions rapides">
                 <button type="button" onClick={() => selectSection("transfers")}><span className="np-shortcut-icon indigo"><ArrowLeftRight size={18} /></span><span><strong>Faire un transfert</strong><small>Envoyer à un contact</small></span><ChevronRight size={17} /></button>
-                <button type="button" onClick={() => openAction("deposit")}><span className="np-shortcut-icon cyan"><Smartphone size={18} /></span><span><strong>Ajouter de l’argent</strong><small>Mobile Money ou autre</small></span><ChevronRight size={17} /></button>
+                <button type="button" onClick={() => selectSection("funding")}><span className="np-shortcut-icon cyan"><Smartphone size={18} /></span><span><strong>Ajouter de l’argent</strong><small>Mobile Money ou autre</small></span><ChevronRight size={17} /></button>
                 <button type="button" onClick={() => selectSection("shop")}><span className="np-shortcut-icon amber"><ShoppingBag size={18} /></span><span><strong>Explorer la boutique</strong><small>Jeux et services numériques</small></span><ChevronRight size={17} /></button>
                 <button type="button" onClick={() => selectSection("cards")}><span className="np-shortcut-icon violet"><CreditCard size={18} /></span><span><strong>Gérer mes cartes</strong><small>Voir mes cartes virtuelles</small></span><ChevronRight size={17} /></button>
               </section>
@@ -576,6 +492,8 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
             </section>
           ) : active === "shop" ? (
             <Shopfront embedded />
+          ) : active === "codes" ? (
+            <MyInternetCodes onGoToShop={() => selectSection("shop")} />
           ) : (
             <section className="np-page-section">
               <SectionHeading eyebrow="ESPACE NOVAPAID" title={current.label} detail={active === "wallet" ? "Visualisez votre solde, les fonds réservés et l’activité du portefeuille." : active === "transfers" ? "Retrouvez vos bénéficiaires et l’historique des transferts entre utilisateurs." : active === "funding" ? "Gérez vos rechargements et retraits Mobile Money en toute simplicité." : active === "history" ? "Consultez le relevé détaillé de vos opérations avec justificatifs téléchargeables." : active === "support" ? "Contactez l'assistance et consultez vos demandes." : "Gérez vos informations de profil et vos paramètres de sécurité."} />
@@ -621,7 +539,11 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
       </div>
 
       <nav className="np-mobile-nav" aria-label="Navigation mobile">
-        {[navItems[0], navItems[1], navItems[5], navItems[6], profileNavItem].map(({ id, icon: Icon }) => <button key={id} type="button" className={active === id ? "active" : ""} onClick={() => selectSection(id)}><Icon size={19} /><span>{id === "home" ? "Accueil" : id === "cards" ? "Cartes" : id === "shop" ? "Boutique" : id === "history" ? "Historique" : "Profil"}</span></button>)}
+        <button type="button" className={active === "home" ? "active" : ""} onClick={() => selectSection("home")}><Home size={19} /><span>Accueil</span></button>
+        <button type="button" className={active === "cards" ? "active" : ""} onClick={() => selectSection("cards")}><CreditCard size={19} /><span>Cartes</span></button>
+        <button type="button" className={active === "shop" ? "active" : ""} onClick={() => selectSection("shop")}><ShoppingBag size={19} /><span>Boutique</span></button>
+        <button type="button" className={active === "history" ? "active" : ""} onClick={() => selectSection("history")}><History size={19} /><span>Historique</span></button>
+        <button type="button" className={active === "settings" ? "active" : ""} onClick={() => selectSection("settings")}><LockKeyhole size={19} /><span>Profil</span></button>
       </nav>
 
       {action && <div className="np-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAction(null); }}>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { PwaInstallButton } from "@/app/components/pwa/PwaInstallButton";
 import {
   Activity,
   ArrowDownLeft,
@@ -379,6 +380,8 @@ export function LandingPage({ onOpenDashboard }: LandingPageProps) {
                 <Star size={16} className="fill-amber-400 text-amber-400" />
                 <span>Lire les retours clients vérifiés</span>
               </a>
+
+              <PwaInstallButton className="np-pwa-install-btn--hero" />
             </div>
           </div>
 

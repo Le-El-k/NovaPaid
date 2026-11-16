@@ -181,6 +181,59 @@ function initSchemaAndSeeds(db: DatabaseSync) {
       FOREIGN KEY (user_id) REFERENCES users (id)
     );
 
+    CREATE TABLE IF NOT EXISTS soleaspay_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_ref TEXT NOT NULL UNIQUE,
+      user_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      amount_xaf INTEGER NOT NULL DEFAULT 0,
+      amount_usd_minor INTEGER,
+      card_id INTEGER,
+      meta_json TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      transaction_reference TEXT,
+      raw_payload TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      completed_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+
+    CREATE TABLE IF NOT EXISTS internet_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      order_ref TEXT NOT NULL UNIQUE,
+      code TEXT NOT NULL,
+      plan_name TEXT NOT NULL DEFAULT '',
+      amount_xaf INTEGER NOT NULL DEFAULT 0,
+      phone TEXT NOT NULL DEFAULT '',
+      operator TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+
+    -- Full lifecycle of every internet (Geny) forfait purchase, recorded
+    -- server-side with the buyer's identity, for admin tracking & reconciliation.
+    CREATE TABLE IF NOT EXISTS geny_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_ref TEXT NOT NULL UNIQUE,
+      user_id INTEGER,
+      user_name TEXT NOT NULL DEFAULT '',
+      user_email TEXT NOT NULL DEFAULT '',
+      plan_id TEXT NOT NULL DEFAULT '',
+      plan_name TEXT NOT NULL DEFAULT '',
+      amount_xaf INTEGER NOT NULL DEFAULT 0,
+      phone TEXT NOT NULL DEFAULT '',
+      operator TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending',
+      code TEXT NOT NULL DEFAULT '',
+      livemode INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_geny_orders_status ON geny_orders(status);
+    CREATE INDEX IF NOT EXISTS idx_geny_orders_user ON geny_orders(user_id);
+
     CREATE TABLE IF NOT EXISTS beneficiaries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -428,6 +481,22 @@ function initSchemaAndSeeds(db: DatabaseSync) {
       ip_address TEXT,
       expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS login_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      method TEXT NOT NULL DEFAULT 'password',
+      ip_address TEXT,
+      user_agent TEXT,
+      device_name TEXT,
+      browser TEXT,
+      os TEXT,
+      country TEXT,
+      status TEXT NOT NULL DEFAULT 'success',
+      failure_reason TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     );
 
     -- ============================================================
@@ -1195,6 +1264,27 @@ function initSchemaAndSeeds(db: DatabaseSync) {
       FOREIGN KEY (card_id) REFERENCES cards (id) ON DELETE CASCADE
     );
 
+    -- Comptes bancaires virtuels fournis par un prestataire (Maplerad, etc.)
+    CREATE TABLE IF NOT EXISTS bank_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      provider TEXT NOT NULL DEFAULT 'maplerad',
+      environment TEXT NOT NULL DEFAULT 'sandbox',
+      provider_account_id TEXT,
+      provider_reference TEXT,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      account_number TEXT,
+      account_name TEXT,
+      bank_name TEXT,
+      routing_number TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      failure_reason TEXT,
+      metadata TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+
     -- ============================================================
     -- TABLES SUPPORT AVANCÉ (PrismCard parity)
     -- ============================================================
@@ -1537,6 +1627,7 @@ function initSchemaAndSeeds(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_trusted_devices_user ON trusted_devices(user_id);
     CREATE INDEX IF NOT EXISTS idx_webauthn_user ON webauthn_credentials(user_id);
     CREATE INDEX IF NOT EXISTS idx_pending_reg_email ON pending_registrations(email, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_login_history_user ON login_history(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_card_fees_type ON card_fees(type, is_active);
     CREATE INDEX IF NOT EXISTS idx_exchange_rates_pair ON exchange_rates(from_currency, to_currency, is_active);
     CREATE INDEX IF NOT EXISTS idx_identity_verif_user ON identity_verifications(user_id, status);
@@ -1614,6 +1705,84 @@ function initSchemaAndSeeds(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_reseller_commissions_reseller ON reseller_commissions(reseller_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_push_announcements_created ON push_announcements(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_promotional_ads_active ON promotional_ads(is_active, sort_order);
+
+    -- ============================================================
+    -- PHASE 7 — COMMUNICATION
+    -- ============================================================
+
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth_key TEXT NOT NULL,
+      device_name TEXT,
+      browser TEXT,
+      os TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL,
+      sender_type TEXT NOT NULL DEFAULT 'user',
+      sender_id INTEGER,
+      content TEXT NOT NULL,
+      message_type TEXT NOT NULL DEFAULT 'text',
+      attachment_url TEXT,
+      attachment_name TEXT,
+      attachment_size INTEGER,
+      attachment_mime TEXT,
+      reply_to_id INTEGER,
+      reactions TEXT,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
+      is_edited INTEGER NOT NULL DEFAULT 0,
+      edited_at TEXT,
+      read_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ticket_id) REFERENCES support_tickets (id) ON DELETE CASCADE,
+      FOREIGN KEY (reply_to_id) REFERENCES support_messages (id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
+
+    -- ============================================================
+    -- PHASE 8 — FONCTIONNALITÉS SUPPLÉMENTAIRES
+    -- ============================================================
+
+    CREATE TABLE IF NOT EXISTS help_articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT NOT NULL DEFAULT 'general',
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      content TEXT NOT NULL,
+      excerpt TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      views INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS revenue_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      amount_minor INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'XAF',
+      reference_id INTEGER,
+      reference_type TEXT,
+      description TEXT,
+      recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_revenue_records_date ON revenue_records(recorded_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_help_articles_slug ON help_articles(slug);
+    CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id, created_at DESC);
   `);
 
   const insertSection = db.prepare(`
@@ -1698,7 +1867,7 @@ function initSchemaAndSeeds(db: DatabaseSync) {
     `);
     setStmt.run('exchange_rate_usd_xaf', JSON.stringify({ rate: 610.0, currency: 'XAF' }), bootstrapAdminId);
     setStmt.run('daily_transfer_limit_level2', JSON.stringify({ limitXaf: 500000 }), bootstrapAdminId);
-    setStmt.run('mobile_money_fee_percent', JSON.stringify({ orange: 1.0, mtn: 1.0, wave: 0.5, card: 1.8 }), bootstrapAdminId);
+    setStmt.run('mobile_money_fee_percent', JSON.stringify({ orange: 1.0, mtn: 1.0, wave: 1.0, card: 1.0, bank: 1.0 }), bootstrapAdminId);
     setStmt.run('platform_maintenance_mode', JSON.stringify({ enabled: false, message: '' }), bootstrapAdminId);
     setStmt.run('card_creation_fee_usd', JSON.stringify({ fee: 9.0, label: 'Frais de création de carte' }), bootstrapAdminId);
     setStmt.run('platform_name', JSON.stringify({ name: 'NovaPaid' }), bootstrapAdminId);
@@ -1738,7 +1907,7 @@ function initSchemaAndSeeds(db: DatabaseSync) {
   }
   const transferFeeCount = (db.prepare("SELECT count(*) as count FROM transfer_fees").get() as any)?.count || 0;
   if (transferFeeCount === 0) {
-    db.prepare("INSERT INTO transfer_fees (fixed_amount, percentage_rate, min_amount, max_amount) VALUES (100, 1.0, 500, NULL)").run();
+    db.prepare("INSERT INTO transfer_fees (fixed_amount, percentage_rate, min_amount, max_amount) VALUES (0, 2.0, 500, NULL)").run();
   }
 
   const bootstrapApplied = db.prepare("SELECT setting_key FROM app_settings WHERE setting_key = 'admin_bootstrap_applied'").get();

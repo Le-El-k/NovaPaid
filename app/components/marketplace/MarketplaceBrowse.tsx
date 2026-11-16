@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/app/lib/i18n";
 import {
   ArrowLeft, ChevronRight, Eye, Filter, Grid, List, Loader2,
   MessageSquare, Search, ShoppingCart, Star, Tag, X,
@@ -29,6 +30,7 @@ interface Category {
 }
 
 export function MarketplaceBrowse() {
+  const { t } = useLanguage();
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,13 +112,13 @@ export function MarketplaceBrowse() {
       });
       const data = await res.json();
       if (data.success) {
-        notify("Commande passée avec succès !");
+        notify(t("mbrow_order_success"));
         closeDetail();
         fetchArticles();
       } else {
-        notify(data.error || "Erreur lors de la commande");
+        notify(data.error || t("mbrow_order_error"));
       }
-    } catch { notify("Erreur de connexion"); }
+    } catch { notify(t("mbrow_connection_error")); }
     setOrdering(false);
   };
 
@@ -128,11 +130,11 @@ export function MarketplaceBrowse() {
         {notification && <div className="np-marketplace-toast">{notification}</div>}
 
         <button type="button" className="np-marketplace-back" onClick={closeDetail}>
-          <ArrowLeft size={16} /> Retour aux articles
+          <ArrowLeft size={16} /> {t("mbrow_back_to_articles")}
         </button>
 
         {loadingDetail ? (
-          <div className="np-marketplace-loading"><Loader2 size={20} className="animate-spin" /> Chargement...</div>
+          <div className="np-marketplace-loading"><Loader2 size={20} className="animate-spin" /> {t("mbrow_loading")}</div>
         ) : articleDetail ? (
           <div className="np-marketplace-detail">
             <div className="np-marketplace-detail-header">
@@ -151,7 +153,7 @@ export function MarketplaceBrowse() {
                 <div className="np-marketplace-detail-price">{fmtPrice(articleDetail.price)}</div>
                 {articleDetail.quantity > 0 && (
                   <div className="np-marketplace-detail-stock">
-                    Stock : <strong>{articleDetail.quantity_remaining}</strong> / {articleDetail.quantity}
+                    {t("mbrow_stock_label")} <strong>{articleDetail.quantity_remaining}</strong> / {articleDetail.quantity}
                   </div>
                 )}
                 {articleDetail.description && (
@@ -164,13 +166,13 @@ export function MarketplaceBrowse() {
                 {!showOrderForm ? (
                   <button type="button" className="np-marketplace-order-btn" onClick={() => setShowOrderForm(true)}
                     disabled={articleDetail.quantity > 0 && articleDetail.quantity_remaining < 1}>
-                    <ShoppingCart size={16} /> Commander
+                    <ShoppingCart size={16} /> {t("mbrow_order_cta")}
                   </button>
                 ) : (
                   <div className="np-marketplace-order-form">
-                    <h4>Passer commande</h4>
+                    <h4>{t("mbrow_place_order")}</h4>
                     <div className="np-marketplace-order-field">
-                      <label>Quantité</label>
+                      <label>{t("mbrow_quantity")}</label>
                       <input type="number" min={1} max={articleDetail.quantity > 0 ? articleDetail.quantity_remaining : 99}
                         value={orderQuantity} onChange={e => setOrderQuantity(Number(e.target.value))} className="np-text-input" />
                     </div>
@@ -181,7 +183,7 @@ export function MarketplaceBrowse() {
                         {field.field_type === "select" && field.options ? (
                           <select className="np-text-input" value={fieldValues[field.field_name] || ""}
                             onChange={e => setFieldValues({ ...fieldValues, [field.field_name]: e.target.value })}>
-                            <option value="">Sélectionner...</option>
+                            <option value="">{t("mbrow_select")}</option>
                             {field.options.split(",").map((opt: string) => (
                               <option key={opt.trim()} value={opt.trim()}>{opt.trim()}</option>
                             ))}
@@ -197,13 +199,13 @@ export function MarketplaceBrowse() {
                     ))}
 
                     <div className="np-marketplace-order-total">
-                      Total : <strong>{fmtPrice(articleDetail.price * orderQuantity)}</strong>
+                      {t("mbrow_total")} <strong>{fmtPrice(articleDetail.price * orderQuantity)}</strong>
                     </div>
                     <div className="np-marketplace-order-actions">
-                      <button type="button" className="np-secondary-button" onClick={() => setShowOrderForm(false)}><X size={14} /> Annuler</button>
+                      <button type="button" className="np-secondary-button" onClick={() => setShowOrderForm(false)}><X size={14} /> {t("mbrow_cancel")}</button>
                       <button type="button" className="np-primary-button" onClick={handleOrder} disabled={ordering}>
                         {ordering ? <Loader2 size={14} className="animate-spin" /> : <ShoppingCart size={14} />}
-                        {ordering ? "En cours..." : "Payer avec le wallet"}
+                        {ordering ? t("mbrow_in_progress") : t("mbrow_pay_wallet")}
                       </button>
                     </div>
                   </div>
@@ -213,10 +215,10 @@ export function MarketplaceBrowse() {
 
             {articleDetail.comments && articleDetail.comments.length > 0 && (
               <div className="np-marketplace-comments">
-                <h4><MessageSquare size={14} /> Avis ({articleDetail.comments.length})</h4>
+                <h4><MessageSquare size={14} /> {t("mbrow_reviews").replace("{n}", String(articleDetail.comments.length))}</h4>
                 {articleDetail.comments.map((c: any) => (
                   <div key={c.id} className="np-marketplace-comment">
-                    <strong>{c.user_name || "Anonyme"}</strong>
+                    <strong>{c.user_name || t("mbrow_anonymous")}</strong>
                     {c.rating && <span className="np-marketplace-comment-rating">{"★".repeat(c.rating)}{"☆".repeat(5 - c.rating)}</span>}
                     <p>{c.content}</p>
                     <small>{new Date(c.created_at).toLocaleDateString("fr-FR")}</small>
@@ -236,7 +238,7 @@ export function MarketplaceBrowse() {
 
       <div className="np-marketplace-header">
         <h2>Marketplace</h2>
-        <p>Découvrez nos articles et services disponibles</p>
+        <p>{t("mbrow_subtitle")}</p>
       </div>
 
       <div className="np-marketplace-toolbar">
@@ -244,14 +246,14 @@ export function MarketplaceBrowse() {
           <Search size={15} />
           <input value={search} onChange={e => setSearch(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSearch()}
-            placeholder="Rechercher un article..." />
+            placeholder={t("mbrow_search_placeholder")} />
           {search && <button type="button" onClick={() => { setSearch(""); fetchArticles(); }}><X size={14} /></button>}
         </div>
 
         <div className="np-marketplace-filters">
           <button type="button" className={`np-marketplace-filter-btn ${!selectedCategory ? "active" : ""}`}
             onClick={() => setSelectedCategory(null)}>
-            Tous
+            {t("mbrow_all")}
           </button>
           {categories.map(cat => (
             <button key={cat.id} type="button"
@@ -269,11 +271,11 @@ export function MarketplaceBrowse() {
       </div>
 
       {loading ? (
-        <div className="np-marketplace-loading"><Loader2 size={20} className="animate-spin" /> Chargement des articles...</div>
+        <div className="np-marketplace-loading"><Loader2 size={20} className="animate-spin" /> {t("mbrow_loading_articles")}</div>
       ) : articles.length === 0 ? (
         <div className="np-marketplace-empty">
           <ShoppingCart size={32} />
-          <p>Aucun article disponible pour le moment.</p>
+          <p>{t("mbrow_no_articles")}</p>
         </div>
       ) : (
         <div className={`np-marketplace-grid ${viewMode}`}>
@@ -296,7 +298,7 @@ export function MarketplaceBrowse() {
                   <span className="np-marketplace-card-price">{fmtPrice(article.price)}</span>
                   {article.quantity > 0 && (
                     <span className="np-marketplace-card-stock">
-                      {article.quantity_remaining > 0 ? `${article.quantity_remaining} en stock` : "Épuisé"}
+                      {article.quantity_remaining > 0 ? t("mbrow_in_stock").replace("{n}", String(article.quantity_remaining)) : t("mbrow_sold_out")}
                     </span>
                   )}
                 </div>

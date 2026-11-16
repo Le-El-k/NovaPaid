@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/app/lib/i18n";
+import { MoneyValue } from "@/app/lib/currency";
 import {
   ArrowDownLeft,
   ArrowLeftRight,
@@ -32,6 +34,7 @@ export function WalletSection({
   onNavigateSection,
   onTriggerAction,
 }: WalletSectionProps) {
+  const { t } = useLanguage();
   const [showBalance, setShowBalance] = useState(true);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
@@ -62,24 +65,23 @@ export function WalletSection({
         <div className="np-wallet-hero-top">
           <div className="np-wallet-type-tag">
             <span className="np-pulse-dot" />
-            <span>Compte Courant Particulier (XAF)</span>
+            <span>{t("wal_account_type_tag")}</span>
           </div>
           <button
             type="button"
             className="np-wallet-visibility-btn"
             onClick={() => setShowBalance(!showBalance)}
-            aria-label={showBalance ? "Masquer le solde" : "Afficher le solde"}
+            aria-label={showBalance ? t("wal_hide_balance") : t("wal_show_balance")}
           >
             {showBalance ? <EyeOff size={16} /> : <Eye size={16} />}
-            <span>{showBalance ? "Masquer" : "Afficher"}</span>
+            <span>{showBalance ? t("wal_hide") : t("wal_show")}</span>
           </button>
         </div>
 
         <div className="np-wallet-hero-amount">
-          <span className="np-wallet-amount-label">Solde disponible</span>
+          <span className="np-wallet-amount-label">{t("wal_available_balance")}</span>
           <div className="np-wallet-main-number">
-            <strong>{showBalance ? balanceXaf.toLocaleString("fr-FR") : "••••••••"}</strong>
-            <small>FCFA</small>
+            <strong><MoneyValue amount={balanceXaf} maskable={false} hidden={!showBalance} /></strong>
           </div>
           <div className="np-wallet-currencies-bar">
             <span>≈ {showBalance ? `${eurEquivalent} € EUR` : "••••"}</span>
@@ -90,17 +92,17 @@ export function WalletSection({
 
         <div className="np-wallet-hero-bottom">
           <div className="np-wallet-account-info">
-            <span className="np-account-label">Identifiant NovaPaid (RIB virtuel)</span>
+            <span className="np-account-label">{t("wal_account_identifier")}</span>
             <div className="np-account-row">
               <code>{accountNumber}</code>
               <button
                 type="button"
                 className="np-copy-chip"
                 onClick={copyAccountNumber}
-                title="Copier le numéro de compte"
+                title={t("wal_copy_account_number")}
               >
-                {copiedAccount ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                <span>{copiedAccount ? "Copié !" : "Copier"}</span>
+                {copiedAccount ? <Check size={13} className="np-icon-success" /> : <Copy size={13} />}
+                <span>{copiedAccount ? t("wal_copied") : t("wal_copy")}</span>
               </button>
             </div>
           </div>
@@ -112,7 +114,7 @@ export function WalletSection({
               onClick={() => onTriggerAction?.("deposit")}
             >
               <ArrowDownLeft size={17} />
-              <span>Recharger</span>
+              <span>{t("wal_deposit")}</span>
             </button>
             <button
               type="button"
@@ -120,7 +122,7 @@ export function WalletSection({
               onClick={() => onTriggerAction?.("withdraw")}
             >
               <ArrowUpRight size={17} />
-              <span>Retirer</span>
+              <span>{t("wal_withdraw")}</span>
             </button>
             <button
               type="button"
@@ -128,7 +130,7 @@ export function WalletSection({
               onClick={() => onNavigateSection?.("transfers")}
             >
               <ArrowLeftRight size={17} />
-              <span>Transférer</span>
+              <span>{t("wal_transfer")}</span>
             </button>
           </div>
         </div>
@@ -140,35 +142,35 @@ export function WalletSection({
         <article className="np-panel np-limit-card">
           <div className="np-limit-header">
             <div>
-              <span className="np-overline">LIMITES D'OPÉRATIONS</span>
-              <h3>Plafonds & Sécurité (Niveau 2)</h3>
+              <span className="np-overline">{t("wal_operations_limits_overline")}</span>
+              <h3>{t("wal_limits_security_title")}</h3>
             </div>
             <span className="np-badge success">
-              <ShieldCheck size={14} /> Vérifié
+              <ShieldCheck size={14} /> {t("wal_verified")}
             </span>
           </div>
 
           <div className="np-limit-bars">
             <div className="np-limit-item">
               <div className="np-limit-meta">
-                <span>Plafond journalier</span>
+                <span>{t("wal_daily_limit")}</span>
                 <b>{dailyUsed.toLocaleString("fr-FR")} / {dailyLimit.toLocaleString("fr-FR")} FCFA</b>
               </div>
               <div className="np-progress-track">
                 <div className="np-progress-fill" style={{ width: `${dailyPercent}%` }} />
               </div>
-              <small>{100 - dailyPercent}% restant disponible aujourd’hui</small>
+              <small>{t("wal_daily_remaining").replace("{n}", String(100 - dailyPercent))}</small>
             </div>
 
             <div className="np-limit-item">
               <div className="np-limit-meta">
-                <span>Plafond mensuel</span>
+                <span>{t("wal_monthly_limit")}</span>
                 <b>{monthlyUsed.toLocaleString("fr-FR")} / {monthlyLimit.toLocaleString("fr-FR")} FCFA</b>
               </div>
               <div className="np-progress-track">
                 <div className="np-progress-fill accent" style={{ width: `${monthlyPercent}%` }} />
               </div>
-              <small>{100 - monthlyPercent}% restant disponible ce mois</small>
+              <small>{t("wal_monthly_remaining").replace("{n}", String(100 - monthlyPercent))}</small>
             </div>
           </div>
         </article>
@@ -177,18 +179,18 @@ export function WalletSection({
         <article className="np-panel np-breakdown-card">
           <div className="np-panel-heading">
             <div>
-              <span className="np-overline">RÉPARTITION DU PORTEFEUILLE</span>
-              <h3>Fonds & Réserves</h3>
+              <span className="np-overline">{t("wal_portfolio_breakdown_overline")}</span>
+              <h3>{t("wal_funds_reserves_title")}</h3>
             </div>
-            <PieChart size={18} className="text-blue-500" />
+            <PieChart size={18} className="np-icon-accent" />
           </div>
 
           <div className="np-breakdown-list">
             <div className="np-breakdown-row">
               <div className="np-breakdown-dot active" />
               <div className="np-breakdown-label">
-                <strong>Solde actif disponible</strong>
-                <small>Immédiatement utilisable</small>
+                <strong>{t("wal_active_balance")}</strong>
+                <small>{t("wal_immediately_usable")}</small>
               </div>
               <span className="np-breakdown-value">{balanceXaf.toLocaleString("fr-FR")} FCFA</span>
             </div>
@@ -196,8 +198,8 @@ export function WalletSection({
             <div className="np-breakdown-row">
               <div className="np-breakdown-dot reserved" />
               <div className="np-breakdown-label">
-                <strong>Fonds réservés cartes</strong>
-                <small>Pré-autorisations marchands</small>
+                <strong>{t("wal_reserved_card_funds")}</strong>
+                <small>{t("wal_merchant_preauth")}</small>
               </div>
               <span className="np-breakdown-value">{reservedXaf > 0 ? reservedXaf.toLocaleString("fr-FR") + " FCFA" : "0 FCFA"}</span>
             </div>
@@ -205,8 +207,8 @@ export function WalletSection({
             <div className="np-breakdown-row">
               <div className="np-breakdown-dot pending" />
               <div className="np-breakdown-label">
-                <strong>En cours de compensation</strong>
-                <small>Virements interbancaires</small>
+                <strong>{t("wal_clearing_in_progress")}</strong>
+                <small>{t("wal_interbank_transfers")}</small>
               </div>
               <span className="np-breakdown-value">0 FCFA</span>
             </div>
@@ -218,7 +220,7 @@ export function WalletSection({
               className="np-text-link"
               onClick={() => onNavigateSection?.("history")}
             >
-              <span>Consulter l'historique complet</span>
+              <span>{t("wal_view_full_history")}</span>
               <ChevronRight size={14} />
             </button>
           </div>
@@ -232,15 +234,15 @@ export function WalletSection({
             <CreditCard size={22} />
           </div>
           <div>
-            <h3>Cartes de paiement connectées</h3>
-            <p>Vos cartes virtuelles débitent directement ou sont approvisionnées depuis ce portefeuille.</p>
+            <h3>{t("wal_connected_cards_title")}</h3>
+            <p>{t("wal_connected_cards_desc")}</p>
           </div>
           <button
             type="button"
             className="np-outline-button ml-auto"
             onClick={() => onNavigateSection?.("cards")}
           >
-            <span>Gérer mes cartes</span>
+            <span>{t("wal_manage_cards")}</span>
             <ChevronRight size={15} />
           </button>
         </div>

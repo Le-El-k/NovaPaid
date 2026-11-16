@@ -48,6 +48,7 @@ import { SupportQuickMenu } from "@/app/components/support/SupportQuickMenu";
 import { VirtualCardsSection } from "../cards/VirtualCardsSection";
 import { VideoGamesSection } from "@/app/components/games/VideoGamesSection";
 import { getAssetPath } from "@/app/lib/asset-path";
+import { useLanguage } from "@/app/lib/i18n";
 import { packs, type Pack } from "@/app/lib/catalog";
 import { buildSupportWhatsAppHref, SUPPORT_WHATSAPP_CONTACTS } from "@/app/lib/support-whatsapp";
 import type { PaymentProvider } from "@/app/lib/payments/payment-contract";
@@ -101,272 +102,6 @@ function savePreference(key: "nova-pay-language" | "nova-pay-theme", value: stri
 
 
 
-const copy = {
-  fr: {
-    mainMenu: "Menu principal",
-    brandLabel: "NovaPaid — Packs de pièces TikTok",
-    products: "Nos produits",
-    virtualCards: "Cartes virtuelles",
-    tiktokCoins: "Pièces TikTok",
-    videoGames: "Jeux vidéos",
-    languageSelector: "Choisir la langue",
-    french: "Français",
-    english: "Anglais",
-    enableDark: "Activer le mode sombre",
-    enableLight: "Activer le mode clair",
-    themeSelector: "Choisir le thème",
-    themeSystem: "Système",
-    themeLight: "Clair",
-    themeDark: "Sombre",
-    enableSound: "Activer les sons d'interaction",
-    muteSound: "Couper le son",
-    sound: "Effets sonores",
-    account: "Compte",
-    purchasedCoins: "{count} pièces achetées",
-    contactWhatsapp: "Contacter NovaPaid sur WhatsApp",
-    menu: "Menu",
-    close: "Fermer",
-    rechargeCoins: "Recharger des pièces",
-    myOrders: "Mes commandes",
-    support: "Assistance et support",
-    supportModalTitle: "Assistance & Support",
-    supportSubtitle: "Besoin d'aide avec votre commande ou votre recharge ? Notre équipe est à votre disposition 7j/7.",
-    supportBadge: "Service client",
-    whatsappSupportTitle: "Support WhatsApp direct",
-    onlineSupport: "En ligne 7j/7 · Réponse rapide",
-    contactWhatsappBtn: "Discuter sur WhatsApp",
-    faqTitle: "Questions fréquentes",
-    faqDelivery: "Délai de réception des pièces",
-    faqDeliveryAns: "Vos pièces TikTok sont créditées en 5 à 15 minutes dès confirmation du paiement.",
-    faqSecurity: "Sécurité du compte",
-    faqSecurityAns: "Vos identifiants sont strictement confidentiels et uniquement utilisés pour livrer votre recharge.",
-    faqOrderIssue: "Commande en attente ou réclamation",
-    faqOrderIssueAns: "Munissez-vous de votre référence de commande et contactez notre support sur WhatsApp.",
-    videoBannerTitle: "Besoin d'aide pour acheter vos pièces ?",
-    videoBannerSubtitle: "Regardez cette vidéo",
-    videoModalTitle: "Besoin d'aide pour acheter vos pièces ?",
-    watchVideo: "Regarder le tutoriel vidéo",
-    rechargeTikTok: "Recharge TikTok",
-    choosePack: "Choisissez votre pack",
-    availablePacks: "Forfaits disponibles",
-    pieces: "pièces",
-    free: "Gratuites",
-    standard: "Forfait standard",
-    popular: "Populaire",
-    creator: "Créateur",
-    customAmount: "Montant personnalisé",
-    customHint: "Minimum 70 pièces · Prix unitaire : 11.24 FCFA / pièce",
-    removeCoins: "Retirer 70 pièces",
-    customCoinCount: "Nombre de pièces personnalisé",
-    addCoins: "Ajouter 70 pièces",
-    estimatedTotal: "Total estimé",
-    buy: "Acheter",
-    buyNow: "Acheter maintenant",
-    customPack: "Forfait personnalisé",
-    minimumCoins: "Minimum 70 pièces",
-    unitPrice: "Prix unitaire : 11.24 FCFA / pièce",
-    totalToPay: "Total à payer :",
-    orderHistory: "Historique des commandes",
-    payment: "Paiement",
-    date: "Date",
-    onlinePayment: "Paiement en ligne",
-    successful: "Réussie",
-    failed: "Échouée",
-    pending: "En attente",
-    openOrder: "Ouvrir la transaction",
-    noOrders: "Aucune commande pour le moment",
-    nextOrder: "Vos transactions apparaîtront ici après votre première tentative de paiement.",
-    progress: "Étape {current} sur {total}",
-    rechargeInfo: "Informations de recharge",
-    tiktokUsername: "Identifiant TikTok",
-    password: "Mot de passe",
-    country: "Pays",
-    optional: "optionnel",
-    required: "obligatoire",
-    usernamePlaceholder: "pseudo ou email",
-    usernameRequiredWarning: "Veuillez renseigner votre identifiant TikTok.",
-    passwordRequiredWarning: "Veuillez saisir votre mot de passe (au moins 4 caractères).",
-    whatsapp: "Numéro WhatsApp",
-    whatsappHint: "Pour vous contacter en cas de besoin",
-    whatsappPlaceholder: "6 00 00 00 00",
-    whatsappRequiredWarning: "Veuillez renseigner un numéro WhatsApp valide.",
-    emailAddress: "Adresse e-mail",
-    emailPlaceholder: "client@exemple.com",
-    emailRequiredWarning: "Veuillez renseigner une adresse e-mail valide avant de continuer.",
-    confirmInstructions: "Je confirme avoir pris connaissance des instructions ci-dessus.",
-    instructionsRequiredWarning: "Veuillez cocher la case pour confirmer que vous avez pris connaissance des instructions.",
-    cancel: "Annuler",
-    continue: "Continuer",
-    back: "Retour",
-    confirmOrder: "Confirmer la commande",
-    orderAccount: "Compte",
-    recharge: "Recharge",
-    total: "Total",
-    paymentMethod: "Paiement sécurisé",
-    selectedProvider: "Prestataire sélectionné",
-    chooseProvider: "Choisissez votre prestataire de paiement",
-    recommended: "Populaire",
-    popularCountries: "Pays populaires",
-    allCountries: "Tous les pays (A-Z)",
-    heroBadge: "Plateforme N°1 de Services Digitaux en Afrique",
-    heroTitle: "Paiements, Cartes & Gaming au Meilleur Taux",
-    heroSubtitle: "Achetez vos cartes bancaires virtuelles internationales Visa & Mastercard, rechargez vos pièces TikTok et vos jeux vidéo préférés en toute sécurité avec Mobile Money en FCFA.",
-    trustInstant: "Livraison 5-15 min",
-    trustSecurity: "100% Sécurisé",
-    trustPayment: "Mobile Money FCFA",
-    trustRating: "4.9/5 (15 000+ avis)",
-    liveSupport: "24/7 En ligne",
-    askHelp: "Assistance WhatsApp",
-    quickAdd: "Ajouts rapides :",
-    statOrders: "15 000+ commandes",
-    statSpeed: "5 à 15 min chrono",
-    statRating: "4.9/5 satisfaction",
-    statSupport: "Support 7j/7 dédié",
-    reviewsBadge: "Témoignages vérifiés",
-    reviewsTitle: "La confiance de milliers de clients",
-    reviewsSubtitle: "Découvrez les retours récents de nos utilisateurs à travers toute l'Afrique francophone.",
-    faqBadge: "Foire Aux Questions",
-    faqSectionTitle: "Tout ce que vous devez savoir",
-    faqSubtitle: "Des réponses claires et transparentes pour commander vos forfaits en toute sérénité.",
-    partnersTitle: "Moyens de paiement sécurisés",
-    partnersSubtitle: "Réglez directement en FCFA avec vos comptes Mobile Money habituels via la passerelle certifiée SoleasPay.",
-    footerAbout: "NovaPaid est la plateforme de référence pour l'achat de cartes bancaires virtuelles Visa/Mastercard et la recharge instantanée de pièces TikTok et jeux vidéo en Afrique francophone.",
-    footerDisclaimer: "NovaPaid est une plateforme indépendante de services tiers et n'est pas affiliée, associée ou sponsorisée par TikTok ou ByteDance.",
-    footerCopyright: `© ${new Date().getFullYear()} NovaPaid. Tous droits réservés.`,
-  },
-  en: {
-    mainMenu: "Main menu",
-    brandLabel: "NovaPaid — TikTok coin packs",
-    products: "Our products",
-    virtualCards: "Virtual cards",
-    tiktokCoins: "TikTok coins",
-    videoGames: "Video games",
-    languageSelector: "Choose language",
-    french: "French",
-    english: "English",
-    enableDark: "Enable dark mode",
-    enableLight: "Enable light mode",
-    themeSelector: "Choose theme",
-    themeSystem: "System",
-    themeLight: "Light",
-    themeDark: "Dark",
-    enableSound: "Enable interaction sounds",
-    muteSound: "Mute sounds",
-    sound: "Sound effects",
-    account: "Account",
-    purchasedCoins: "{count} coins purchased",
-    contactWhatsapp: "Contact NovaPaid on WhatsApp",
-    menu: "Menu",
-    close: "Close",
-    rechargeCoins: "Recharge coins",
-    myOrders: "My orders",
-    support: "Help and support",
-    supportModalTitle: "Help & Support",
-    supportSubtitle: "Need help with your order or coin recharge? Our team is available 7 days a week.",
-    supportBadge: "Customer service",
-    whatsappSupportTitle: "Direct WhatsApp support",
-    onlineSupport: "Online 7/7 · Fast response",
-    contactWhatsappBtn: "Chat on WhatsApp",
-    faqTitle: "Frequently Asked Questions",
-    faqDelivery: "Coin delivery time",
-    faqDeliveryAns: "Your TikTok coins are credited within 5 to 15 minutes after payment confirmation.",
-    faqSecurity: "Account security",
-    faqSecurityAns: "Your credentials are kept strictly confidential and only used to deliver your order.",
-    faqOrderIssue: "Pending order or issue",
-    faqOrderIssueAns: "Keep your order reference ready and reach out to our WhatsApp support team.",
-    videoBannerTitle: "Need help buying your coins?",
-    videoBannerSubtitle: "Watch this video",
-    videoModalTitle: "Need help buying your coins?",
-    watchVideo: "Watch tutorial video",
-    rechargeTikTok: "TikTok recharge",
-    choosePack: "Choose your pack",
-    availablePacks: "Available packs",
-    pieces: "coins",
-    free: "free",
-    standard: "Standard pack",
-    popular: "Popular",
-    creator: "Creator",
-    customAmount: "Custom amount",
-    customHint: "Minimum 70 coins · Unit price: 11.24 FCFA / coin",
-    removeCoins: "Remove 70 coins",
-    customCoinCount: "Custom number of coins",
-    addCoins: "Add 70 coins",
-    estimatedTotal: "Estimated total",
-    buy: "Buy",
-    buyNow: "Buy now",
-    customPack: "Custom pack",
-    minimumCoins: "Minimum 70 coins",
-    unitPrice: "Unit price: 11.24 FCFA / coin",
-    totalToPay: "Total to pay:",
-    orderHistory: "Order history",
-    payment: "Payment",
-    date: "Date",
-    onlinePayment: "Online payment",
-    successful: "Successful",
-    failed: "Failed",
-    pending: "Pending",
-    openOrder: "Open transaction",
-    noOrders: "No orders yet",
-    nextOrder: "Your transactions will appear here after your first payment attempt.",
-    progress: "Step {current} of {total}",
-    rechargeInfo: "Recharge information",
-    tiktokUsername: "TikTok username",
-    password: "Password",
-    country: "Country",
-    optional: "optional",
-    required: "required",
-    usernamePlaceholder: "your TikTok username",
-    usernameRequiredWarning: "Please enter your TikTok username.",
-    passwordRequiredWarning: "Please enter your password (at least 4 characters).",
-    whatsapp: "WhatsApp number",
-    whatsappHint: "So we can contact you about the order",
-    whatsappPlaceholder: "6 00 00 00 00",
-    whatsappRequiredWarning: "Please enter a valid WhatsApp number.",
-    emailAddress: "Email address",
-    emailPlaceholder: "customer@example.com",
-    emailRequiredWarning: "Please enter a valid email address before continuing.",
-    confirmInstructions: "I confirm that I have read the instructions above.",
-    instructionsRequiredWarning: "Please check the box to confirm you have read the instructions above.",
-    cancel: "Cancel",
-    continue: "Continue",
-    back: "Back",
-    confirmOrder: "Confirm order",
-    orderAccount: "Account",
-    recharge: "Recharge",
-    total: "Total",
-    paymentMethod: "Secure payment",
-    selectedProvider: "Selected provider",
-    chooseProvider: "Choose your payment provider",
-    recommended: "Popular",
-    popularCountries: "Popular countries",
-    allCountries: "All countries (A-Z)",
-    heroBadge: "#1 Digital Services Platform in Africa",
-    heroTitle: "Digital Payments, Cards & Gaming at Best Rates",
-    heroSubtitle: "Buy international Visa & Mastercard virtual cards, TikTok coin top-ups and video game packages at the best rates in FCFA via Mobile Money.",
-    trustInstant: "Delivered in 5-15 min",
-    trustSecurity: "100% Secure",
-    trustPayment: "Mobile Money FCFA",
-    trustRating: "4.9/5 (15,000+ reviews)",
-    liveSupport: "24/7 Online",
-    askHelp: "WhatsApp Support",
-    quickAdd: "Quick add:",
-    statOrders: "15,000+ completed orders",
-    statSpeed: "5 to 15 min delivery",
-    statRating: "4.9/5 customer satisfaction",
-    statSupport: "7/7 Dedicated support",
-    reviewsBadge: "Verified testimonials",
-    reviewsTitle: "Trusted by thousands of customers",
-    reviewsSubtitle: "Read recent feedback from our active users across Francophone Africa.",
-    faqBadge: "Frequently Asked Questions",
-    faqSectionTitle: "Everything you need to know",
-    faqSubtitle: "Clear and transparent answers to help you order your packages with total peace of mind.",
-    partnersTitle: "Secure local payment methods",
-    partnersSubtitle: "Pay directly in FCFA using your trusted Mobile Money accounts through the certified SoleasPay gateway.",
-    footerAbout: "NovaPaid is the leading platform in Francophone Africa for purchasing international virtual bank cards and topping up TikTok coins and video games instantly.",
-    footerDisclaimer: "NovaPaid is an independent third-party service platform and is not affiliated with, associated with, or sponsored by TikTok or ByteDance.",
-    footerCopyright: `© ${new Date().getFullYear()} NovaPaid. All rights reserved.`,
-  },
-} as const;
 
 const localeFor = (language: Language) => language === "fr" ? "fr-FR" : "en-US";
 
@@ -387,91 +122,43 @@ const createPaymentOrderId = () =>
 const customerReviews = [
   {
     name: "Yannick M.",
-    country: "🇨🇲 Douala, Cameroun",
-    service: "3 500 Pièces TikTok",
+    countryKey: "bexp_review_1_country",
+    serviceKey: "bexp_review_1_service",
     rating: 5,
-    date: "Il y a 2 jours",
-    comment: {
-      fr: "Recharge reçue en moins de 6 minutes par MTN MoMo. C'est la 4ème fois que je commande et la livraison est toujours ultra rapide. Le support WhatsApp répond tout de suite !",
-      en: "Recharge received in under 6 minutes via MTN MoMo. 4th time ordering here and delivery is always lightning fast. WhatsApp support answers immediately!",
-    },
+    dateKey: "bexp_review_1_date",
+    commentKey: "bexp_review_1_comment",
   },
   {
     name: "Aminata D.",
-    country: "🇨🇮 Abidjan, Côte d'Ivoire",
-    service: "Mastercard Basique",
+    countryKey: "bexp_review_2_country",
+    serviceKey: "bexp_review_2_service",
     rating: 5,
-    date: "Il y a 3 jours",
-    comment: {
-      fr: "J'ai pris la Mastercard pour sponsoriser mes publications sur Facebook Ads et payer Netflix. Carte acceptée du premier coup sans aucune vérification KYC compliquée. Merci NovaPaid !",
-      en: "Got the Mastercard for Facebook Ads and Netflix subscription. Accepted on the first attempt without complicated KYC verification. Thank you NovaPaid!",
-    },
+    dateKey: "bexp_review_2_date",
+    commentKey: "bexp_review_2_comment",
   },
   {
     name: "Cheikh S.",
-    country: "🇸🇳 Dakar, Sénégal",
-    service: "2 400 V-Bucks Fortnite",
+    countryKey: "bexp_review_3_country",
+    serviceKey: "bexp_review_3_service",
     rating: 5,
-    date: "Il y a 5 jours",
-    comment: {
-      fr: "Paiement par Wave validé en 1 seconde et mes V-Bucks étaient sur mon compte Epic Games en 8 minutes chrono. Service très pro et honnête, je recommande !",
-      en: "Wave payment confirmed in 1 second and V-Bucks were in my Epic Games account in 8 minutes flat. Very professional and honest service!",
-    },
+    dateKey: "bexp_review_3_date",
+    commentKey: "bexp_review_3_comment",
   },
   {
     name: "Boris K.",
-    country: "🇧🇯 Cotonou, Bénin",
-    service: "1 400 Pièces TikTok",
+    countryKey: "bexp_review_4_country",
+    serviceKey: "bexp_review_4_service",
     rating: 5,
-    date: "Il y a 1 semaine",
-    comment: {
-      fr: "Super expérience ! Le meilleur taux en FCFA que j'ai trouvé sur internet. Les instructions sont très claires et tout s'est passé sans accroc.",
-      en: "Great experience! The best FCFA rate I found online. Instructions are clear and everything went smoothly.",
-    },
+    dateKey: "bexp_review_4_date",
+    commentKey: "bexp_review_4_comment",
   },
 ];
 
 const faqItems = [
-  {
-    q: {
-      fr: "Comment effectuer le paiement avec Mobile Money (Orange, MTN, Moov, Wave) ?",
-      en: "How do I pay using Mobile Money (Orange, MTN, Moov, Wave)?",
-    },
-    a: {
-      fr: "Sélectionnez votre forfait, renseignez vos informations, puis cliquez sur 'Payer par Mobile Money'. Vous serez redirigé vers la passerelle sécurisée SoleasPay où vous choisirez votre opérateur (Orange Money, MTN MoMo, Moov Money ou Wave). Il vous suffira de valider la demande de débit sur votre téléphone.",
-      en: "Select your package, fill in your details, then click 'Pay with Mobile Money'. You will be redirected to the secure SoleasPay gateway where you select your operator. Simply approve the payment prompt on your phone.",
-    },
-  },
-  {
-    q: {
-      fr: "Quel est le délai de livraison de ma recharge ou de ma carte ?",
-      en: "What is the delivery time for my recharge or virtual card?",
-    },
-    a: {
-      fr: "Toutes les commandes sont traitées automatiquement et livrées en 5 à 15 minutes dès que votre paiement Mobile Money est confirmé. En cas de forte affluence, notre service client sur WhatsApp reste disponible 7j/7 pour vous assister.",
-      en: "All orders are processed automatically and delivered within 5 to 15 minutes once payment is confirmed. Our WhatsApp support is available 7/7 if you need assistance.",
-    },
-  },
-  {
-    q: {
-      fr: "Pourquoi désactiver l'A2F/2FA lors de la recharge de mon compte ?",
-      en: "Why do I need to disable 2FA during my account top-up?",
-    },
-    a: {
-      fr: "Pour les recharges directes (pièces TikTok ou Fortnite), la désactivation temporaire de l'authentification à deux facteurs permet à notre système d'accéder au compte et de créditer vos forfaits sans être bloqué par un code SMS. Vous pouvez la réactiver immédiatement après livraison.",
-      en: "For direct account top-ups, temporarily turning off two-factor authentication allows our system to credit your package without SMS code blockage. You can turn it back on right after delivery.",
-    },
-  },
-  {
-    q: {
-      fr: "Où puis-je utiliser ma carte virtuelle NovaPaid ?",
-      en: "Where can I use my NovaPaid virtual card?",
-    },
-    a: {
-      fr: "Nos cartes virtuelles Visa et Mastercard en USD sont acceptées sur toutes les plateformes internationales sécurisées par 3D Secure : abonnements (Netflix, Spotify, ChatGPT Plus), publicités (Facebook Ads, Google Ads), boutiques en ligne (Amazon, Alibaba, AliExpress) et services cloud.",
-      en: "Our USD Visa and Mastercard virtual cards are accepted on all 3D Secure platforms: streaming (Netflix, Spotify), ads (Facebook, Google), e-commerce (Amazon, AliExpress) and cloud services.",
-    },
-  },
+  { qKey: "bexp_faq_q1", aKey: "bexp_faq_a1" },
+  { qKey: "bexp_faq_q2", aKey: "bexp_faq_a2" },
+  { qKey: "bexp_faq_q3", aKey: "bexp_faq_a3" },
+  { qKey: "bexp_faq_q4", aKey: "bexp_faq_a4" },
 ];
 
 export function BoutiqueExperience({ initialProductMode, embedded = false }: BoutiqueExperienceProps) {
@@ -577,7 +264,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
   const [supportOpen, setSupportOpen] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [isPwa, setIsPwa] = useState(false);
-  const t = copy[language];
+  const { t } = useLanguage();
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -998,13 +685,13 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
   };
 
   const checkoutTotalSteps = 3;
-  const progressLabel = formatProgress(t.progress, step, checkoutTotalSteps);
+  const progressLabel = formatProgress(t("bexp_progress"), step, checkoutTotalSteps);
 
   return (
     <div className={`store-page${embedded ? " is-embedded" : ""}`} data-theme={theme}>
       {!embedded && <header className="store-header">
       <div className="header-left">
-        <a className="store-brand" href={productMode === "cards" ? "#cards" : productMode === "games" ? "#games" : "#packs"} onClick={() => playTap()} aria-label={t.brandLabel}>
+        <a className="store-brand" href={productMode === "cards" ? "#cards" : productMode === "games" ? "#games" : "#packs"} onClick={() => playTap()} aria-label={t("bexp_brandLabel")}>
           <div className="brand-logo-wrap">
             <Image src={getAssetPath("/novapaid-logo-96.png")} alt="NovaPaid" width={36} height={36} priority />
           </div>
@@ -1019,15 +706,15 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
             type="button"
             className="theme-toggle"
             onClick={() => setThemeMenuOpen((open) => !open)}
-            aria-label={t.themeSelector}
+            aria-label={t("bexp_themeSelector")}
             aria-expanded={themeMenuOpen}
-            title={t.themeSelector}
+            title={t("bexp_themeSelector")}
           >
             <Monitor size={17} />
           </button>
 
           {themeMenuOpen && (
-            <div className="theme-menu" role="menu" aria-label={t.themeSelector}>
+            <div className="theme-menu" role="menu" aria-label={t("bexp_themeSelector")}>
               <button
                 type="button"
                 role="menuitemradio"
@@ -1039,7 +726,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                   setThemeMenuOpen(false);
                 }}
               >
-                {t.themeSystem}
+                {t("bexp_themeSystem")}
               </button>
               <button
                 type="button"
@@ -1051,7 +738,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                   setThemeMenuOpen(false);
                 }}
               >
-                {t.themeLight}
+                {t("bexp_themeLight")}
               </button>
               <button
                 type="button"
@@ -1063,7 +750,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                   setThemeMenuOpen(false);
                 }}
               >
-                {t.themeDark}
+                {t("bexp_themeDark")}
               </button>
             </div>
           )}
@@ -1075,8 +762,8 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               playToggle(language === "en");
               savePreference("nova-pay-language", language === "fr" ? "en" : "fr");
             }}
-            aria-label={language === "fr" ? t.english : t.french}
-            title={language === "fr" ? t.english : t.french}
+            aria-label={language === "fr" ? t("bexp_english") : t("bexp_french")}
+            title={language === "fr" ? t("bexp_english") : t("bexp_french")}
           >
             <Globe size={14} aria-hidden="true" />
             <span className={language === "fr" ? "active" : ""}>FR</span>
@@ -1095,18 +782,18 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               playModalClose();
               setSideNavOpen(false);
             }}
-            aria-label={t.close}
+            aria-label={t("bexp_close")}
           />
-          <nav className="sidenav-drawer" aria-label={t.mainMenu}>
+          <nav className="sidenav-drawer" aria-label={t("bexp_mainMenu")}>
             <div className="sidenav-header">
-              <span className="sidenav-title">{t.menu}</span>
+              <span className="sidenav-title">{t("bexp_menu")}</span>
               <button
                 type="button"
                 onClick={() => {
                   playModalClose();
                   setSideNavOpen(false);
                 }}
-                aria-label={t.close}
+                aria-label={t("bexp_close")}
               >
                 <X size={18} />
               </button>
@@ -1123,7 +810,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 }}
               >
                 <CreditCard size={18} />
-                <span>{t.virtualCards}</span>
+                <span>{t("bexp_virtualCards")}</span>
               </button>
               <button
                 type="button"
@@ -1136,7 +823,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 }}
               >
                 <ShoppingBag size={18} />
-                <span>{t.rechargeCoins}</span>
+                <span>{t("bexp_rechargeCoins")}</span>
               </button>
               <button
                 type="button"
@@ -1149,7 +836,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 }}
               >
                 <Gamepad2 size={18} />
-                <span>{t.videoGames}</span>
+                <span>{t("bexp_videoGames")}</span>
               </button>
               <button
                 type="button"
@@ -1161,7 +848,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 }}
               >
                 <Headphones size={18} />
-                <span>{t.support}</span>
+                <span>{t("bexp_support")}</span>
               </button>
             </div>
           </nav>
@@ -1170,8 +857,8 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
 
       {!embedded && !isGameDetail && (
       <div className="product-mode-shell">
-        <div className="product-mode-label">{t.products}</div>
-        <div className="product-mode-switch" role="tablist" aria-label={t.products}>
+        <div className="product-mode-label">{t("bexp_products")}</div>
+        <div className="product-mode-switch" role="tablist" aria-label={t("bexp_products")}>
           <button
             type="button"
             role="tab"
@@ -1184,7 +871,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               window.history.replaceState(null, "", "#cards");
             }}
           >
-            <CreditCard size={17} /> {t.virtualCards}
+            <CreditCard size={17} /> {t("bexp_virtualCards")}
           </button>
           <button
             type="button"
@@ -1198,7 +885,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               window.history.replaceState(null, "", "#coins");
             }}
           >
-            <Coins size={17} /> {t.tiktokCoins}
+            <Coins size={17} /> {t("bexp_tiktokCoins")}
           </button>
           <button
             type="button"
@@ -1212,7 +899,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               window.history.replaceState(null, "", "#games");
             }}
           >
-            <Gamepad2 size={17} /> {t.videoGames}
+            <Gamepad2 size={17} /> {t("bexp_videoGames")}
           </button>
         </div>
       </div>
@@ -1228,9 +915,9 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
           <div className="help-video-banner-left">
             <div className="help-video-title-row">
               <span className="help-video-dot" aria-hidden="true" />
-              <h2>{t.videoBannerTitle}</h2>
+              <h2>{t("bexp_videoBannerTitle")}</h2>
             </div>
-            <p>{t.videoBannerSubtitle}</p>
+            <p>{t("bexp_videoBannerSubtitle")}</p>
           </div>
 
           <button
@@ -1240,11 +927,11 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               playModalOpen();
               setVideoModalOpen(true);
             }}
-            aria-label={t.watchVideo}
+            aria-label={t("bexp_watchVideo")}
           >
             <Image
               src={getAssetPath("/tutorial-thumbnail.jpg")}
-              alt={t.videoBannerTitle}
+              alt={t("bexp_videoBannerTitle")}
               className="help-video-thumbnail"
               fill
               sizes="(max-width: 760px) 100vw, 360px"
@@ -1271,16 +958,16 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
 
         <div className="shop-titlebar">
           <div>
-            <h1>{t.choosePack}</h1>
+            <h1>{t("bexp_choosePack")}</h1>
           </div>
         </div>
 
         <div className="shop-layout">
           <div className="catalogue">
-            <div className="pack-grid" role="radiogroup" aria-label={t.availablePacks}>
+            <div className="pack-grid" role="radiogroup" aria-label={t("bexp_availablePacks")}>
               {packs.map((pack) => {
                 const active = selectedPack.id === pack.id;
-                const badge = pack.badge ? t[pack.badge] : null;
+                const badge = pack.badge ? t("bexp_" + pack.badge) : null;
 
                 return (
                   <button
@@ -1307,16 +994,16 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                       <strong>{formatPrice(pack.price, language)}</strong>
                       {pack.bonus ? (
                         <div className="pack-bonus-line">
-                          <span><Sparkles size={12} /> +{formatNumber(pack.bonus, language)} {t.free}</span>
+                          <span><Sparkles size={12} /> +{formatNumber(pack.bonus, language)} {t("bexp_free")}</span>
                           <em>+10%</em>
                         </div>
                       ) : (
-                        <div className="pack-bonus-line standard">{t.standard}</div>
+                        <div className="pack-bonus-line standard">{t("bexp_standard")}</div>
                       )}
                     </div>
 
                     <span className="pack-buy-action">
-                      {t.buyNow} <ArrowRight size={14} />
+                      {t("bexp_buyNow")} <ArrowRight size={14} />
                     </span>
                   </button>
                 );
@@ -1327,13 +1014,13 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               <div className="custom-heading">
                 <div className="coin-emblem"><Coins size={19} /></div>
                 <div>
-                  <strong>{t.customAmount}</strong>
-                  <span>{t.customPack}</span>
+                  <strong>{t("bexp_customAmount")}</strong>
+                  <span>{t("bexp_customPack")}</span>
                 </div>
               </div>
 
               <div className="custom-minimum">
-                <span>{t.minimumCoins}</span>
+                <span>{t("bexp_minimumCoins")}</span>
                 <Coins size={13} />
               </div>
 
@@ -1381,15 +1068,15 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                       }
                     }}
                     placeholder="70"
-                    aria-label={t.customCoinCount}
+                    aria-label={t("bexp_customCoinCount")}
                   />
-                  <span>{t.pieces}</span>
+                  <span>{t("bexp_pieces")}</span>
                 </div>
-                <small><Coins size={11} /> {t.unitPrice}</small>
+                <small><Coins size={11} /> {t("bexp_unitPrice")}</small>
               </div>
 
               <div className="custom-quick-chips">
-                <span className="custom-quick-label">{t.quickAdd}</span>
+                <span className="custom-quick-label">{t("bexp_quickAdd")}</span>
                 {[70, 350, 700, 1400, 3500].map((addVal) => (
                   <button
                     key={addVal}
@@ -1407,7 +1094,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               </div>
 
               <div className="custom-total-row">
-                <span>{t.totalToPay}</span>
+                <span>{t("bexp_totalToPay")}</span>
                 <strong>{customCoins >= 70 ? formatPrice(selectedPack.price, language) : "—"}</strong>
               </div>
 
@@ -1417,7 +1104,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 onClick={openCheckout}
                 disabled={customCoins < 70}
               >
-                {t.buyNow} <ArrowRight size={15} />
+                {t("bexp_buyNow")} <ArrowRight size={15} />
               </button>
             </div>
 
@@ -1432,9 +1119,9 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
       <section className="reviews-section" id="reviews">
         <div className="section-container">
           <div className="section-title-center">
-            <span className="section-pill-badge"><Star size={14} /> {t.reviewsBadge}</span>
-            <h2>{t.reviewsTitle}</h2>
-            <p>{t.reviewsSubtitle}</p>
+            <span className="section-pill-badge"><Star size={14} /> {t("bexp_reviewsBadge")}</span>
+            <h2>{t("bexp_reviewsTitle")}</h2>
+            <p>{t("bexp_reviewsSubtitle")}</p>
           </div>
           <div className="reviews-stack-wrapper">
             <div
@@ -1469,21 +1156,21 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               return (
               <div className={`review-card ${stackClass}`} style={inlineStyle} key={`rev-${index}`}>
                 <div className="review-top-row">
-                  <div className="review-stars" aria-label="5 étoiles sur 5">
+                  <div className="review-stars" aria-label={t("bexp_review_stars_aria")}>
                     {Array.from({ length: rev.rating }).map((_, i) => (
                       <Star key={i} size={15} className="star-filled" />
                     ))}
                   </div>
-                  <span className="review-date">{rev.date}</span>
+                  <span className="review-date">{t(rev.dateKey)}</span>
                 </div>
-                <p className="review-comment">"{rev.comment[language]}"</p>
+                <p className="review-comment">"{t(rev.commentKey)}"</p>
                 <div className="review-author-wrap">
                   <div className="review-avatar">
                     {rev.name.charAt(0)}
                   </div>
                   <div className="review-author-info">
                     <strong>{rev.name}</strong>
-                    <span>{rev.country} · <small className="review-service">{rev.service}</small></span>
+                    <span>{t(rev.countryKey)} · <small className="review-service">{t(rev.serviceKey)}</small></span>
                   </div>
                 </div>
               </div>
@@ -1495,11 +1182,11 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 type="button"
                 className="reviews-carousel-btn prev"
                 onClick={handlePrevReview}
-                aria-label="Avis précédent"
+                aria-label={t("bexp_prev_review")}
               >
                 <ChevronLeft size={18} />
               </button>
-              <div className="reviews-carousel-dots" role="tablist" aria-label="Pagination avis">
+              <div className="reviews-carousel-dots" role="tablist" aria-label={t("bexp_reviews_pagination")}>
                 {customerReviews.map((_, dotIdx) => (
                   <button
                     key={`dot-${dotIdx}`}
@@ -1509,7 +1196,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                       playTap();
                       setActiveReviewIndex(dotIdx);
                     }}
-                    aria-label={`Aller à l'avis ${dotIdx + 1}`}
+                    aria-label={t("bexp_go_to_review").replace("{n}", String(dotIdx + 1))}
                   />
                 ))}
               </div>
@@ -1517,7 +1204,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 type="button"
                 className="reviews-carousel-btn next"
                 onClick={handleNextReview}
-                aria-label="Avis suivant"
+                aria-label={t("bexp_next_review")}
               >
                 <ChevronRight size={18} />
               </button>
@@ -1530,9 +1217,9 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
       <section className="faq-section" id="faq">
         <div className="section-container">
           <div className="section-title-center">
-            <span className="section-pill-badge"><HelpCircle size={14} /> {t.faqBadge}</span>
-            <h2>{t.faqSectionTitle}</h2>
-            <p>{t.faqSubtitle}</p>
+            <span className="section-pill-badge"><HelpCircle size={14} /> {t("bexp_faqBadge")}</span>
+            <h2>{t("bexp_faqSectionTitle")}</h2>
+            <p>{t("bexp_faqSubtitle")}</p>
           </div>
           <div className="faq-accordion-list">
             {faqItems.map((item, idx) => {
@@ -1548,12 +1235,12 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                     }}
                     aria-expanded={isOpen}
                   >
-                    <span>{item.q[language]}</span>
+                    <span>{t(item.qKey)}</span>
                     <ChevronDown size={18} className="faq-chevron" />
                   </button>
                   {isOpen && (
                     <div className="faq-accordion-content">
-                      <p>{item.a[language]}</p>
+                      <p>{t(item.aKey)}</p>
                     </div>
                   )}
                 </div>
@@ -1572,7 +1259,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
           onMouseDown={(event) => event.target === event.currentTarget && closeCheckout()}
         >
           <section className="checkout-panel" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
-            <button type="button" className="close-checkout" onClick={closeCheckout} aria-label={t.close}>
+            <button type="button" className="close-checkout" onClick={closeCheckout} aria-label={t("bexp_close")}>
               <X />
             </button>
 
@@ -1585,25 +1272,25 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
             {step === 1 && (
               <div className="checkout-step step-instructions">
                 <div className="instructions-header">
-                  <span className="modal-kicker">{formatProgress(t.progress, 1, checkoutTotalSteps)}</span>
-                  <h2 id="checkout-title">Instructions importantes</h2>
-                  <p className="instructions-intro">Veuillez lire attentivement avant de continuer</p>
+                  <span className="modal-kicker">{formatProgress(t("bexp_progress"), 1, checkoutTotalSteps)}</span>
+                  <h2 id="checkout-title">{t("bexp_important_instructions")}</h2>
+                  <p className="instructions-intro">{t("bexp_read_carefully")}</p>
                 </div>
 
                 <div className="instruction-cards">
                   <div className="instruction-card">
                     <div className="instruction-card-icon"><ShieldCheck size={20} /></div>
                     <div>
-                      <strong>Identifiants TikTok requis</strong>
-                      <p>Veuillez vous assurer que vous disposez de vos identifiants TikTok corrects (nom d&apos;utilisateur et mot de passe) pour recevoir vos pièces.</p>
+                      <strong>{t("bexp_credentials_title")}</strong>
+                      <p>{t("bexp_credentials_desc")}</p>
                     </div>
                   </div>
 
                   <div className="instruction-card warning">
                     <div className="instruction-card-icon"><Info size={20} /></div>
                     <div>
-                      <strong>Authentification à deux facteurs (2FA)</strong>
-                      <p>Si vous avez activé l&apos;authentification à deux facteurs sur votre compte TikTok, veuillez la désactiver temporairement le temps de recevoir vos pièces.</p>
+                      <strong>{t("bexp_2fa_title")}</strong>
+                      <p>{t("bexp_2fa_desc")}</p>
                     </div>
                   </div>
                 </div>
@@ -1622,24 +1309,24 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                     }}
                   />
                   <span><Check size={13} /></span>
-                  {t.confirmInstructions}
+                  {t("bexp_confirmInstructions")}
                 </label>
 
                 {instructionsError && (
                   <div className="field-error-notice" role="alert">
                     <AlertCircle size={13} />
-                    <span>{t.instructionsRequiredWarning}</span>
+                    <span>{t("bexp_instructionsRequiredWarning")}</span>
                   </div>
                 )}
 
                 <div className="instructions-actions">
-                  <button type="button" className="modal-secondary" onClick={closeCheckout}>{t.cancel}</button>
+                  <button type="button" className="modal-secondary" onClick={closeCheckout}>{t("bexp_cancel")}</button>
                   <button
                     type="button"
                     className="modal-primary"
                     onClick={handleStep1Continue}
                   >
-                    {t.continue} <ArrowRight size={18} />
+                    {t("bexp_continue")} <ArrowRight size={18} />
                   </button>
                 </div>
               </div>
@@ -1655,22 +1342,22 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                     setStep(1);
                   }}
                 >
-                  <ArrowLeft size={15} /> {t.back}
+                  <ArrowLeft size={15} /> {t("bexp_back")}
                 </button>
 
                 <div className="form-header">
                   <div>
-                    <span className="modal-kicker">{formatProgress(t.progress, 2, checkoutTotalSteps)}</span>
-                    <h2 id="checkout-title">{t.rechargeInfo}</h2>
+                    <span className="modal-kicker">{formatProgress(t("bexp_progress"), 2, checkoutTotalSteps)}</span>
+                    <h2 id="checkout-title">{t("bexp_rechargeInfo")}</h2>
                   </div>
                   <div className="form-header-pack">
-                    <span>{formatNumber(deliveredCoins, language)}</span> {t.pieces} · <strong>{formatPrice(selectedPack.price, language)}</strong>
+                    <span>{formatNumber(deliveredCoins, language)}</span> {t("bexp_pieces")} · <strong>{formatPrice(selectedPack.price, language)}</strong>
                   </div>
                 </div>
 
                 <div className="fields-row">
                   <label className="field-label">
-                    <span>{t.tiktokUsername} <span className="required">*</span></span>
+                    <span>{t("bexp_tiktokUsername")} <span className="required">*</span></span>
                     <div className={`field${usernameError ? " field-error" : ""}`}>
                       <span>@</span>
                       <input
@@ -1688,19 +1375,19 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                             setUsernameError(true);
                           }
                         }}
-                        placeholder={t.usernamePlaceholder}
+                        placeholder={t("bexp_usernamePlaceholder")}
                         autoComplete="off"
                       />
                     </div>
                     {usernameError && (
                       <div className="field-error-notice" role="alert">
                         <AlertCircle size={13} />
-                        <span>{t.usernameRequiredWarning}</span>
+                        <span>{t("bexp_usernameRequiredWarning")}</span>
                       </div>
                     )}
                   </label>
                   <label className="field-label">
-                    <span>{t.password} <span className="required">*</span></span>
+                    <span>{t("bexp_password")} <span className="required">*</span></span>
                     <div className={`field field-password${passwordError ? " field-error" : ""}`}>
                       <span><LockKeyhole size={16} /></span>
                       <input
@@ -1729,7 +1416,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                           playToggle(!showPassword);
                           setShowPassword(!showPassword);
                         }}
-                        aria-label={showPassword ? (language === "fr" ? "Masquer le mot de passe" : "Hide password") : (language === "fr" ? "Afficher le mot de passe" : "Show password")}
+                        aria-label={showPassword ? t("bexp_hide_password") : t("bexp_show_password")}
                       >
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -1737,7 +1424,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                     {passwordError && (
                       <div className="field-error-notice" role="alert">
                         <AlertCircle size={13} />
-                        <span>{t.passwordRequiredWarning}</span>
+                        <span>{t("bexp_passwordRequiredWarning")}</span>
                       </div>
                     )}
                   </label>
@@ -1745,8 +1432,8 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
 
                 <label className="field-label">
                   <span>
-                    {t.whatsapp} <span className="required">*</span>{" "}
-                    <span className="field-hint">— {t.whatsappHint}</span>
+                    {t("bexp_whatsapp")} <span className="required">*</span>{" "}
+                    <span className="field-hint">— {t("bexp_whatsappHint")}</span>
                   </span>
                   <div className={`field country-phone-field${whatsappError ? " field-error" : ""}`}>
                     <select
@@ -1759,16 +1446,16 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                           setDialCode(dialCodes[nextCode]);
                         }
                       }}
-                      aria-label={t.country}
+                      aria-label={t("bexp_country")}
                     >
-                      <optgroup label={t.popularCountries}>
+                      <optgroup label={t("bexp_popularCountries")}>
                         {POPULAR_COUNTRIES.map((country) => (
                           <option key={`pop-${country.code}`} value={country.code}>
                             {country.flag} {country.dialCode} ({country.name})
                           </option>
                         ))}
                       </optgroup>
-                      <optgroup label={t.allCountries}>
+                      <optgroup label={t("bexp_allCountries")}>
                         {ALL_COUNTRIES.map((country) => (
                           <option key={`all-${country.code}`} value={country.code}>
                             {country.flag} {country.dialCode} ({country.name})
@@ -1792,7 +1479,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                           setWhatsappError(true);
                         }
                       }}
-                      placeholder={t.whatsappPlaceholder}
+                      placeholder={t("bexp_whatsappPlaceholder")}
                       inputMode="numeric"
                       pattern="[0-9]*"
                       autoComplete="tel"
@@ -1802,7 +1489,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                   {whatsappError && (
                     <div className="field-error-notice" role="alert">
                       <AlertCircle size={13} />
-                      <span>{t.whatsappRequiredWarning}</span>
+                      <span>{t("bexp_whatsappRequiredWarning")}</span>
                     </div>
                   )}
                 </label>
@@ -1812,7 +1499,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                   className="modal-primary"
                   onClick={handleStep2Continue}
                 >
-                  {t.continue} <ArrowRight size={18} />
+                  {t("bexp_continue")} <ArrowRight size={18} />
                 </button>
               </div>
             )}
@@ -1827,23 +1514,23 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                     setStep(2);
                   }}
                 >
-                  <ArrowLeft size={15} /> {t.back}
+                  <ArrowLeft size={15} /> {t("bexp_back")}
                 </button>
-                <span className="modal-kicker">{formatProgress(t.progress, 3, checkoutTotalSteps)}</span>
-                <h2 id="checkout-title">{t.confirmOrder}</h2>
+                <span className="modal-kicker">{formatProgress(t("bexp_progress"), 3, checkoutTotalSteps)}</span>
+                <h2 id="checkout-title">{t("bexp_confirmOrder")}</h2>
 
                 <div className="checkout-summary">
-                  <div><span>{t.orderAccount}</span><strong>@{username.replace(/^@/, "")}</strong></div>
-                  <div><span>{t.recharge}</span><strong>{formatNumber(deliveredCoins, language)} {t.pieces}</strong></div>
-                  <div><span>{t.total}</span><strong>{formatPrice(selectedPack.price, language)}</strong></div>
+                  <div><span>{t("bexp_orderAccount")}</span><strong>@{username.replace(/^@/, "")}</strong></div>
+                  <div><span>{t("bexp_recharge")}</span><strong>{formatNumber(deliveredCoins, language)} {t("bexp_pieces")}</strong></div>
+                  <div><span>{t("bexp_total")}</span><strong>{formatPrice(selectedPack.price, language)}</strong></div>
                 </div>
 
                 <div className="payment-provider-selector">
-                  <span className="payment-provider-selector-label">{t.chooseProvider}</span>
+                  <span className="payment-provider-selector-label">{t("bexp_chooseProvider")}</span>
                   <div
                     className="payment-provider-options"
                     role="radiogroup"
-                    aria-label={t.chooseProvider}
+                    aria-label={t("bexp_chooseProvider")}
                   >
                     <button
                       type="button"
@@ -1911,7 +1598,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                 playModalClose();
                 setSupportOpen(false);
               }}
-              aria-label={t.close}
+              aria-label={t("bexp_close")}
             >
               <X size={18} />
             </button>
@@ -1919,10 +1606,10 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
             <div className="support-modal-header">
               <div className="support-modal-badge">
                 <Headphones size={15} />
-                <span>{t.supportBadge}</span>
+                <span>{t("bexp_supportBadge")}</span>
               </div>
-              <h2 id="support-modal-title">{t.supportModalTitle}</h2>
-              <p>{t.supportSubtitle}</p>
+              <h2 id="support-modal-title">{t("bexp_supportModalTitle")}</h2>
+              <p>{t("bexp_supportSubtitle")}</p>
             </div>
 
             <div className="support-modal-body">
@@ -1932,49 +1619,45 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                     <FaWhatsapp size={26} />
                   </div>
                   <div>
-                    <strong>{t.whatsappSupportTitle}</strong>
+                    <strong>{t("bexp_whatsappSupportTitle")}</strong>
                     <span>
                       {SUPPORT_WHATSAPP_CONTACTS.map((contact) => contact.displayPhone).join(" · ")}
-                      {" · "}{t.onlineSupport}
+                      {" · "}{t("bexp_onlineSupport")}
                     </span>
                   </div>
                 </div>
                 <WhatsAppContactPicker
                   language={language}
-                  message={
-                    language === "fr"
-                      ? "Salut NovaPaid, j'ai besoin d'assistance concernant mes pièces TikTok."
-                      : "Hi NovaPaid, I need help with my TikTok coins."
-                  }
+                  message={t("bexp_support_whatsapp_message")}
                   className="support-whatsapp-button"
-                  ariaLabel={t.contactWhatsapp}
+                  ariaLabel={t("bexp_contactWhatsapp")}
                 >
                   <FaWhatsapp size={18} />
-                  <span>{t.contactWhatsappBtn}</span>
+                  <span>{t("bexp_contactWhatsappBtn")}</span>
                   <ChevronRight size={14} />
                 </WhatsAppContactPicker>
               </div>
 
               <div className="support-faq-section">
-                <h3>{t.faqTitle}</h3>
+                <h3>{t("bexp_faqTitle")}</h3>
                 <div className="support-faq-list">
                   <div className="support-faq-item">
                     <strong>
-                      <Clock3 size={15} /> {t.faqDelivery}
+                      <Clock3 size={15} /> {t("bexp_faqDelivery")}
                     </strong>
-                    <p>{t.faqDeliveryAns}</p>
+                    <p>{t("bexp_faqDeliveryAns")}</p>
                   </div>
                   <div className="support-faq-item">
                     <strong>
-                      <ShieldCheck size={15} /> {t.faqSecurity}
+                      <ShieldCheck size={15} /> {t("bexp_faqSecurity")}
                     </strong>
-                    <p>{t.faqSecurityAns}</p>
+                    <p>{t("bexp_faqSecurityAns")}</p>
                   </div>
                   <div className="support-faq-item">
                     <strong>
-                      <Info size={15} /> {t.faqOrderIssue}
+                      <Info size={15} /> {t("bexp_faqOrderIssue")}
                     </strong>
-                    <p>{t.faqOrderIssueAns}</p>
+                    <p>{t("bexp_faqOrderIssueAns")}</p>
                   </div>
                 </div>
               </div>
@@ -1989,7 +1672,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                   setSupportOpen(false);
                 }}
               >
-                {t.close}
+                {t("bexp_close")}
               </button>
             </div>
           </section>
@@ -2014,7 +1697,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
             aria-labelledby="video-modal-title"
           >
             <div className="video-modal-header">
-              <h2 id="video-modal-title">{t.videoModalTitle}</h2>
+              <h2 id="video-modal-title">{t("bexp_videoModalTitle")}</h2>
               <button
                 type="button"
                 className="close-video-modal"
@@ -2022,7 +1705,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
                   playModalClose();
                   setVideoModalOpen(false);
                 }}
-                aria-label={t.close}
+                aria-label={t("bexp_close")}
               >
                 <X size={18} />
               </button>
@@ -2032,7 +1715,7 @@ export function BoutiqueExperience({ initialProductMode, embedded = false }: Bou
               <div className="video-player-frame">
                 <iframe
                   src="https://www.youtube.com/embed/GAQgxNcMlpI?autoplay=1&rel=0"
-                  title={t.videoModalTitle}
+                  title={t("bexp_videoModalTitle")}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />

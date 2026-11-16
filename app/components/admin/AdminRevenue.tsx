@@ -5,8 +5,12 @@ import {
   Activity, ArrowDown, ArrowUp, CreditCard, DollarSign, Loader2,
   RefreshCw, TrendingUp, Users, Wallet, AlertTriangle, Clock, Shield,
 } from "lucide-react";
+import { useLanguage } from "@/app/lib/i18n";
+import { useCurrency } from "@/app/lib/currency";
 
 export function AdminRevenue() {
+  const { t } = useLanguage();
+  const { currency, convertAmount } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
 
@@ -23,13 +27,18 @@ export function AdminRevenue() {
   useEffect(() => { fetchStats(); }, []);
 
   const fmt = (n: number) => n.toLocaleString("fr-FR");
-  const fmtXaf = (minor: number) => `${Math.round(minor / 100).toLocaleString("fr-FR")} FCFA`;
+  const fmtXaf = (minor: number) => {
+    const v = convertAmount((minor || 0) / 100, "XAF", currency);
+    return currency === "XAF"
+      ? `${Math.round(v).toLocaleString("fr-FR")} FCFA`
+      : `${v.toFixed(2)} $`;
+  };
 
   if (loading || !stats) {
     return (
       <div className="np-admin-revenue-loading">
         <Loader2 size={20} className="animate-spin" />
-        <span>Chargement des statistiques...</span>
+        <span>{t("arev_loading")}</span>
       </div>
     );
   }
@@ -37,7 +46,7 @@ export function AdminRevenue() {
   return (
     <div className="np-admin-revenue">
       <div className="np-admin-revenue-header">
-        <h3>Tableau de bord financier</h3>
+        <h3>{t("arev_dashboard_title")}</h3>
         <button type="button" className="np-admin-fees-refresh" onClick={fetchStats}>
           <RefreshCw size={14} />
         </button>
@@ -45,20 +54,20 @@ export function AdminRevenue() {
 
       {/* KPI Grid */}
       <div className="np-admin-revenue-kpi-grid">
-        <KpiCard icon={Users} label="Utilisateurs" value={fmt(stats.users.total)}
-          sub={`${fmt(stats.users.active)} actifs`}
-          change={`+${fmt(stats.users.newToday)} aujourd'hui`} positive />
-        <KpiCard icon={CreditCard} label="Cartes" value={fmt(stats.cards.total)}
-          sub={`${fmt(stats.cards.active)} actives`} />
-        <KpiCard icon={Activity} label="Transactions" value={fmt(stats.transactions.total)}
-          sub={`${fmt(stats.transactions.today)} aujourd'hui`}
-          change={`${fmt(stats.transactions.week)} cette semaine`} positive />
-        <KpiCard icon={Wallet} label="Solde total wallets" value={fmtXaf(stats.walletBalance)} />
-        <KpiCard icon={TrendingUp} label="Volume total" value={fmtXaf(stats.volume.total)}
-          sub={`${fmtXaf(stats.volume.today)} aujourd'hui`}
-          change={`${fmtXaf(stats.volume.week)} cette semaine`} positive />
-        <KpiCard icon={DollarSign} label="Nouveaux ce mois" value={fmt(stats.users.newMonth)}
-          sub={`${fmt(stats.users.newWeek)} cette semaine`} />
+        <KpiCard icon={Users} label={t("arev_kpi_users")} value={fmt(stats.users.total)}
+          sub={t("arev_users_active_sub").replace("{n}", fmt(stats.users.active))}
+          change={t("arev_users_new_today").replace("{n}", fmt(stats.users.newToday))} positive />
+        <KpiCard icon={CreditCard} label={t("arev_kpi_cards")} value={fmt(stats.cards.total)}
+          sub={t("arev_cards_active_sub").replace("{n}", fmt(stats.cards.active))} />
+        <KpiCard icon={Activity} label={t("arev_kpi_transactions")} value={fmt(stats.transactions.total)}
+          sub={t("arev_tx_today_sub").replace("{n}", fmt(stats.transactions.today))}
+          change={t("arev_tx_week_change").replace("{n}", fmt(stats.transactions.week))} positive />
+        <KpiCard icon={Wallet} label={t("arev_kpi_wallet_balance")} value={fmtXaf(stats.walletBalance)} />
+        <KpiCard icon={TrendingUp} label={t("arev_kpi_volume_total")} value={fmtXaf(stats.volume.total)}
+          sub={t("arev_volume_today_sub").replace("{n}", fmtXaf(stats.volume.today))}
+          change={t("arev_volume_week_change").replace("{n}", fmtXaf(stats.volume.week))} positive />
+        <KpiCard icon={DollarSign} label={t("arev_kpi_new_month")} value={fmt(stats.users.newMonth)}
+          sub={t("arev_users_new_week_sub").replace("{n}", fmt(stats.users.newWeek))} />
       </div>
 
       {/* Pending alerts */}
@@ -66,19 +75,19 @@ export function AdminRevenue() {
         {stats.pending.approvals > 0 && (
           <div className="np-admin-revenue-alert warning">
             <Clock size={16} />
-            <span><strong>{stats.pending.approvals}</strong> approbations en attente</span>
+            <span><strong>{stats.pending.approvals}</strong> {t("arev_pending_approvals")}</span>
           </div>
         )}
         {stats.pending.kyc > 0 && (
           <div className="np-admin-revenue-alert info">
             <Shield size={16} />
-            <span><strong>{stats.pending.kyc}</strong> vérifications KYC en attente</span>
+            <span><strong>{stats.pending.kyc}</strong> {t("arev_pending_kyc")}</span>
           </div>
         )}
         {stats.pending.tickets > 0 && (
           <div className="np-admin-revenue-alert danger">
             <AlertTriangle size={16} />
-            <span><strong>{stats.pending.tickets}</strong> tickets support ouverts</span>
+            <span><strong>{stats.pending.tickets}</strong> {t("arev_pending_tickets")}</span>
           </div>
         )}
       </div>
@@ -86,7 +95,7 @@ export function AdminRevenue() {
       {/* Daily volume chart (simple bar chart) */}
       {stats.dailyVolume && stats.dailyVolume.length > 0 && (
         <div className="np-admin-revenue-chart-section">
-          <h4>Volume journalier (7 derniers jours)</h4>
+          <h4>{t("arev_daily_volume_title")}</h4>
           <div className="np-admin-revenue-bar-chart">
             {(() => {
               const maxVol = Math.max(...stats.dailyVolume.map((d: any) => d.volume), 1);
@@ -106,13 +115,13 @@ export function AdminRevenue() {
       {/* Transaction type breakdown */}
       {stats.typeBreakdown && stats.typeBreakdown.length > 0 && (
         <div className="np-admin-revenue-chart-section">
-          <h4>Répartition par type</h4>
+          <h4>{t("arev_breakdown_title")}</h4>
           <div className="np-admin-revenue-breakdown">
-            {stats.typeBreakdown.map((t: any) => (
-              <div key={t.type} className="np-admin-revenue-breakdown-row">
-                <span className="np-admin-revenue-breakdown-type">{t.type || "Autre"}</span>
-                <span className="np-admin-revenue-breakdown-count">{fmt(t.count)} tx</span>
-                <span className="np-admin-revenue-breakdown-vol">{fmtXaf(t.volume)}</span>
+            {stats.typeBreakdown.map((tx: any) => (
+              <div key={tx.type} className="np-admin-revenue-breakdown-row">
+                <span className="np-admin-revenue-breakdown-type">{tx.type || t("arev_type_other")}</span>
+                <span className="np-admin-revenue-breakdown-count">{fmt(tx.count)} tx</span>
+                <span className="np-admin-revenue-breakdown-vol">{fmtXaf(tx.volume)}</span>
               </div>
             ))}
           </div>

@@ -2,6 +2,7 @@
 import { PwaInstallPrompt } from "@/app/components/pwa/PwaInstallPrompt";
 import { PwaServiceWorker } from "@/app/components/pwa/PwaServiceWorker";
 import { PlatformMaintenanceGate } from "@/app/components/platform/PlatformMaintenanceGate";
+import { AppProviders } from "@/app/components/providers/AppProviders";
 import {
   buildSupportWhatsAppHref,
   SUPPORT_WHATSAPP_CONTACTS,
@@ -373,7 +374,7 @@ const jsonLdGlobal = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" data-theme="light">
       <head>
         <meta property="og:image" content={pwaOgImageUrl} />
         <meta property="og:image:secure_url" content={pwaOgImageUrl} />
@@ -391,10 +392,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body>
-        <PwaServiceWorker />
-        <PwaInstallPrompt />
-        <PlatformMaintenanceGate />
-        {children}
+        <AppProviders>
+          <PwaServiceWorker />
+          <PwaInstallPrompt />
+          <PlatformMaintenanceGate />
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

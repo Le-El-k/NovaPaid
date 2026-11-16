@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage } from "@/app/lib/i18n";
 import {
   Activity,
   ArrowDownLeft,
@@ -30,6 +31,7 @@ export interface TransactionItem {
 type FilterType = "all" | "deposit" | "withdrawal" | "transfer" | "purchase";
 
 export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: string) => void }) {
+  const { t } = useLanguage();
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,7 +72,7 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
 
   const exportCsv = () => {
     if (filtered.length === 0) return;
-    const headers = ["Date", "Reference", "Type", "Sens", "Montant_FCFA", "Description", "Statut"];
+    const headers = [t("hist_csv_date"), t("hist_csv_reference"), t("hist_csv_type"), t("hist_csv_direction"), t("hist_csv_amount"), t("hist_csv_description"), t("hist_csv_status")];
     const rows = filtered.map((tx) => [
       `"${new Date(tx.createdAt).toLocaleString("fr-FR")}"`,
       `"${tx.publicRef}"`,
@@ -93,25 +95,25 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
   };
 
   const getIconForType = (type: string, direction: "credit" | "debit") => {
-    if (type === "deposit") return <ArrowDownLeft size={16} className="text-emerald-500" />;
-    if (type === "withdrawal") return <ArrowUpRight size={16} className="text-rose-500" />;
-    if (type === "transfer") return <ArrowLeftRight size={16} className="text-indigo-500" />;
-    if (type === "purchase") return <ShoppingBag size={16} className="text-amber-500" />;
+    if (type === "deposit") return <ArrowDownLeft size={16} className="np-icon-success" />;
+    if (type === "withdrawal") return <ArrowUpRight size={16} className="np-icon-danger" />;
+    if (type === "transfer") return <ArrowLeftRight size={16} className="np-icon-accent" />;
+    if (type === "purchase") return <ShoppingBag size={16} className="np-icon-warning" />;
     return direction === "credit" ? (
-      <ArrowDownLeft size={16} className="text-emerald-500" />
+      <ArrowDownLeft size={16} className="np-icon-success" />
     ) : (
-      <ArrowUpRight size={16} className="text-rose-500" />
+      <ArrowUpRight size={16} className="np-icon-danger" />
     );
   };
 
   const statusLabel = (status: string) => status === "pending"
-    ? "En attente"
+    ? t("hist_status_pending")
     : status === "succeeded"
-      ? "Confirmée"
+      ? t("hist_status_succeeded")
       : status === "rejected"
-        ? "Rejetée"
+        ? t("hist_status_rejected")
         : status === "failed"
-          ? "Échouée"
+          ? t("hist_status_failed")
           : status;
 
   const statusClass = (status: string) => status === "succeeded"
@@ -131,14 +133,14 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
             className="np-search-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher par description, référence ou montant..."
+            placeholder={t("hist_search_placeholder")}
           />
           {searchQuery && (
             <button
               type="button"
               className="np-clear-search"
               onClick={() => setSearchQuery("")}
-              aria-label="Effacer la recherche"
+              aria-label={t("hist_clear_search")}
             >
               <X size={14} />
             </button>
@@ -151,35 +153,35 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
             className={`np-filter-chip ${filterType === "all" ? "active" : ""}`}
             onClick={() => setFilterType("all")}
           >
-            Toutes ({transactions.length})
+            {t("hist_filter_all").replace("{n}", String(transactions.length))}
           </button>
           <button
             type="button"
             className={`np-filter-chip ${filterType === "deposit" ? "active" : ""}`}
             onClick={() => setFilterType("deposit")}
           >
-            Dépôts
+            {t("hist_filter_deposits")}
           </button>
           <button
             type="button"
             className={`np-filter-chip ${filterType === "withdrawal" ? "active" : ""}`}
             onClick={() => setFilterType("withdrawal")}
           >
-            Retraits
+            {t("hist_filter_withdrawals")}
           </button>
           <button
             type="button"
             className={`np-filter-chip ${filterType === "transfer" ? "active" : ""}`}
             onClick={() => setFilterType("transfer")}
           >
-            Transferts
+            {t("hist_filter_transfers")}
           </button>
           <button
             type="button"
             className={`np-filter-chip ${filterType === "purchase" ? "active" : ""}`}
             onClick={() => setFilterType("purchase")}
           >
-            Boutique & Jeux
+            {t("hist_filter_shop_games")}
           </button>
         </div>
       </div>
@@ -188,26 +190,26 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
       <div className="np-panel np-history-list-panel">
         <div className="np-panel-heading">
           <div>
-            <span className="np-overline">RELEVÉ DE COMPTE</span>
-            <h2>Historique des transactions ({filtered.length})</h2>
+            <span className="np-overline">{t("hist_account_statement")}</span>
+            <h2>{t("hist_transactions_title").replace("{n}", String(filtered.length))}</h2>
           </div>
           <button
             type="button"
             className="np-outline-button"
             onClick={exportCsv}
             disabled={filtered.length === 0}
-            title="Télécharger l'historique au format CSV"
+            title={t("hist_export_csv_title")}
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", padding: "6px 12px" }}
           >
             <Download size={14} />
-            <span>Exporter CSV</span>
+            <span>{t("hist_export_csv")}</span>
           </button>
         </div>
 
         {filtered.length === 0 ? (
           <div className="np-empty-state">
             <Activity size={32} className="np-empty-icon" />
-            <p>Aucune transaction ne correspond à vos critères de recherche.</p>
+            <p>{t("hist_empty_state")}</p>
           </div>
         ) : (
           <div className="np-transaction-list detailed">
@@ -226,7 +228,7 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
                 <div className="np-transaction-copy">
                   <strong>{item.description}</strong>
                   <small>
-                    Réf : {item.publicRef} • {new Date(item.createdAt).toLocaleDateString("fr-FR", {
+                    {t("hist_ref_label")} {item.publicRef} • {new Date(item.createdAt).toLocaleDateString("fr-FR", {
                       day: "numeric",
                       month: "short",
                       year: "numeric",
@@ -240,7 +242,7 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
                 </div>
                 <div className={`np-transaction-amount ${item.direction}`}>
                   <span>{item.amountFormatted}</span>
-                  <small>Cliquer pour le reçu</small>
+                  <small>{t("hist_click_for_receipt")}</small>
                 </div>
               </div>
             ))}
@@ -259,7 +261,7 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
             <button
               type="button"
               className="np-modal-close"
-              aria-label="Fermer le reçu"
+              aria-label={t("hist_close_receipt")}
               onClick={() => setSelectedTx(null)}
             >
               <X size={18} />
@@ -269,8 +271,8 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
               <span className="np-receipt-icon success">
                 <CheckCircle2 size={32} />
               </span>
-              <span className="np-overline">REÇU OFFICIEL NOVAPAID</span>
-              <h3>Justificatif d’Opération</h3>
+              <span className="np-overline">{t("hist_receipt_official")}</span>
+              <h3>{t("hist_receipt_title")}</h3>
               <div className="np-receipt-hero-amount">
                 <span className={selectedTx.direction}>{selectedTx.amountFormatted}</span>
               </div>
@@ -278,15 +280,15 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
 
             <div className="np-receipt-body">
               <div className="np-receipt-row">
-                <span>Description</span>
+                <span>{t("hist_receipt_description")}</span>
                 <strong>{selectedTx.description}</strong>
               </div>
               <div className="np-receipt-row">
-                <span>Type d’opération</span>
+                <span>{t("hist_receipt_operation_type")}</span>
                 <strong className="capitalize">{selectedTx.type}</strong>
               </div>
               <div className="np-receipt-row">
-                <span>Référence publique</span>
+                <span>{t("hist_receipt_public_ref")}</span>
                 <div className="np-inline-ref">
                   <code>{selectedTx.publicRef}</code>
                   <button
@@ -295,12 +297,12 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
                     onClick={() => copyRef(selectedTx.publicRef)}
                   >
                     <Copy size={12} />
-                    <span>{copiedRef ? "Copié" : "Copier"}</span>
+                    <span>{copiedRef ? t("hist_copied") : t("hist_copy")}</span>
                   </button>
                 </div>
               </div>
               <div className="np-receipt-row">
-                <span>Horodatage</span>
+                <span>{t("hist_receipt_timestamp")}</span>
                 <span>
                   {new Date(selectedTx.createdAt).toLocaleString("fr-FR", {
                     dateStyle: "full",
@@ -309,8 +311,8 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
                 </span>
               </div>
               <div className="np-receipt-row">
-                <span>Statut du règlement</span>
-                <span className="text-emerald-600 font-bold">Exécuté et irréversible</span>
+                <span>{t("hist_receipt_settlement_status")}</span>
+                <span className="np-icon-success" style={{ fontWeight: 700 }}>{t("hist_receipt_executed")}</span>
               </div>
             </div>
 
@@ -323,7 +325,7 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
                 }}
               >
                 <Download size={15} />
-                <span>Imprimer / PDF</span>
+                <span>{t("hist_print_pdf")}</span>
               </button>
               <button
                 type="button"
@@ -334,7 +336,7 @@ export function HistorySection({ onOpenSupport }: { onOpenSupport?: (txRef: stri
                   onOpenSupport?.(ref);
                 }}
               >
-                Signaler cette transaction
+                {t("hist_report_transaction")}
               </button>
             </div>
           </section>

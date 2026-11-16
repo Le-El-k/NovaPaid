@@ -5,8 +5,10 @@ import {
   Activity, Clock, Filter, Loader2, RefreshCw, Search, User,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { useLanguage } from "@/app/lib/i18n";
 
 export function AdminActivities() {
+  const { t } = useLanguage();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -45,21 +47,21 @@ export function AdminActivities() {
   return (
     <div className="np-admin-activities">
       <div className="np-admin-fees-header">
-        <h3>Journal d'activité système</h3>
+        <h3>{t("aact_title")}</h3>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <select className="np-text-input" style={{ width: 160, fontSize: 12 }} value={filterType}
             onChange={e => { setFilterType(e.target.value); setPage(1); }}>
-            <option value="">Tous les types</option>
-            <option value="login">Connexion</option>
-            <option value="logout">Déconnexion</option>
-            <option value="transfer">Transfert</option>
-            <option value="card_create">Création carte</option>
-            <option value="card_reload">Recharge carte</option>
-            <option value="deposit">Dépôt</option>
-            <option value="withdrawal">Retrait</option>
+            <option value="">{t("aact_type_all")}</option>
+            <option value="login">{t("aact_type_login")}</option>
+            <option value="logout">{t("aact_type_logout")}</option>
+            <option value="transfer">{t("aact_type_transfer")}</option>
+            <option value="card_create">{t("aact_type_card_create")}</option>
+            <option value="card_reload">{t("aact_type_card_reload")}</option>
+            <option value="deposit">{t("aact_type_deposit")}</option>
+            <option value="withdrawal">{t("aact_type_withdrawal")}</option>
             <option value="kyc">KYC</option>
             <option value="admin">Admin</option>
-            <option value="settings">Paramètres</option>
+            <option value="settings">{t("aact_type_settings")}</option>
           </select>
           <button type="button" className="np-admin-fees-refresh" onClick={refresh}><RefreshCw size={14} /></button>
         </div>
@@ -67,7 +69,7 @@ export function AdminActivities() {
 
       {loading ? (
         <div style={{ padding: 24, textAlign: "center", opacity: 0.5, display: "flex", gap: 8, justifyContent: "center" }}>
-          <Loader2 size={16} className="animate-spin" /> Chargement...
+          <Loader2 size={16} className="animate-spin" /> {t("aact_loading")}
         </div>
       ) : (
         <>
@@ -75,16 +77,16 @@ export function AdminActivities() {
             <table className="np-admin-fees-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Utilisateur</th>
-                  <th>Description</th>
+                  <th>{t("aact_col_date")}</th>
+                  <th>{t("aact_col_type")}</th>
+                  <th>{t("aact_col_user")}</th>
+                  <th>{t("aact_col_description")}</th>
                   <th>IP</th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 && (
-                  <tr><td colSpan={5} className="np-admin-fees-empty">Aucune activité trouvée</td></tr>
+                  <tr><td colSpan={5} className="np-admin-fees-empty">{t("aact_empty")}</td></tr>
                 )}
                 {items.map((item: any, i: number) => (
                   <tr key={item.id || i}>
@@ -98,7 +100,7 @@ export function AdminActivities() {
                       </span>
                     </td>
                     <td style={{ fontSize: 12 }}>
-                      {item.user_name || item.user_id || "Système"}
+                      {item.user_name || item.user_id || t("aact_system")}
                     </td>
                     <td style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
                       {item.description || "—"}
@@ -117,7 +119,7 @@ export function AdminActivities() {
               <button type="button" className="np-secondary-button" disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={{ padding: "4px 8px" }}>
                 <ChevronLeft size={14} />
               </button>
-              <span style={{ fontSize: 12, opacity: 0.6 }}>Page {page} / {totalPages} ({total} entrées)</span>
+              <span style={{ fontSize: 12, opacity: 0.6 }}>{t("aact_pagination").replace("{n}", String(page)).replace("{m}", String(totalPages)).replace("{c}", String(total))}</span>
               <button type="button" className="np-secondary-button" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: "4px 8px" }}>
                 <ChevronRight size={14} />
               </button>

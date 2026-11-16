@@ -5,8 +5,10 @@ import {
   ArrowLeft, Check, ChevronRight, Clock, Loader2, MessageSquare,
   Package, RefreshCw, Send, X,
 } from "lucide-react";
+import { useLanguage } from "@/app/lib/i18n";
 
 export function MesCommandes() {
+  const { t } = useLanguage();
   const [commandes, setCommandes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
@@ -55,22 +57,22 @@ export function MesCommandes() {
       if (data.success) {
         setNewComment("");
         openDetail(selected);
-        notify("Message envoyé");
+        notify(t("mord_toast_message_sent"));
       }
-    } catch { notify("Erreur d'envoi"); }
+    } catch { notify(t("mord_toast_send_error")); }
     setSending(false);
   };
 
   const fmtPrice = (price: number) => `${Math.round(price).toLocaleString("fr-FR")} FCFA`;
 
   const statusMap: Record<string, { label: string; color: string }> = {
-    pending: { label: "En attente", color: "#f59e0b" },
-    paid: { label: "Payée", color: "#3b82f6" },
-    processing: { label: "En traitement", color: "#8b5cf6" },
-    delivered: { label: "Livrée", color: "#10b981" },
-    completed: { label: "Terminée", color: "#00d4aa" },
-    refunded: { label: "Remboursée", color: "#ef4444" },
-    cancelled: { label: "Annulée", color: "#6b7280" },
+    pending: { label: t("mord_status_pending"), color: "#f59e0b" },
+    paid: { label: t("mord_status_paid"), color: "#3b82f6" },
+    processing: { label: t("mord_status_processing"), color: "#8b5cf6" },
+    delivered: { label: t("mord_status_delivered"), color: "#10b981" },
+    completed: { label: t("mord_status_completed"), color: "#00d4aa" },
+    refunded: { label: t("mord_status_refunded"), color: "#ef4444" },
+    cancelled: { label: t("mord_status_cancelled"), color: "#6b7280" },
   };
 
   if (selected && detail) {
@@ -79,13 +81,13 @@ export function MesCommandes() {
       <div className="np-mes-commandes">
         {notification && <div className="np-marketplace-toast">{notification}</div>}
         <button type="button" className="np-marketplace-back" onClick={() => { setSelected(null); setDetail(null); }}>
-          <ArrowLeft size={16} /> Retour à mes commandes
+          <ArrowLeft size={16} /> {t("mord_back_to_orders")}
         </button>
 
         <div className="np-commande-detail">
           <div className="np-commande-detail-header">
             <div>
-              <h3>{detail.article_title_snapshot || detail.article_title_live || "Article"}</h3>
+              <h3>{detail.article_title_snapshot || detail.article_title_live || t("mord_article")}</h3>
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
                 <span className="np-marketplace-badge" style={{ borderColor: st.color, color: st.color }}>{st.label}</span>
                 <span style={{ fontSize: 11, opacity: 0.4 }}>#{detail.id}</span>
@@ -97,17 +99,17 @@ export function MesCommandes() {
           </div>
 
           <div className="np-commande-detail-grid">
-            <div><small>Quantité</small><strong>{detail.quantity}</strong></div>
-            <div><small>Prix unitaire</small><strong>{fmtPrice(detail.unit_price)}</strong></div>
-            <div><small>Total</small><strong>{fmtPrice(detail.unit_price * detail.quantity)}</strong></div>
-            <div><small>Paiement</small><strong>{detail.payment_method || "—"}</strong></div>
-            <div><small>Date</small><strong>{new Date(detail.created_at).toLocaleDateString("fr-FR")}</strong></div>
-            {detail.response && <div style={{ gridColumn: "span 2" }}><small>Réponse</small><p style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{detail.response}</p></div>}
+            <div><small>{t("mord_quantity")}</small><strong>{detail.quantity}</strong></div>
+            <div><small>{t("mord_unit_price")}</small><strong>{fmtPrice(detail.unit_price)}</strong></div>
+            <div><small>{t("mord_total")}</small><strong>{fmtPrice(detail.unit_price * detail.quantity)}</strong></div>
+            <div><small>{t("mord_payment")}</small><strong>{detail.payment_method || "—"}</strong></div>
+            <div><small>{t("mord_date")}</small><strong>{new Date(detail.created_at).toLocaleDateString("fr-FR")}</strong></div>
+            {detail.response && <div style={{ gridColumn: "span 2" }}><small>{t("mord_response")}</small><p style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{detail.response}</p></div>}
           </div>
 
           {detail.fieldValues && detail.fieldValues.length > 0 && (
             <div className="np-commande-detail-fields">
-              <h4>Informations fournies</h4>
+              <h4>{t("mord_provided_info")}</h4>
               {detail.fieldValues.map((fv: any) => (
                 <div key={fv.id} className="np-commande-field-row">
                   <span>{fv.field_label || fv.field_name}</span>
@@ -118,14 +120,14 @@ export function MesCommandes() {
           )}
 
           <div className="np-commande-chat">
-            <h4><MessageSquare size={14} /> Discussion</h4>
+            <h4><MessageSquare size={14} /> {t("mord_discussion")}</h4>
             <div className="np-commande-chat-messages">
               {(!detail.comments || detail.comments.length === 0) && (
-                <p style={{ opacity: 0.4, fontSize: 12, textAlign: "center", padding: 16 }}>Aucun message. Posez une question sur votre commande.</p>
+                <p style={{ opacity: 0.4, fontSize: 12, textAlign: "center", padding: 16 }}>{t("mord_no_messages")}</p>
               )}
               {detail.comments?.map((c: any) => (
                 <div key={c.id} className="np-commande-chat-msg">
-                  <strong>{c.user_name || "Anonyme"}</strong>
+                  <strong>{c.user_name || t("mord_anonymous")}</strong>
                   <p>{c.content}</p>
                   <small>{new Date(c.created_at).toLocaleString("fr-FR")}</small>
                 </div>
@@ -134,7 +136,7 @@ export function MesCommandes() {
             <div className="np-commande-chat-input">
               <input value={newComment} onChange={e => setNewComment(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSendComment()}
-                placeholder="Écrire un message..." className="np-text-input" />
+                placeholder={t("mord_write_message")} className="np-text-input" />
               <button type="button" className="np-primary-button" onClick={handleSendComment} disabled={sending || !newComment.trim()}>
                 <Send size={14} />
               </button>
@@ -150,16 +152,16 @@ export function MesCommandes() {
       {notification && <div className="np-marketplace-toast">{notification}</div>}
 
       <div className="np-marketplace-header">
-        <h2>Mes Commandes</h2>
+        <h2>{t("mord_title")}</h2>
         <button type="button" className="np-admin-fees-refresh" onClick={refresh}><RefreshCw size={14} /></button>
       </div>
 
       {loading ? (
-        <div className="np-marketplace-loading"><Loader2 size={20} className="animate-spin" /> Chargement...</div>
+        <div className="np-marketplace-loading"><Loader2 size={20} className="animate-spin" /> {t("mord_loading")}</div>
       ) : commandes.length === 0 ? (
         <div className="np-marketplace-empty">
           <Package size={32} />
-          <p>Vous n'avez pas encore de commande.</p>
+          <p>{t("mord_empty")}</p>
         </div>
       ) : (
         <div className="np-commandes-list">
@@ -171,8 +173,8 @@ export function MesCommandes() {
                   <img src={cmd.article_image} alt="" className="np-commande-row-img" />
                 )}
                 <div className="np-commande-row-info">
-                  <strong>{cmd.article_title_snapshot || "Article #" + cmd.article_id}</strong>
-                  <span style={{ fontSize: 11, opacity: 0.4 }}>{new Date(cmd.created_at).toLocaleDateString("fr-FR")} · Qté: {cmd.quantity}</span>
+                  <strong>{cmd.article_title_snapshot || t("mord_article_fallback").replace("{n}", String(cmd.article_id))}</strong>
+                  <span style={{ fontSize: 11, opacity: 0.4 }}>{new Date(cmd.created_at).toLocaleDateString("fr-FR")} · {t("mord_qty_abbr")}: {cmd.quantity}</span>
                 </div>
                 <div className="np-commande-row-right">
                   <span className="np-marketplace-badge" style={{ borderColor: st.color, color: st.color }}>{st.label}</span>

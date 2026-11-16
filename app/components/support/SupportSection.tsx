@@ -27,7 +27,7 @@ interface SupportSectionProps {
   initialTxRef?: string;
 }
 
-const OFFICIAL_EMAIL = "serviceclient2126@gmail.com";
+const OFFICIAL_EMAIL = "novapaid@novapaid.net";
 const OFFICIAL_WHATSAPP_NUMBER = "+237 657887403";
 const OFFICIAL_WHATSAPP_URL = "https://wa.me/237657887403";
 
@@ -265,7 +265,7 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
                 ? "Suspect unauthorized activity? Freeze your card in one click from your account."
                 : "Activité suspecte ? Gelez instantanément votre carte en un clic depuis votre espace."}
             </p>
-            <a href="/cards" className="np-channel-link text-rose-600">
+            <a href="/cards" className="np-channel-link np-text-danger">
               <span>{t("my_cards")}</span>
               <ChevronRight size={15} />
             </a>
@@ -281,15 +281,15 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
             <div>
               <span className="np-overline">{t("support_option_a_title")}</span>
               <h2>{t("new_support_request")}</h2>
-              <p className="text-xs text-slate-500 mt-1">{t("support_option_a_desc")}</p>
+              <p className="np-form-hint" style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>{t("support_option_a_desc")}</p>
             </div>
-            <Headphones size={22} className="text-blue-600" />
+            <Headphones size={22} className="np-icon-accent" />
           </div>
 
           {isSubmitted ? (
             <div className="np-ticket-success">
               <span className="np-receipt-icon success">
-                <CheckCircle2 size={40} className="text-emerald-500" />
+                <CheckCircle2 size={40} className="np-icon-success" />
               </span>
               <h3>{t("ticket_created_success")}</h3>
               <p>
@@ -404,7 +404,7 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
                 />
               </div>
 
-              {ticketError && <p role="alert" className="text-xs text-rose-600 font-semibold">{ticketError}</p>}
+              {ticketError && <p role="alert" className="np-msg-error" style={{ fontSize: "0.75rem", fontWeight: 600 }}>{ticketError}</p>}
 
               <button type="submit" className="np-primary-button np-submit-btn" disabled={isSending}>
                 {isSending ? <RefreshCw size={15} className="spin" /> : <Send size={15} />}
@@ -434,12 +434,12 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
           <div className="np-tickets-list-wrap">
             {ticketsLoading ? (
               <div className="np-tickets-empty">
-                <RefreshCw size={18} className="spin text-blue-600 mb-2" />
+                <RefreshCw size={18} className="spin np-icon-accent" style={{ marginBottom: "0.5rem" }} />
                 <p>{t("loading")}</p>
               </div>
             ) : tickets.length === 0 ? (
               <div className="np-tickets-empty">
-                <MessageSquare size={28} className="text-slate-300 mb-2" />
+                <MessageSquare size={28} className="np-icon-muted" style={{ marginBottom: "0.5rem" }} />
                 <p>{t("no_tickets")}</p>
               </div>
             ) : (
@@ -488,7 +488,7 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
                           {/* Résumé de résolution si résolu */}
                           {ticket.resolution && (
                             <div className="np-ticket-resolution-banner">
-                              <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0" />
+                              <CheckCircle2 size={16} className="np-icon-success" style={{ flexShrink: 0 }} />
                               <div>
                                 <strong>{language === "en" ? "Resolution Note :" : "Note de résolution :"}</strong>
                                 <p>{ticket.resolution}</p>
@@ -515,7 +515,7 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
                                     <div className="np-msg-meta">
                                       <span className="np-msg-sender">
                                         {isAdmin ? (
-                                          <span className="flex items-center gap-1 text-blue-600 font-bold">
+                                          <span className="np-support-admin-name">
                                             <ShieldCheck size={13} /> {m.senderName || "Support NovaPaid"}
                                           </span>
                                         ) : (
@@ -545,7 +545,7 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
                                 onChange={(e) => setReplyMessage(e.target.value)}
                               />
                               <div className="flex justify-between items-center mt-2">
-                                {replyFeedback && <span className="text-xs text-blue-600 font-semibold">{replyFeedback}</span>}
+                                {replyFeedback && <span className="np-reply-feedback">{replyFeedback}</span>}
                                 <button
                                   type="button"
                                   className="np-primary-button np-btn-sm ml-auto"
@@ -572,8 +572,8 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
           </div>
 
           {/* Section FAQ intégrée */}
-          <div className="np-faq-accordion mt-6 pt-5 border-t border-slate-100">
-            <h3 className="text-sm font-bold text-slate-800 mb-2">Foire aux questions (FAQ)</h3>
+          <div className="np-faq-accordion np-faq-section">
+            <h3 className="np-faq-heading">Foire aux questions (FAQ)</h3>
             {faqItems.map((item, idx) => (
               <div key={idx} className={"np-faq-accordion-item " + (activeFaq === idx ? "open" : "")}>
                 <button
@@ -581,10 +581,10 @@ export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
                   className="np-faq-accordion-header"
                   onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
                 >
-                  <span className="font-semibold text-xs text-slate-800 flex-1">{item.q}</span>
-                  <ChevronDown size={15} className={"transition-transform " + (activeFaq === idx ? "rotate-180 text-blue-600" : "text-slate-400")} />
+                  <span className="np-faq-question">{item.q}</span>
+                  <ChevronDown size={15} className={"np-faq-chevron " + (activeFaq === idx ? "open" : "")} />
                 </button>
-                {activeFaq === idx && <div className="p-3 pt-0 text-xs text-slate-600 leading-relaxed">{item.a}</div>}
+                {activeFaq === idx && <div className="np-faq-answer">{item.a}</div>}
               </div>
             ))}
           </div>

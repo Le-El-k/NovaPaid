@@ -44,7 +44,7 @@ async function sendNotification(request, env) {
   if (!order.ok) return jsonResponse({ error: order.error }, 400);
 
   const fromEmail = String(env.MAILJET_FROM_EMAIL).trim();
-  const recipient = String(env.MAILJET_TO_EMAIL || "serviceclient2126@gmail.com").trim();
+  const recipient = String(env.MAILJET_TO_EMAIL || "novapaid@novapaid.net").trim();
   if (!EMAIL_PATTERN.test(fromEmail) || !EMAIL_PATTERN.test(recipient)) {
     return jsonResponse({ error: "Mail sender or recipient is not configured" }, 503);
   }

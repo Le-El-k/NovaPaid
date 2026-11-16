@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { PublicShop } from "../components/marketplace/PublicShop";
+import { ServiceUnavailable } from "../components/common/ServiceUnavailable";
+import { RequireAuth } from "../components/auth/RequireAuth";
+import { SERVICES_LIVE } from "@/app/lib/feature-flags";
 
 export default function ShopSlugPage() {
   const [slug, setSlug] = useState<string | null>(null);
@@ -13,7 +16,15 @@ export default function ShopSlugPage() {
     }
   }, []);
 
-  if (!slug) return <div style={{ padding: 40, textAlign: "center", opacity: 0.5 }}>Chargement de la boutique...</div>;
-
-  return <PublicShop slug={slug} />;
+  return (
+    <RequireAuth>
+      {!SERVICES_LIVE ? (
+        <ServiceUnavailable />
+      ) : !slug ? (
+        <div style={{ padding: 40, textAlign: "center", opacity: 0.5 }}>Chargement de la boutique...</div>
+      ) : (
+        <PublicShop slug={slug} />
+      )}
+    </RequireAuth>
+  );
 }

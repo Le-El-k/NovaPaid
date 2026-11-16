@@ -6,6 +6,9 @@ import { ArrowLeft, Package, ShoppingCart, Store } from "lucide-react";
 import { MarketplaceBrowse } from "../components/marketplace/MarketplaceBrowse";
 import { MesCommandes } from "../components/marketplace/MesCommandes";
 import { MyShop } from "../components/marketplace/MyShop";
+import { ServiceUnavailable } from "../components/common/ServiceUnavailable";
+import { RequireAuth } from "../components/auth/RequireAuth";
+import { SERVICES_LIVE } from "@/app/lib/feature-flags";
 
 type MarketplaceTab = "browse" | "commandes" | "my_shop";
 
@@ -13,6 +16,8 @@ export default function MarketplacePage() {
   const [tab, setTab] = useState<MarketplaceTab>("browse");
 
   return (
+    <RequireAuth>
+      {!SERVICES_LIVE ? <ServiceUnavailable /> : (
     <div className="np-marketplace-page">
       <div className="np-marketplace-page-nav">
         <Link href="/dashboard" className="np-marketplace-back-link">
@@ -35,5 +40,7 @@ export default function MarketplacePage() {
       {tab === "commandes" && <MesCommandes />}
       {tab === "my_shop" && <MyShop />}
     </div>
+      )}
+    </RequireAuth>
   );
 }

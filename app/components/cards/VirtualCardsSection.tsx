@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { playTap } from "@/app/lib/sound";
 import { useLanguage } from "@/app/lib/i18n";
+import { SoleasPayCheckoutV3 } from "@/app/components/payments/SoleasPayCheckoutV3";
+import { payWithBkpay } from "@/app/lib/payments/pay-with-bkpay";
 
 type CardBrand = "visa" | "mastercard";
 type CardStatus = "active" | "frozen" | "cancelled" | "closed";
@@ -39,6 +41,8 @@ const MAX_CARDS = 3;
 const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 100;
 const CREATION_FEE = 9;
+// Taux de conversion utilisé par le portefeuille pour créditer les cartes (cf. fundCard côté serveur).
+const USD_XAF_RATE = 610;
 
 function fmt(n: number) {
   return "$" + n.toFixed(2);
@@ -154,17 +158,23 @@ function CardListItem({ card, active, onClick }: { card: CardData; active: boole
   );
 }
 
-function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount }: {
+function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount, profile }: {
   open: boolean; onClose: () => void;
   onCreated: (card: CardData) => void; walletBalance: number; currentCount: number;
+  profile: { name: string; phone: string };
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [brand, setBrand] = useState<CardBrand>("visa");
   const [amount, setAmount] = useState(MIN_AMOUNT);
   const [amountInput, setAmountInput] = useState("1.00");
   const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [spOrder, setSpOrder] = useState<{ orderRef: string; amountXaf: number; description: string } | null>(null);
+  const [phone, setPhone] = useState("");
+  const [bkLoading, setBkLoading] = useState(false);
+
+  useEffect(() => { if (profile.phone) setPhone((p) => p || profile.phone); }, [profile.phone]);
 
   const total = CREATION_FEE + amount;
   const isLimitReached = currentCount >= MAX_CARDS;
@@ -194,15 +204,16 @@ function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount }:
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/cards", {
+      // Creation fee + initial load are collected via SoleasPay; the webhook
+      // issues the card once payment is confirmed.
+      const res = await fetch("/api/payments/soleaspay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brand, amountUsd: amount }),
+        body: JSON.stringify({ type: "card_creation", brand, amountUsd: amount, label: previewCard.label }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || "Erreur lors de la création.");
-      onCreated(data.card);
-      onClose();
+      if (!res.ok || !data.success) throw new Error(data.error || "Initialisation du paiement impossible.");
+      setSpOrder({ orderRef: data.orderRef, amountXaf: data.amountXaf, description: data.description });
     } catch (err: any) {
       setError(err?.message || "Une erreur est survenue.");
     } finally {
@@ -211,6 +222,50 @@ function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount }:
   };
 
   if (!open) return null;
+
+  if (spOrder) {
+    return (
+      <div className="npvc-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setSpOrder(null); onClose(); } }}>
+        <div className="npvc-confirm-dialog" style={{ maxWidth: "420px", margin: "auto" }}>
+          <div className="npvc-confirm-icon is-info"><CreditCard size={26} /></div>
+          <h3>Payer la création de votre carte</h3>
+          <p>Payez <strong>{spOrder.amountXaf.toLocaleString("fr-FR")} FCFA</strong> par Mobile Money. Votre carte {brand === "visa" ? "Visa" : "Mastercard"} sera créée automatiquement après confirmation du paiement.</p>
+          <label className="npvc-freeze-field" style={{ width: "100%" }}>
+            <span>Numéro Mobile Money</span>
+            <input type="tel" className="np-text-input" style={{ width: "100%", fontWeight: 600 }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+237 6XX XX XX XX" />
+          </label>
+          <p className="npvc-pay-choice-label">Choisissez votre moyen de paiement</p>
+          <div className="npvc-soleaspay-wrap" style={{ width: "100%" }}>
+            <SoleasPayCheckoutV3
+              language={language}
+              amount={spOrder.amountXaf}
+              orderId={spOrder.orderRef}
+              description={spOrder.description}
+              username={profile.name || "Client"}
+              whatsapp={phone}
+              coins={0}
+              productType="card"
+              buttonLabel="Payer avec SoleasPay"
+            />
+          </div>
+          <button
+            type="button"
+            className="npvc-bkpay-btn"
+            disabled={bkLoading}
+            onClick={async () => {
+              setBkLoading(true);
+              setError(null);
+              try { await payWithBkpay({ type: "card_creation", brand, amountUsd: amount, label: previewCard.label }); }
+              catch (e: any) { setError(e?.message || "BKApay indisponible."); setBkLoading(false); }
+            }}
+          >
+            {bkLoading ? "Redirection…" : "Payer avec BKApay"}
+          </button>
+          <button type="button" className="npvc-confirm-cancel" style={{ width: "100%", marginTop: "10px" }} onClick={() => setSpOrder(null)}>Retour</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="npvc-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -279,11 +334,6 @@ function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount }:
                 <div className="npvc-drawer-summary-row"><span>Frais d'émission</span><span>$9.00</span></div>
                 <div className="npvc-drawer-summary-row"><span>Montant crédité</span><span>{fmt(amount)}</span></div>
                 <div className="npvc-drawer-summary-total"><span>Total à payer</span><span>{fmt(total)}</span></div>
-                {walletBalance < total && (
-                  <p className="npvc-drawer-warn">
-                    Solde insuffisant ({Math.round(walletBalance * 655).toLocaleString("fr-FR")} FCFA disponibles).
-                  </p>
-                )}
               </div>
               {error && <p className="npvc-drawer-error">{error}</p>}
               <div className="npvc-drawer-footer">
@@ -318,12 +368,14 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
     action: "freeze",
   });
   const [isTogglingFreeze, setIsTogglingFreeze] = useState(false);
+  const [freezeReason, setFreezeReason] = useState("");
   const [toggleFeedback, setToggleFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [cardTxs, setCardTxs] = useState<any[]>([]);
   const [cardTxsLoading, setCardTxsLoading] = useState(false);
   const [fundModal, setFundModal] = useState<{ open: boolean; card: CardData | null }>({ open: false, card: null });
   const [fundAmount, setFundAmount] = useState("10");
   const [funding, setFunding] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; phone: string }>({ name: "", phone: "" });
   const [withdrawModal, setWithdrawModal] = useState<{ open: boolean; card: CardData | null }>({ open: false, card: null });
   const [withdrawAmount, setWithdrawAmount] = useState("10");
   const [withdrawing, setWithdrawing] = useState(false);
@@ -343,13 +395,24 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
           setActiveId((curr) => (curr && cr.cards.some((c: CardData) => c.id === curr) ? curr : cr.cards[0].id));
         }
       }
-      if (wr.success) setWalletBalance((wr.wallet?.availableMinor ?? 0) / 100);
+      if (wr.success) setWalletBalance(wr.wallet?.balanceXaf ?? 0);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { loadCards(); }, [loadCards]);
+
+  useEffect(() => {
+    fetch("/api/auth")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.success && d.user) {
+          setProfile({ name: d.user.name || "", phone: d.user.phone || "" });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!activeId) return;
@@ -374,14 +437,32 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
     setConfirmModal({ open: true, card, action });
   };
 
-  const handleConfirmFund = async () => {
+  const closeFund = () => {
+    setFundModal({ open: false, card: null });
+  };
+
+  // Recharge is now served directly from the main wallet balance ("Solde
+  // disponible"). We debit the XAF wallet and credit the card's USD balance in a
+  // single server-side transaction (NovaDbService.fundCard), so no external
+  // Mobile Money payment is required when the wallet already holds funds.
+  const handleConfirmRecharge = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!fundModal.card) return;
     const amount = Number(fundAmount);
     if (!Number.isFinite(amount) || amount < 1 || amount > 1000) {
       setToggleFeedback({ type: "error", text: "Montant de recharge invalide (1 - 1 000 USD)." });
       return;
     }
+    const costXaf = Math.ceil(amount * USD_XAF_RATE);
+    if (walletBalance < costXaf) {
+      setToggleFeedback({
+        type: "error",
+        text: `Solde portefeuille insuffisant. Il vous faut ${costXaf.toLocaleString("fr-FR")} FCFA (disponible : ${walletBalance.toLocaleString("fr-FR")} FCFA). Rechargez d'abord votre portefeuille.`,
+      });
+      return;
+    }
     setFunding(true);
+    setToggleFeedback(null);
     try {
       const res = await fetch("/api/cards", {
         method: "POST",
@@ -390,12 +471,16 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
       });
       const data = await res.json();
       if (!res.ok || !data?.success) throw new Error(data?.error || "Recharge impossible.");
-      setCards(prev => prev.map(c => c.id === fundModal.card!.id ? data.card : c));
-      if (typeof data.newWalletBalanceXaf === "number") setWalletBalance(data.newWalletBalanceXaf);
-      setToggleFeedback({ type: "success", text: `Carte rechargée avec succès (+$${amount.toFixed(2)} USD).` });
-      setFundModal({ open: false, card: null });
-      // Refresh txs
-      fetch(`/api/cards?cardId=${fundModal.card.id}`).then(r => r.json()).then(d => { if (d.success) setCardTxs(d.transactions); });
+      if (data.card) setCards(prev => prev.map(c => c.id === data.card.id ? data.card : c));
+      if (typeof data.newWalletBalanceXaf === "number") {
+        setWalletBalance(data.newWalletBalanceXaf);
+        // Keep the dashboard "Solde disponible" in sync with the debit.
+        window.dispatchEvent(new CustomEvent("novapay:balance-changed", { detail: { balance: data.newWalletBalanceXaf } }));
+      }
+      setToggleFeedback({ type: "success", text: `Carte rechargée de $${amount.toFixed(2)} (−${costXaf.toLocaleString("fr-FR")} FCFA depuis votre portefeuille).` });
+      closeFund();
+      // Refresh card transactions
+      fetch(`/api/cards?cardId=${fundModal.card.id}`).then(r => r.json()).then(d => { if (d.success) setCardTxs(d.transactions); }).catch(() => {});
     } catch (e: any) {
       setToggleFeedback({ type: "error", text: e?.message || "Erreur lors de la recharge." });
     } finally {
@@ -432,7 +517,8 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
     }
   };
 
-  const handleConfirmToggleFreeze = async () => {
+  const handleConfirmToggleFreeze = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!confirmModal.card || isTogglingFreeze) return;
     setIsTogglingFreeze(true);
     setToggleFeedback(null);
@@ -440,7 +526,11 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
       const res = await fetch("/api/cards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "toggle_freeze", cardId: confirmModal.card.id }),
+        body: JSON.stringify({
+          action: "toggle_freeze",
+          cardId: confirmModal.card.id,
+          reason: freezeReason.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success || !data.card) {
@@ -454,6 +544,7 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
           : "Carte réactivée avec succès.",
       });
       setConfirmModal({ open: false, card: null, action: "freeze" });
+      setFreezeReason("");
     } catch (err: any) {
       setToggleFeedback({ type: "error", text: err?.message || "Erreur de connexion." });
     } finally {
@@ -481,7 +572,7 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
             </span>
           </div>
           <p className="npvc-subtitle">
-            {cards.length} {t("card_limit_badge")} · Solde portefeuille : {Math.round(walletBalance * 655).toLocaleString("fr-FR")} FCFA
+            {cards.length} {t("card_limit_badge")} · Solde portefeuille : {walletBalance.toLocaleString("fr-FR")} FCFA
           </p>
         </div>
 
@@ -503,17 +594,6 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
         )}
       </header>
 
-      {/* 3 Cards Limit Notice if reached */}
-      {isLimitReached && (
-        <div className="npvc-limit-banner">
-          <Info size={16} />
-          <div>
-            <strong>Limite maximale de 3 cartes atteinte</strong>
-            <p>{t("card_limit_warning")}</p>
-          </div>
-        </div>
-      )}
-
       {/* Operation Feedback */}
       {toggleFeedback && (
         <div className={"npvc-feedback-banner " + toggleFeedback.type}>
@@ -526,21 +606,7 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
       {cards.length === 0 ? (
         <EmptyCards onCreate={() => setDrawerOpen(true)} />
       ) : (
-        <div className="npvc-layout">
-          <aside className="npvc-sidebar">
-            <div className="npvc-sidebar-top">
-              <p className="npvc-sidebar-label">Toutes les cartes ({cards.length}/{MAX_CARDS})</p>
-            </div>
-            <div className="npvc-sidebar-list">
-              {cards.map(c => (
-                <CardListItem key={c.id} card={c}
-                  active={c.id === (activeCard?.id ?? -1)}
-                  onClick={() => { setActiveId(c.id); setFlipped(false); }}
-                />
-              ))}
-            </div>
-          </aside>
-
+        <div className="npvc-layout npvc-layout--solo">
           {activeCard && (
             <div className="npvc-detail">
               <div className="npvc-detail-card-wrap">
@@ -549,10 +615,6 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
                   <button type="button" className="npvc-icon-btn" onClick={() => setHidden(h => !h)}>
                     {hidden ? <Eye size={15} /> : <EyeOff size={15} />}
                     <span>{hidden ? t("show_details") : t("hide_details")}</span>
-                  </button>
-                  <button type="button" className="npvc-icon-btn" onClick={() => setFlipped(f => !f)}>
-                    <RefreshCw size={15} />
-                    <span>{t("flip_card")}</span>
                   </button>
                   {activeCard.status === "frozen" ? (
                     <button
@@ -576,31 +638,9 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
                     </button>
                   )}
                 </div>
-                <p className="npvc-flip-hint">Touchez la carte pour la retourner</p>
               </div>
 
               <div className="npvc-info-panel">
-                <div className="npvc-info-grid">
-                  <div className="npvc-info-tile">
-                    <small>{t("card_balance")}</small>
-                    <strong>{hidden ? "••••" : fmt(activeCard.balanceUsd)}</strong>
-                  </div>
-                  <div className="npvc-info-tile">
-                    <small>{t("card_network")}</small>
-                    <strong>{activeCard.brand === "visa" ? "Visa" : "Mastercard"}</strong>
-                  </div>
-                  <div className="npvc-info-tile">
-                    <small>{t("card_type")}</small>
-                    <strong>Virtuelle</strong>
-                  </div>
-                  <div className="npvc-info-tile">
-                    <small>{t("card_status")}</small>
-                    <strong className={"npvc-status-" + activeCard.status}>
-                      {activeCard.status === "active" ? t("active_card") : activeCard.status === "frozen" ? t("frozen_card") : t("closed_card")}
-                    </strong>
-                  </div>
-                </div>
-
                 {/* Complete Card Actions Bar (Recharger, Geler, Rapatrier) */}
                 <div className="npvc-actions-bar">
                   <button
@@ -638,16 +678,6 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    className="npvc-act-btn npvc-act-btn--withdraw"
-                    onClick={() => { setWithdrawModal({ open: true, card: activeCard }); setWithdrawAmount("10"); }}
-                    disabled={activeCard.status !== "active" || activeCard.balanceUsd < 1}
-                    title="Rapatrier les fonds vers votre portefeuille principal"
-                  >
-                    <CreditCard size={15} />
-                    <span>Rapatrier</span>
-                  </button>
                 </div>
 
                 <div className="npvc-info-security">
@@ -662,89 +692,59 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
                   </div>
                 </div>
 
-                {/* Adresse de facturation internationale (Billing Address US - PrismCard) */}
-                <div style={{ marginTop: "14px", padding: "14px", borderRadius: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: "12px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <span style={{ fontWeight: 700, color: "#1e293b", textTransform: "uppercase", fontSize: "11px", letterSpacing: "0.5px" }}>
-                      Adresse de facturation (Billing Address)
-                    </span>
-                    <span style={{ fontSize: "10px", color: "#059669", fontWeight: 700, background: "#ecfdf5", padding: "2px 6px", borderRadius: "6px" }}>
-                      Valide USA
-                    </span>
-                  </div>
-                  <div style={{ color: "#475569", lineHeight: "1.6" }}>
-                    <div><strong>Rue :</strong> 1209 Orange Street</div>
-                    <div><strong>Ville / État :</strong> Wilmington, Delaware (DE)</div>
-                    <div><strong>Code Postal (ZIP) :</strong> 19801</div>
-                    <div><strong>Pays :</strong> United States (US)</div>
-                  </div>
-                  <small style={{ display: "block", marginTop: "6px", color: "#94a3b8", fontSize: "10px" }}>
-                    Utilisez cette adresse pour vos achats internationaux (Netflix, Spotify, Amazon, App Store).
-                  </small>
-                </div>
-
-                {/* Card transaction history */}
-                <div className="npvc-card-transactions">
-                  <h4>{t("transaction_history")}</h4>
-                  {cardTxsLoading ? (
-                    <div className="npvc-empty-card-tx" style={{display:"flex",alignItems:"center",gap:"6px"}}><RefreshCw size={13} className="spin" /> Chargement...</div>
-                  ) : cardTxs.length === 0 ? (
-                    <p className="npvc-empty-card-tx">{t("no_card_tx")}</p>
-                  ) : (
-                    <ul className="npvc-tx-list">
-                      {cardTxs.map((tx) => (
-                        <li key={tx.id} className="npvc-tx-item">
-                          <span className={"npvc-tx-icon " + (tx.type === "refund" ? "is-credit" : "is-debit")}>
-                            {tx.type === "refund" ? "+" : "-"}
-                          </span>
-                          <div className="npvc-tx-info">
-                            <span className="npvc-tx-desc">{tx.merchant || tx.description}</span>
-                            <span className="npvc-tx-date">{new Date(tx.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}</span>
-                          </div>
-                          <span className={"npvc-tx-amount " + (tx.type === "refund" ? "is-credit" : "is-debit")}>
-                            {tx.type === "refund" ? "+" : "-"}${tx.amountUsd.toFixed(2)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Freeze / Unfreeze confirmation modal */}
+      {/* Freeze / Unfreeze form (action applied at Maplerad when the provider is active) */}
       {confirmModal.open && confirmModal.card && (
-        <div className="npvc-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="npvc-confirm-dialog">
+        <div
+          className="npvc-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !isTogglingFreeze) setConfirmModal({ open: false, card: null, action: "freeze" }); }}
+        >
+          <form className="npvc-confirm-dialog npvc-freeze-form" onSubmit={handleConfirmToggleFreeze}>
             <div className={"npvc-confirm-icon " + (confirmModal.action === "freeze" ? "is-warn" : "is-info")}>
               {confirmModal.action === "freeze" ? <Lock size={26} /> : <Unlock size={26} />}
             </div>
             <h3>
               {confirmModal.action === "freeze"
-                ? "Geler la carte " + confirmModal.card.label + " ?"
-                : "Réactiver la carte " + confirmModal.card.label + " ?"}
+                ? "Geler la carte " + confirmModal.card.label
+                : "Réactiver la carte " + confirmModal.card.label}
             </h3>
             <p>
               {confirmModal.action === "freeze"
-                ? "Vos paiements en ligne avec cette carte seront immédiatement suspendus. Vous pourrez la débloquer à tout moment en un clic."
+                ? "Vos paiements en ligne avec cette carte seront immédiatement suspendus. Vous pourrez la débloquer à tout moment."
                 : "Votre carte sera immédiatement dégelée et prête pour tous vos achats en ligne."}
             </p>
+
+            <label className="npvc-freeze-field">
+              <span>{confirmModal.action === "freeze" ? "Motif du gel (facultatif)" : "Motif de la réactivation (facultatif)"}</span>
+              <textarea
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+                rows={2}
+                maxLength={200}
+                disabled={isTogglingFreeze}
+                placeholder={confirmModal.action === "freeze" ? "Ex : carte perdue, activité suspecte…" : "Ex : carte retrouvée…"}
+              />
+            </label>
+
             <div className="npvc-confirm-actions">
               <button
                 type="button"
                 className="npvc-confirm-cancel"
-                onClick={() => setConfirmModal({ open: false, card: null, action: "freeze" })}
+                onClick={() => { setConfirmModal({ open: false, card: null, action: "freeze" }); setFreezeReason(""); }}
                 disabled={isTogglingFreeze}
               >
                 {t("cancel")}
               </button>
               <button
-                type="button"
+                type="submit"
                 className={"npvc-confirm-btn " + (confirmModal.action === "freeze" ? "is-freeze-action" : "is-unfreeze-action")}
-                onClick={handleConfirmToggleFreeze}
                 disabled={isTogglingFreeze}
               >
                 {isTogglingFreeze ? (
@@ -758,126 +758,60 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
                   {isTogglingFreeze
                     ? "Traitement…"
                     : confirmModal.action === "freeze"
-                    ? "Oui, geler la carte"
-                    : "Oui, réactiver la carte"}
+                    ? "Geler la carte"
+                    : "Réactiver la carte"}
                 </span>
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
-      {/* Recharge Modal */}
-      {fundModal.open && fundModal.card && (
-        <div className="npvc-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="npvc-confirm-dialog" style={{ maxWidth: "420px" }}>
-            <div className="npvc-confirm-icon is-info">
-              <Zap size={26} />
-            </div>
-            <h3>Recharger {fundModal.card.label}</h3>
-            <p>
-              Ajoutez des fonds instantanément depuis votre portefeuille NovaPaid (Solde disponible : <strong>{walletBalance.toLocaleString("fr-FR")} FCFA</strong>). Taux : 1 USD = 610 FCFA.
-            </p>
-            <div style={{ margin: "16px 0", textAlign: "left" }}>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>
-                Montant en USD ($)
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type="number"
-                  min="1"
-                  max="1000"
-                  step="1"
-                  className="np-text-input"
-                  style={{ width: "100%", paddingLeft: "28px", fontWeight: 700 }}
-                  value={fundAmount}
-                  onChange={(e) => setFundAmount(e.target.value)}
-                  placeholder="10"
-                />
-                <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 700 }}>$</span>
+      {/* Recharge Modal — débité directement du portefeuille principal (Solde disponible) */}
+      {fundModal.open && fundModal.card && (() => {
+        const rechargeAmount = Number(fundAmount) || 0;
+        const rechargeCostXaf = Math.ceil(rechargeAmount * USD_XAF_RATE);
+        const insufficient = rechargeAmount >= 1 && walletBalance < rechargeCostXaf;
+        return (
+          <div className="npvc-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(e) => { if (e.target === e.currentTarget && !funding) closeFund(); }}>
+            <div className="npvc-confirm-dialog" style={{ maxWidth: "420px" }}>
+              <div className="npvc-confirm-icon is-info">
+                <Zap size={26} />
               </div>
-              <small style={{ display: "block", marginTop: "6px", color: "#64748b", fontSize: "11px" }}>
-                Débit portefeuille estimé : <strong>{(Number(fundAmount || 0) * 610).toLocaleString("fr-FR")} FCFA</strong>
-              </small>
-            </div>
-            <div className="npvc-confirm-actions">
-              <button
-                type="button"
-                className="npvc-confirm-cancel"
-                onClick={() => setFundModal({ open: false, card: null })}
-                disabled={funding}
-              >
-                {t("cancel")}
-              </button>
-              <button
-                type="button"
-                className="npvc-confirm-btn is-unfreeze-action npvc-action-fund-btn"
-                onClick={handleConfirmFund}
-                disabled={funding || Number(fundAmount) < 1}
-              >
-                {funding ? <RefreshCw size={15} className="spin" /> : <Zap size={15} />}
-                <span>{funding ? "Recharge en cours…" : "Confirmer la recharge"}</span>
-              </button>
+              <h3>Recharger {fundModal.card.label}</h3>
+              <form className="npvc-freeze-form" onSubmit={handleConfirmRecharge} style={{ width: "100%" }}>
+                <p>Transférez des fonds de votre <strong>portefeuille principal</strong> vers cette carte. Taux : 1 USD = {USD_XAF_RATE} FCFA.</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f1f5f9", borderRadius: "10px", marginBottom: "12px", fontSize: "13px" }}>
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>Solde disponible</span>
+                  <strong style={{ color: "#0f172a" }}>{walletBalance.toLocaleString("fr-FR")} FCFA</strong>
+                </div>
+                <label className="npvc-freeze-field">
+                  <span>Montant en USD ($)</span>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="number" min="1" max="1000" step="1" className="np-text-input"
+                      style={{ width: "100%", paddingLeft: "28px", fontWeight: 700 }}
+                      value={fundAmount} onChange={(e) => setFundAmount(e.target.value)} placeholder="10"
+                    />
+                    <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 700 }}>$</span>
+                  </div>
+                </label>
+                <small style={{ display: "block", margin: "-6px 0 10px", color: insufficient ? "#dc2626" : "#64748b", fontSize: "11px" }}>
+                  Débité du portefeuille : <strong>{rechargeCostXaf.toLocaleString("fr-FR")} FCFA</strong>
+                  {insufficient && " — solde insuffisant"}
+                </small>
+                <div className="npvc-confirm-actions">
+                  <button type="button" className="npvc-confirm-cancel" onClick={closeFund} disabled={funding}>{t("cancel")}</button>
+                  <button type="submit" className="npvc-confirm-btn is-unfreeze-action npvc-action-fund-btn" disabled={funding || rechargeAmount < 1 || insufficient}>
+                    {funding ? <RefreshCw size={15} className="spin" /> : <Zap size={15} />}
+                    <span>{funding ? "Recharge…" : "Recharger la carte"}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Withdraw Modal */}
-      {withdrawModal.open && withdrawModal.card && (
-        <div className="npvc-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="npvc-confirm-dialog" style={{ maxWidth: "420px" }}>
-            <div className="npvc-confirm-icon is-warn">
-              <CreditCard size={26} />
-            </div>
-            <h3>Rapatrier des fonds de la carte</h3>
-            <p>
-              Rapatriez des fonds de votre carte <strong>{withdrawModal.card.label}</strong> (Solde carte : <strong>${withdrawModal.card.balanceUsd.toFixed(2)} USD</strong>) directement sur votre compte principal NovaPaid en FCFA.
-            </p>
-            <div style={{ margin: "16px 0", textAlign: "left" }}>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>
-                Montant à rapatrier en USD ($)
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type="number"
-                  min="1"
-                  max={Math.floor(withdrawModal.card.balanceUsd)}
-                  step="1"
-                  className="np-text-input"
-                  style={{ width: "100%", paddingLeft: "28px", fontWeight: 700 }}
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="10"
-                />
-                <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 700 }}>$</span>
-              </div>
-              <small style={{ display: "block", marginTop: "6px", color: "#64748b", fontSize: "11px" }}>
-                Crédit portefeuille estimé : <strong>{(Number(withdrawAmount || 0) * 610).toLocaleString("fr-FR")} FCFA</strong>
-              </small>
-            </div>
-            <div className="npvc-confirm-actions">
-              <button
-                type="button"
-                className="npvc-confirm-cancel"
-                onClick={() => setWithdrawModal({ open: false, card: null })}
-                disabled={withdrawing}
-              >
-                {t("cancel")}
-              </button>
-              <button
-                type="button"
-                className="npvc-confirm-btn is-freeze-action"
-                onClick={handleConfirmWithdraw}
-                disabled={withdrawing || Number(withdrawAmount) < 1 || Number(withdrawAmount) > withdrawModal.card.balanceUsd}
-              >
-                {withdrawing ? <RefreshCw size={15} className="spin" /> : <CreditCard size={15} />}
-                <span>{withdrawing ? "Rapatriement…" : "Rapatrier vers le solde"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       <CreateDrawer
         open={drawerOpen}
@@ -885,6 +819,7 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
         onCreated={handleCreated}
         walletBalance={walletBalance}
         currentCount={cards.length}
+        profile={profile}
       />
     </div>
   );

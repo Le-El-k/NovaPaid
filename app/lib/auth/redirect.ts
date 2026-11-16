@@ -11,6 +11,7 @@ const AUTH_RETURN_PATHS = new Set([
   "/boutique",
   "/boutique/jeux-video",
   "/boutique/pieces-tiktok",
+  "/boutique/connexion-internet",
   "/marketplace",
   "/my-shop",
   "/help",
@@ -23,18 +24,18 @@ const AUTH_RETURN_PATHS = new Set([
 export function resolveAuthRedirect(search: string): string {
   const requested = new URLSearchParams(search).get("redirect");
   if (!requested || !requested.startsWith("/") || requested.startsWith("//")) {
-    return "/dashboard";
+    return "/boutique";
   }
 
   try {
     const target = new URL(requested, "https://novapaid.invalid");
     const pathname = target.pathname.replace(/\/+$/, "") || "/";
     if (target.origin !== "https://novapaid.invalid" || !AUTH_RETURN_PATHS.has(pathname)) {
-      return "/dashboard";
+      return "/boutique";
     }
 
     return `${pathname}${target.search}${target.hash}`;
   } catch {
-    return "/dashboard";
+    return "/boutique";
   }
 }

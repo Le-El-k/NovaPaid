@@ -1,4 +1,5 @@
 import { Shopfront } from "@/app/components/boutique/Shopfront";
+import { RequireAuth } from "@/app/components/auth/RequireAuth";
 import { initialShopSections } from "@/app/lib/shop-catalog";
 
 export function generateStaticParams() {
@@ -9,5 +10,9 @@ export function generateStaticParams() {
 
 export default async function ShopSectionPage({ params }: { params: Promise<{ sectionSlug: string }> }) {
   const { sectionSlug } = await params;
-  return <Shopfront sectionSlug={sectionSlug} />;
+  return (
+    <RequireAuth>
+      <Shopfront sectionSlug={sectionSlug} />
+    </RequireAuth>
+  );
 }

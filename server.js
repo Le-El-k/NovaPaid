@@ -4,6 +4,39 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load runtime server secrets from local (git-ignored) env files so that keys
+// such as GENY_API_KEY are available via process.env without ever living in the
+// committed repository. Existing process.env values always win.
+function loadEnvFile(relativePath) {
+  try {
+    const full = path.join(__dirname, relativePath);
+    if (!fs.existsSync(full)) return;
+    const content = fs.readFileSync(full, "utf-8");
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq < 1) continue;
+      const key = line.slice(0, eq).trim();
+      if (key in process.env) continue;
+      let value = line.slice(eq + 1).trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  } catch {
+    // Env file loading is best-effort; never block startup on it.
+  }
+}
+loadEnvFile(".env.geny.local");
+loadEnvFile(".env.admin.local");
+loadEnvFile(".env.maplerad.local");
+loadEnvFile(".env.soleaspay.local");
+loadEnvFile(".env.bkpay.local");
+loadEnvFile(".env.mailjet.local");
+
 const PORT = process.env.PORT || 3000;
 const CLIENT_DIST = path.join(__dirname, "dist", "client");
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -11,9 +44,54 @@ const CLIENT_PAGE_ROUTES = new Set([
   "admin", "bloodstrike", "boutique", "boutique/connexion-internet", "boutique/jeux-video", "boutique/pieces-tiktok", "cards", "cod", "dashboard", "dashboard/boutique", "fcmobile",
   "forgot-password", "fortnite", "freefire", "funding", "games", "help", "history", "login", "marketplace",
   "my-shop", "notifications", "payment", "payment/failed", "payment/failure", "payment/success",
-  "privacy", "profile", "pubg", "register", "reseller", "reset-password", "settings", "shop", "support",
+  "privacy", "profile", "pubg", "register", "reseller", "reset-password", "security", "settings", "shop", "support",
   "terms", "transactions", "transfers", "verify-code", "verify-email", "wallet",
 ]);
+
+// Pages servables SANS session utilisateur. Tout le reste exige une connexion.
+// /admin est "public" ici mais reste protégé par sa propre session admin.
+const PUBLIC_PAGE_PATHS = new Set([
+  "/", "/landing",
+  "/login", "/register",
+  "/forgot-password", "/reset-password",
+  "/verify-code", "/verify-email",
+  "/admin",
+]);
+
+function isPublicPagePath(pathname) {
+  const normalized = pathname.replace(/\/+$/, "") || "/";
+  return PUBLIC_PAGE_PATHS.has(normalized);
+}
+
+// Pour un fichier statique "page" (index.html, *.html, ou charge utile RSC *.txt),
+// retourne la route logique correspondante ; sinon null (JS/CSS/images restent publics).
+function pagePayloadRoute(pathname) {
+  if (pathname.endsWith("/index.html") || pathname.endsWith("/index.txt")) {
+    return pathname.replace(/\/index\.(html|txt)$/, "") || "/";
+  }
+  if (pathname.endsWith(".txt")) {
+    return path.dirname(pathname) || "/";
+  }
+  if (pathname.endsWith(".html")) {
+    return pathname.replace(/\.html$/, "") || "/";
+  }
+  return null;
+}
+
+// Chargé une seule fois, puis réutilisé pour valider le cookie de session.
+let authModulePromise = null;
+async function getUserFromRequest(req, urlObj) {
+  try {
+    if (!authModulePromise) authModulePromise = import("./app/lib/auth/session.ts");
+    const { getAuthenticatedUser } = await authModulePromise;
+    const headers = new Headers();
+    if (req.headers.cookie) headers.set("cookie", req.headers.cookie);
+    const webReq = new Request(urlObj.toString(), { headers });
+    return getAuthenticatedUser(webReq);
+  } catch {
+    return null;
+  }
+}
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -35,45 +113,63 @@ const MIME_TYPES = {
 async function loadApiHandler(endpoint) {
   switch (endpoint) {
     case "wallet":
-      return await import("./app/api/wallet/route.ts");
+      return await import("./api-routes/wallet/route.ts");
     case "cards":
-      return await import("./app/api/cards/route.ts");
+      return await import("./api-routes/cards/route.ts");
     case "transfers":
-      return await import("./app/api/transfers/route.ts");
+      return await import("./api-routes/transfers/route.ts");
     case "transactions":
-      return await import("./app/api/transactions/route.ts");
+      return await import("./api-routes/transactions/route.ts");
     case "admin":
-      return await import("./app/api/admin/route.ts");
+      return await import("./api-routes/admin/route.ts");
     case "auth":
-      return await import("./app/api/auth/route.ts");
+      return await import("./api-routes/auth/route.ts");
     case "auth/password-reset":
-      return await import("./app/api/auth/password-reset/route.ts");
+      return await import("./api-routes/auth/password-reset/route.ts");
     case "auth/verify":
-      return await import("./app/api/auth/verify/route.ts");
+      return await import("./api-routes/auth/verify/route.ts");
     case "admin/fees":
-      return await import("./app/api/admin/fees/route.ts");
+      return await import("./api-routes/admin/fees/route.ts");
     case "fees":
-      return await import("./app/api/fees/route.ts");
+      return await import("./api-routes/fees/route.ts");
     case "marketplace":
-      return await import("./app/api/marketplace/route.ts");
+      return await import("./api-routes/marketplace/route.ts");
     case "reviews":
-      return await import("./app/api/reviews/route.ts");
+      return await import("./api-routes/reviews/route.ts");
     case "profile":
-      return await import("./app/api/profile/route.ts");
+      return await import("./api-routes/profile/route.ts");
     case "support":
-      return await import("./app/api/support/route.ts");
+      return await import("./api-routes/support/route.ts");
     case "notifications":
-      return await import("./app/api/notifications/route.ts");
+      return await import("./api-routes/notifications/route.ts");
     case "platform-status":
-      return await import("./app/api/platform-status/route.ts");
+      return await import("./api-routes/platform-status/route.ts");
     case "shops":
-      return await import("./app/api/shops/route.ts");
+      return await import("./api-routes/shops/route.ts");
+    case "security":
+      return await import("./api-routes/security/route.ts");
+    case "help":
+      return await import("./api-routes/help/route.ts");
     case "shop-catalog":
-      return await import("./app/api/shop-catalog/route.ts");
+      return await import("./api-routes/shop-catalog/route.ts");
+    case "geny":
+      return await import("./api-routes/geny/route.ts");
     case "resellers":
-      return await import("./app/api/resellers/route.ts");
+      return await import("./api-routes/resellers/route.ts");
     case "ads":
-      return await import("./app/api/ads/route.ts");
+      return await import("./api-routes/ads/route.ts");
+    case "bank-accounts":
+      return await import("./api-routes/bank-accounts/route.ts");
+    case "webhooks/maplerad":
+      return await import("./api-routes/webhooks/maplerad/route.ts");
+    case "payments/soleaspay":
+      return await import("./api-routes/payments/soleaspay/route.ts");
+    case "webhooks/soleaspay":
+      return await import("./api-routes/webhooks/soleaspay/route.ts");
+    case "payments/bkpay":
+      return await import("./api-routes/payments/bkpay/route.ts");
+    case "webhooks/bkpay":
+      return await import("./api-routes/webhooks/bkpay/route.ts");
     default:
       return null;
   }
@@ -191,12 +287,48 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 3. FICHIERS STATIQUES (dist/client ou public)
+  // Verrou aussi sur les "pages" statiques (index.html, *.html, charges RSC *.txt)
+  // des routes protégées, pour qu'elles ne contournent pas la redirection de connexion.
+  const payloadRoute = pagePayloadRoute(pathname);
+  if (payloadRoute && !isPublicPagePath(payloadRoute)) {
+    const user = await getUserFromRequest(req, urlObj);
+    if (!user) {
+      res.writeHead(302, {
+        Location: `/login?redirect=${encodeURIComponent(payloadRoute)}`,
+        "Cache-Control": "no-store",
+      });
+      res.end();
+      return;
+    }
+  }
+
   let filePath = path.join(CLIENT_DIST, pathname);
   let fileFound = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   if (!fileFound) {
     filePath = path.join(PUBLIC_DIR, pathname);
     fileFound = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+  }
+
+  // Next.js App Router static RSC segment payloads are REQUESTED with dotted
+  // segment paths (e.g. /dashboard/__next.dashboard.__PAGE__.txt) but WRITTEN to
+  // disk as nested directories (/dashboard/__next.dashboard/__PAGE__.txt). Without
+  // this mapping those requests 404, breaking client-side navigation to parent
+  // routes (e.g. "Tableau de bord") with "unknown error occurred when fetching the script".
+  if (!fileFound) {
+    const segBase = path.basename(pathname);
+    const rscMatch = segBase.match(/^__next\.(.+)\.txt$/);
+    if (rscMatch) {
+      const inner = rscMatch[1].split(".");
+      if (inner.length > 1) {
+        const nested = `__next.${inner[0]}/${inner.slice(1).join("/")}.txt`;
+        const candidate = path.join(CLIENT_DIST, path.dirname(pathname), nested);
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          filePath = candidate;
+          fileFound = true;
+        }
+      }
+    }
   }
 
   if (fileFound) {
@@ -213,6 +345,21 @@ const server = http.createServer(async (req, res) => {
   // 4. PAGES CLIENTS SPA ET ROUTAGE PROPRE (URLS FORMATÉES)
   const isAssetRequest = pathname.includes(".") || pathname.startsWith("/_next/") || pathname.startsWith("/api/");
   if (!isAssetRequest) {
+    // VERROU D'ACCÈS : aucune page (hors liste publique) n'est servie sans une
+    // session utilisateur valide. Non connecté -> redirection vers /login.
+    if (!isPublicPagePath(pathname)) {
+      const user = await getUserFromRequest(req, urlObj);
+      if (!user) {
+        const target = `${pathname}${urlObj.search || ""}`;
+        res.writeHead(302, {
+          Location: `/login?redirect=${encodeURIComponent(target)}`,
+          "Cache-Control": "no-store",
+        });
+        res.end();
+        return;
+      }
+    }
+
     // Si URL racine "/" -> Servir la LANDING PAGE OFFICIELLE !
     if (pathname === "/" || pathname === "" || pathname === "/landing") {
       const landingPath = path.join(CLIENT_DIST, "landing.html");

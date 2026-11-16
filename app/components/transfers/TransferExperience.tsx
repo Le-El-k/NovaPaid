@@ -43,9 +43,14 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { useLanguage } from "@/app/lib/i18n";
+import { useCurrency } from "@/app/lib/currency";
+import { NovaProgressLoader } from "@/app/components/shared/NovaProgressLoader";
 import { DEFAULT_LIMITS, generateIdempotencyKey, resolveRecipient } from "@/app/lib/transfers/transfer-store";
 import { Beneficiary, TransferCategory, TransferLimits, TransferRecord } from "@/app/lib/transfers/transfer-types";
 import { downloadTransferReceiptPDF } from "@/app/lib/transfers/transfer-receipt";
+
+type UserCard = { id: string | number; label?: string; brand?: string; maskedPan?: string; balanceUsd?: number; status?: string };
 
 type ActiveTab = "send" | "beneficiaries" | "history" | "receive_qr";
 type SendStep = 1 | 2 | 3 | 4; // 1: Destinataire, 2: Montant & motif, 3: Confirmation, 4: Reçu
@@ -121,9 +126,152 @@ export function TransferExperience({
   initialRecipient?: Beneficiary | null;
   embeddedInDashboard?: boolean;
 }) {
+  const { t } = useLanguage();
+  const { convertAmount, formatAmount } = useCurrency();
+
   // Navigation & Tabs
   const [activeTab, setActiveTab] = useState<ActiveTab>("send");
   const [step, setStep] = useState<SendStep>(1);
+
+  // ── New simplified card-based transfer flow ──────────────────────────────
+  const [cards, setCards] = useState<UserCard[]>([]);
+  const [recipientContact, setRecipientContact] = useState("");
+  const [recipientLast4, setRecipientLast4] = useState("");
+  const [sendAmount, setSendAmount] = useState("");
+  const [sendError, setSendError] = useState("");
+  const [loaderActive, setLoaderActive] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [sendResult, setSendResult] = useState<null | { ok: boolean; message: string; amount?: number; fee?: number; total?: number; breakdown?: { label: string; last4: string; amount: number }[] }>(null);
+
+  // Frais appliqués aux transferts entre utilisateurs de la plateforme (2%).
+  const TRANSFER_FEE_PCT = 2;
+
+  // Card balance expressed in FCFA (cards hold USD). One helper for the whole flow.
+  const cardBalanceXaf = (c: UserCard) => Math.max(0, Math.round(convertAmount(Number(c.balanceUsd || 0), "USD", "XAF")));
+  const activeCards = cards.filter((c) => (c.status || "active") === "active");
+  const totalAvailableXaf = activeCards.reduce((sum, c) => sum + cardBalanceXaf(c), 0);
+
+  // Live amount/fee preview as the user types.
+  const previewAmountXaf = parseInt(sendAmount.replace(/\D/g, "") || "0", 10);
+  const previewFeeXaf = Math.round(previewAmountXaf * TRANSFER_FEE_PCT / 100);
+  const previewTotalXaf = previewAmountXaf + previewFeeXaf;
+
+  // Load the user's virtual cards (the funds source for transfers / withdrawals).
+  useEffect(() => {
+    let on = true;
+    fetch("/api/cards")
+      .then((r) => r.json())
+      .then((d) => { if (on && d?.success && Array.isArray(d.cards)) setCards(d.cards); })
+      .catch(() => undefined);
+    return () => { on = false; };
+  }, []);
+
+  // Cascade: debit the first card up to its balance, then take the rest needed
+  // from the following cards. Returns the per-card breakdown, or null if the
+  // total available across the cards is not enough.
+  const buildCascade = (amountXaf: number) => {
+    let remaining = amountXaf;
+    const breakdown: { label: string; last4: string; amount: number }[] = [];
+    for (const c of activeCards) {
+      if (remaining <= 0) break;
+      const avail = cardBalanceXaf(c);
+      if (avail <= 0) continue;
+      const take = Math.min(avail, remaining);
+      breakdown.push({ label: c.label || "Carte", last4: (c.maskedPan || "").replace(/\D/g, "").slice(-4) || "0000", amount: take });
+      remaining -= take;
+    }
+    if (remaining > 0) return null; // insufficient across all cards
+    return breakdown;
+  };
+
+  const handleCardSend = async () => {
+    if (verifying) return;
+    setSendError("");
+    setSendResult(null);
+    const contact = recipientContact.trim();
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
+    const isPhone = /^\+?[0-9\s()-]{8,20}$/.test(contact);
+    const amountXaf = parseInt(sendAmount.replace(/\D/g, "") || "0", 10);
+
+    if (!isEmail && !isPhone) { setSendError(t("xfer2_err_contact")); return; }
+    if (!/^[0-9]{4}$/.test(recipientLast4)) { setSendError(t("xfer2_err_last4")); return; }
+    if (amountXaf <= 0) { setSendError(t("xfer2_err_amount")); return; }
+    if (activeCards.length === 0) { setSendError(t("xfer2_err_no_card")); return; }
+
+    // Vérifier que le contact + les 4 derniers chiffres correspondent à un compte
+    // NovaPaid réel. Sinon, un message d'erreur s'affiche et l'envoi est bloqué.
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/transfers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "card_transfer", contact, recipientLast4 }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        setSendError(data?.error || t("xfer2_err_recipient"));
+        setVerifying(false);
+        return;
+      }
+    } catch {
+      setSendError(t("xfer2_err_recipient"));
+      setVerifying(false);
+      return;
+    }
+    setVerifying(false);
+
+    // Frais de transfert (2%) : l'émetteur règle le montant + les frais.
+    const feeXaf = Math.round(amountXaf * TRANSFER_FEE_PCT / 100);
+    const totalXaf = amountXaf + feeXaf;
+    const breakdown = buildCascade(totalXaf);
+    if (!breakdown) {
+      // conditions / sums not met → failure (shown after the loader so the user
+      // still sees the processing animation, as requested)
+      setLoaderActive(true);
+      setSendResult({ ok: false, message: t("xfer2_fail_insufficient").replace("{n}", formatAmount(totalAvailableXaf, "XAF")) });
+      return;
+    }
+    setLoaderActive(true);
+    setSendResult({ ok: true, message: "", amount: amountXaf, fee: feeXaf, total: totalXaf, breakdown });
+  };
+
+  // Called by the loader once it reaches 100%.
+  const finishCardSend = async () => {
+    setLoaderActive(false);
+    if (!sendResult) return;
+    if (!sendResult.ok) return; // failure already prepared
+    const amountXaf = parseInt(sendAmount.replace(/\D/g, "") || "0", 10);
+    // Apply the cascade to the local card balances (debit the cards).
+    const bd = sendResult.breakdown || [];
+    setCards((prev) => {
+      const byTaken = new Map(bd.map((b) => [b.last4, b.amount]));
+      return prev.map((c) => {
+        const last4 = (c.maskedPan || "").replace(/\D/g, "").slice(-4);
+        const takenXaf = byTaken.get(last4) || 0;
+        if (!takenXaf) return c;
+        const takenUsd = convertAmount(takenXaf, "XAF", "USD");
+        return { ...c, balanceUsd: Math.max(0, Number(c.balanceUsd || 0) - takenUsd) };
+      });
+    });
+    // Best-effort server record (does not block the UX).
+    try {
+      await fetch("/api/transfers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "card_transfer", contact: recipientContact.trim(), recipientLast4, amountXaf, idempotencyKey }),
+      });
+    } catch { /* ignore – prototype settlement is client-side */ }
+    setSendResult({ ok: true, message: t("xfer2_success").replace("{n}", formatAmount(amountXaf, "XAF")), breakdown: bd });
+  };
+
+  const resetCardSend = () => {
+    setRecipientContact("");
+    setRecipientLast4("");
+    setSendAmount("");
+    setSendError("");
+    setSendResult(null);
+    setIdempotencyKey(generateIdempotencyKey());
+  };
 
   // Données financières et session
   const [balance, setBalance] = useState<number>(0);
@@ -164,7 +312,7 @@ export function TransferExperience({
     fetch("/api/transfers")
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok || !data?.success) throw new Error(data?.error || "Connexion requise.");
+        if (!res.ok || !data?.success) throw new Error(data?.error || t("xfer_err_login_required"));
         if (!active) return;
         setBalance(Number(data.wallet?.balanceXaf || 0));
         setBeneficiaries((data.beneficiaries || []).map(mapSavedBeneficiary));
@@ -173,7 +321,7 @@ export function TransferExperience({
         setReceiveDetails({ email: data.user?.email || "", phone: data.user?.phone || "" });
       })
       .catch((error) => {
-        if (active) setTransferError(error?.message || "Impossible de charger le portefeuille.");
+        if (active) setTransferError(error?.message || t("xfer_err_wallet_load"));
       });
     return () => { active = false; };
   }, []);
@@ -181,7 +329,7 @@ export function TransferExperience({
   useEffect(() => {
     if (initialRecipient) {
       if (!initialRecipient.recipientUserId || !initialRecipient.isVerified) {
-        setTransferError("Ce contact ne correspond pas à un compte NovaPaid actif. Recherchez son email ou son numéro enregistré.");
+        setTransferError(t("xfer_err_contact_not_active"));
         return;
       }
       setSelectedBeneficiary(initialRecipient);
@@ -212,7 +360,7 @@ export function TransferExperience({
 
   const handleSelectBeneficiary = (b: Beneficiary) => {
     if (!b.recipientUserId || !b.isVerified) {
-      setTransferError("Ce contact n’est pas lié à un compte NovaPaid actif.");
+      setTransferError(t("xfer_err_contact_not_linked"));
       return;
     }
     setSelectedBeneficiary(b);
@@ -227,7 +375,7 @@ export function TransferExperience({
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identity);
     const isPhone = /^\+?[0-9\s()-]{8,20}$/.test(identity);
     if (!isEmail && !isPhone) {
-      setTransferError("Pour ajouter un bénéficiaire, recherchez son email ou son numéro associé à NovaPaid.");
+      setTransferError(t("xfer_err_add_need_email_phone"));
       return;
     }
     try {
@@ -237,12 +385,12 @@ export function TransferExperience({
         body: JSON.stringify({ action: "add_beneficiary", name: "", ...(isEmail ? { email: identity } : { phone: identity }) }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.success || !data.beneficiary) throw new Error(data?.error || "Bénéficiaire introuvable.");
+      if (!res.ok || !data?.success || !data.beneficiary) throw new Error(data?.error || t("xfer_err_beneficiary_not_found"));
       const beneficiary = mapSavedBeneficiary(data.beneficiary);
       setBeneficiaries((current) => [beneficiary, ...current]);
       handleSelectBeneficiary(beneficiary);
     } catch (error: any) {
-      setTransferError(error?.message || "Impossible d’ajouter ce bénéficiaire.");
+      setTransferError(error?.message || t("xfer_err_add_beneficiary_failed"));
     }
   };
 
@@ -256,17 +404,17 @@ export function TransferExperience({
         body: JSON.stringify({ action: "favorite_beneficiary", beneficiaryId: Number(bId), favorite: !beneficiary.isFavorite }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.error || "Mise à jour impossible.");
+      if (!res.ok || !data?.success) throw new Error(data?.error || t("xfer_err_update_failed"));
       setBeneficiaries((current) => current.map((item) => item.id === bId ? { ...item, isFavorite: data.isFavorite } : item));
     } catch (error: any) {
-      setTransferError(error?.message || "Impossible de modifier le favori.");
+      setTransferError(error?.message || t("xfer_err_favorite_failed"));
     }
   };
 
   const handleExecuteTransfer = async () => {
     if (!selectedBeneficiary || !isAmountValid || isProcessing) return;
     if (!selectedBeneficiary.recipientUserId) {
-      setTransferError("Ce bénéficiaire n’est pas rattaché à un compte NovaPaid.");
+      setTransferError(t("xfer_err_beneficiary_unlinked"));
       return;
     }
     setIsProcessing(true);
@@ -278,7 +426,7 @@ export function TransferExperience({
         body: JSON.stringify({ recipientUserId: selectedBeneficiary.recipientUserId, amount: parsedAmount, note: note.trim() || undefined, idempotencyKey }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.error || "Le transfert n’a pas été exécuté.");
+      if (!res.ok || !data?.success) throw new Error(data?.error || t("xfer_err_transfer_not_executed"));
       const newTransfer: TransferRecord = {
         id: data.publicRef,
         direction: "sent",
@@ -311,7 +459,7 @@ export function TransferExperience({
       setCompletedTransfer(newTransfer);
       setStep(4);
     } catch (error: any) {
-      setTransferError(error?.message || "Erreur pendant le transfert.");
+      setTransferError(error?.message || t("xfer_err_transfer_generic"));
     } finally {
       setIsProcessing(false);
     }
@@ -331,7 +479,7 @@ export function TransferExperience({
 
   const handleSaveNewBeneficiary = async () => {
     if (!newBenForm.email.trim() && !newBenForm.phone.trim()) {
-      setTransferError("Saisissez l’email ou le téléphone associé au compte NovaPaid.");
+      setTransferError(t("xfer_err_enter_email_or_phone"));
       return;
     }
     try {
@@ -341,14 +489,14 @@ export function TransferExperience({
         body: JSON.stringify({ action: "add_beneficiary", ...newBenForm }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.success || !data.beneficiary) throw new Error(data?.error || "Impossible d’ajouter le bénéficiaire.");
+      if (!res.ok || !data?.success || !data.beneficiary) throw new Error(data?.error || t("xfer_err_add_beneficiary_failed2"));
       const beneficiary = mapSavedBeneficiary(data.beneficiary);
       setBeneficiaries((current) => [beneficiary, ...current]);
       setTransferError("");
       setShowAddBeneficiaryModal(false);
       setNewBenForm({ phone: "", email: "" });
     } catch (error: any) {
-      setTransferError(error?.message || "Impossible d’ajouter le bénéficiaire.");
+      setTransferError(error?.message || t("xfer_err_add_beneficiary_failed2"));
     }
   };
 
@@ -361,7 +509,7 @@ export function TransferExperience({
         body: JSON.stringify({ action: "dispute_transfer", transactionRef: viewingTransfer.id, reason: disputeReason }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.error || "Impossible d’envoyer la demande.");
+      if (!res.ok || !data?.success) throw new Error(data?.error || t("xfer_err_dispute_send_failed"));
       setDisputeSubmitted(true);
       setTimeout(() => {
         setShowDisputeModal(false);
@@ -369,7 +517,7 @@ export function TransferExperience({
         setDisputeReason("");
       }, 2500);
     } catch (error: any) {
-      setTransferError(error?.message || "Impossible d’envoyer la demande au support.");
+      setTransferError(error?.message || t("xfer_err_dispute_support_failed"));
     }
   };
 
@@ -397,74 +545,21 @@ export function TransferExperience({
 
   return (
     <div className="np-transfer-section w-full max-w-5xl mx-auto space-y-6">
-      {/* Barre d'en-tête du module Transfert */}
-      <div className="bg-gradient-to-r from-[#10264f] via-[#143975] to-[#1859bb] rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Transferts NovaPay</h1>
-            <p className="text-blue-200/80 text-sm mt-1 max-w-xl">
-              Envoyez des fonds à un compte NovaPaid actif. Chaque opération est enregistrée dans le portefeuille et l’historique du compte.
-            </p>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/15 min-w-[220px]">
-            <span className="text-xs text-blue-200 font-medium block">Solde disponible portefeuille</span>
-            <div className="text-2xl font-black tracking-tight text-white mt-0.5">
-              {balance.toLocaleString("fr-FR")} <small className="text-sm font-semibold text-blue-200">FCFA</small>
-            </div>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10 text-[11px] text-blue-100/70">
-              <span>Plafond jour restant :</span>
-              <span className="font-semibold text-white">{(limits.dailyLimit - limits.dailyUsed).toLocaleString("fr-FR")} FCFA</span>
-            </div>
-          </div>
+      {/* En-tête sobre (le gros bloc bleu a été retiré) */}
+      <div className="np-xfer2-head">
+        <div>
+          <h1 className="np-xfer2-title">{t("xfer2_title")}</h1>
+          <p className="np-xfer2-sub">{t("xfer2_subtitle")}</p>
         </div>
-
-        {/* Navigation par Onglets */}
-        <div className="np-transfer-tabs flex items-center gap-1.5 mt-6 pt-4 border-t border-white/15 overflow-x-auto scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setActiveTab("send")}
-            className={`np-transfer-tab px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "send"
-                ? "is-active bg-white text-[#10264f] shadow-lg shadow-black/10 scale-102"
-                : "is-idle text-white/80 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <ArrowLeftRight size={15} /> Nouveau transfert
+        <div className="np-xfer2-tabs">
+          <button type="button" onClick={() => setActiveTab("send")} className={`np-xfer2-tab ${activeTab === "send" ? "is-active" : ""}`}>
+            <ArrowLeftRight size={15} /> {t("xfer_tab_new")}
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("beneficiaries")}
-            className={`np-transfer-tab px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "beneficiaries"
-                ? "is-active bg-white text-[#10264f] shadow-lg shadow-black/10 scale-102"
-                : "is-idle text-white/80 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <Users size={15} /> Bénéficiaires & Favoris ({beneficiaries.length})
+          <button type="button" onClick={() => setActiveTab("beneficiaries")} className={`np-xfer2-tab ${activeTab === "beneficiaries" ? "is-active" : ""}`}>
+            <Users size={15} /> {t("xfer_tab_beneficiaries")} ({beneficiaries.length})
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("history")}
-            className={`np-transfer-tab px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "history"
-                ? "is-active bg-white text-[#10264f] shadow-lg shadow-black/10 scale-102"
-                : "is-idle text-white/80 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <History size={15} /> Historique & Reçus ({transfers.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("receive_qr")}
-            className={`np-transfer-tab px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "receive_qr"
-                ? "is-active bg-white text-[#10264f] shadow-lg shadow-black/10 scale-102"
-                : "is-idle text-white/80 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <ArrowDownLeft size={15} /> Recevoir
+          <button type="button" onClick={() => setActiveTab("history")} className={`np-xfer2-tab ${activeTab === "history" ? "is-active" : ""}`}>
+            <History size={15} /> {t("xfer_tab_history")} ({transfers.length})
           </button>
         </div>
       </div>
@@ -472,646 +567,133 @@ export function TransferExperience({
       {transferError && <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">{transferError}</div>}
 
       {/* ========================================================================= */}
-      {/* ONGLET 1 : ENVOYER UN TRANSFERT (PARCOURS EN 4 ÉTAPES)                   */}
+      {/* ONGLET 1 : ENVOI DEPUIS LES CARTES (formulaire simple)                   */}
       {/* ========================================================================= */}
       {activeTab === "send" && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-          {/* Stepper indicateur */}
-          <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              {[
-                { s: 1, label: "Destinataire" },
-                { s: 2, label: "Montant & Motif" },
-                { s: 3, label: "Confirmation" },
-                { s: 4, label: "Reçu de transfert" },
-              ].map(({ s, label }) => (
-                <div key={s} className="flex items-center gap-2">
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                      step === s
-                        ? "bg-[#1859bb] text-white ring-4 ring-blue-100"
-                        : step > s
-                        ? "bg-emerald-500 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    {step > s ? <Check size={13} strokeWidth={3} /> : s}
-                  </span>
-                  <span
-                    className={`text-xs font-medium hidden sm:inline ${
-                      step === s ? "text-slate-900 font-bold" : step > s ? "text-emerald-700" : "text-slate-600"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                  {s < 4 && <ChevronRight size={13} className="text-slate-300 ml-2 hidden sm:inline" />}
-                </div>
-              ))}
+        <div className="np-xfer2-grid">
+          {/* Soldes des cartes (source des fonds) */}
+          <section className="np-xfer2-cards-panel">
+            <div className="np-xfer2-panel-head">
+              <h2>{t("xfer2_your_cards")}</h2>
+              <span className="np-xfer2-total">
+                {t("xfer2_total_available")} <strong>{formatAmount(totalAvailableXaf, "XAF")}</strong>
+              </span>
             </div>
-
-            {step > 1 && step < 4 && (
-              <button
-                type="button"
-                onClick={() => setStep((s) => (s - 1) as SendStep)}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
-              >
-                <ArrowLeft size={13} /> Retour
-              </button>
-            )}
-          </div>
-
-          <div className="p-6">
-            {/* ÉTAPE 1 : CHOIX DU BÉNÉFICIAIRE */}
-            {step === 1 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">À qui souhaitez-vous envoyer de l’argent ?</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Recherchez par email ou numéro de téléphone associé à NovaPaid, ou sélectionnez un bénéficiaire enregistré.
-                  </p>
-                </div>
-
-                {/* Champ de recherche instantané */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Search size={18} />
+            {activeCards.length === 0 ? (
+              <div className="np-xfer2-empty"><Wallet size={18} /> <span>{t("xfer2_no_card")}</span></div>
+            ) : (
+              <div className="np-xfer2-card-list">
+                {activeCards.map((c) => (
+                  <div className="np-xfer2-card" key={String(c.id)}>
+                    <span className={"np-xfer2-card-chip " + (c.brand || "visa")}>{(c.brand || "visa").toUpperCase()}</span>
+                    <div className="np-xfer2-card-info">
+                      <strong>{c.label || t("xfer2_card")}</strong>
+                      <small>{c.maskedPan || "•••• ••••"}</small>
+                    </div>
+                    <div className="np-xfer2-card-bal">{formatAmount(cardBalanceXaf(c), "XAF")}</div>
                   </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Formulaire d'envoi */}
+          <section className="np-xfer2-form-panel">
+            {sendResult && !loaderActive ? (
+              <div className={"np-xfer2-result " + (sendResult.ok ? "ok" : "fail")}>
+                <div className="np-xfer2-result-icon">
+                  {sendResult.ok ? <CheckCircle2 size={40} /> : <AlertTriangle size={40} />}
+                </div>
+                <h3>{sendResult.ok ? t("xfer2_success_title") : t("xfer2_fail_title")}</h3>
+                <p>{sendResult.message}</p>
+                {sendResult.ok && typeof sendResult.total === "number" && (
+                  <div className="np-xfer2-breakdown">
+                    <div className="np-xfer2-breakdown-row">
+                      <span>{t("xfer2_amount_sent")}</span>
+                      <strong>{formatAmount(sendResult.amount || 0, "XAF")}</strong>
+                    </div>
+                    <div className="np-xfer2-breakdown-row">
+                      <span>{t("xfer2_fee_label")}</span>
+                      <strong>{formatAmount(sendResult.fee || 0, "XAF")}</strong>
+                    </div>
+                    <div className="np-xfer2-breakdown-row np-xfer2-breakdown-total">
+                      <span>{t("xfer2_total_debited")}</span>
+                      <strong>{formatAmount(sendResult.total || 0, "XAF")}</strong>
+                    </div>
+                  </div>
+                )}
+                {sendResult.ok && sendResult.breakdown && sendResult.breakdown.length > 0 && (
+                  <div className="np-xfer2-breakdown">
+                    <span className="np-xfer2-breakdown-head">{t("xfer2_debited_from")}</span>
+                    {sendResult.breakdown.map((b, i) => (
+                      <div key={i} className="np-xfer2-breakdown-row">
+                        <span>{b.label} ···· {b.last4}</span>
+                        <strong>− {formatAmount(b.amount, "XAF")}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button type="button" className="np-xfer2-send" onClick={resetCardSend}>{t("xfer2_new")}</button>
+              </div>
+            ) : (
+              <>
+                <h2>{t("xfer2_send_title")}</h2>
+                <p className="np-xfer2-form-sub">{t("xfer2_send_sub")}</p>
+
+                <label className="np-xfer2-label">{t("xfer2_recipient_label")}</label>
+                <div className="np-xfer2-field">
+                  <AtSign size={16} />
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setTransferError(""); }}
-                    placeholder="Email ou téléphone du compte NovaPaid"
-                    className="w-full pl-10 pr-24 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    value={recipientContact}
+                    onChange={(e) => { setRecipientContact(e.target.value); setSendError(""); }}
+                    placeholder={t("xfer2_recipient_ph")}
                   />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute inset-y-0 right-10 pr-2 flex items-center text-slate-400 hover:text-slate-600"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
                 </div>
 
-                {/* Résultat de résolution automatique si recherche active */}
-                {searchQuery.trim() && (
-                  <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/60">
-                    {resolution.found ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-11 h-11 rounded-full bg-gradient-to-tr ${resolution.found.avatarColor} text-white font-bold flex items-center justify-center text-sm shadow-sm`}
-                          >
-                            {resolution.found.initials}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm font-bold text-slate-900">{resolution.found.name}</span>
-                              <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${resolution.found.isVerified ? "text-blue-700 bg-blue-100" : "text-amber-800 bg-amber-100"}`}>
-                                {resolution.found.isVerified ? "Compte actif" : "Compte indisponible"}
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-                              <span className="font-medium text-blue-600">{resolution.found.email || resolution.found.phone || resolution.found.handle}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={!resolution.found.isVerified}
-                          onClick={() => handleSelectBeneficiary(resolution.found!)}
-                          className="px-4 py-2 bg-[#1859bb] hover:bg-[#124491] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-                        >
-                          Sélectionner
-                        </button>
-                      </div>
-                    ) : resolution.isUnknown && resolution.candidate ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold flex items-center justify-center text-sm">
-                            {resolution.candidate.initials}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm font-bold text-slate-900">
-                                Coordonnées à vérifier
-                              </span>
-                              <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">
-                                Non vérifié
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-500 mt-0.5">
-                              {searchQuery.trim()}
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleUseCandidate}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-                        >
-                          Vérifier et ajouter
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-slate-500 flex items-center gap-2">
-                        <AlertCircle size={15} className="text-amber-500" />
-                      <span>Aucun bénéficiaire enregistré ne correspond à &quot;{searchQuery}&quot;. Pour ajouter un compte, utilisez son email ou son numéro associé à NovaPaid.</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* Section Favoris récents (Bulles d'accès rapide) */}
-                {favorites.length > 0 && !searchQuery.trim() && (
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <Star size={13} className="text-amber-400 fill-amber-400" /> Bénéficiaires favoris
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("beneficiaries")}
-                        className="text-xs text-blue-600 hover:underline font-medium"
-                      >
-                        Gérer
-                      </button>
-                    </div>
+                <label className="np-xfer2-label">{t("xfer2_last4_label")}</label>
+                <div className="np-xfer2-field">
+                  <KeyRound size={16} />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={recipientLast4}
+                    onChange={(e) => { setRecipientLast4(e.target.value.replace(/\D/g, "").slice(0, 4)); setSendError(""); }}
+                    placeholder="••••"
+                  />
+                </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {favorites.map((b) => (
-                        <button
-                          key={b.id}
-                          type="button"
-                          onClick={() => handleSelectBeneficiary(b)}
-                          className="p-3 rounded-xl border border-slate-200/80 hover:border-blue-400 hover:bg-blue-50/40 transition-all text-left flex items-center gap-3 group"
-                        >
-                          <div
-                            className={`w-10 h-10 rounded-full bg-gradient-to-tr ${b.avatarColor} text-white font-bold flex items-center justify-center text-xs shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform`}
-                          >
-                            {b.initials}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-slate-900 truncate">{b.name}</div>
-                            <div className="text-[11px] text-blue-600 font-medium truncate">{b.handle}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                <label className="np-xfer2-label">{t("xfer2_amount_label")}</label>
+                <div className="np-xfer2-field np-xfer2-amount">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={sendAmount ? parseInt(sendAmount, 10).toLocaleString("fr-FR") : ""}
+                    onChange={(e) => { setSendAmount(e.target.value.replace(/\D/g, "")); setSendError(""); }}
+                    placeholder="0"
+                  />
+                  <span className="np-xfer2-cur">FCFA</span>
+                </div>
+
+                {previewAmountXaf > 0 && (
+                  <div className="np-xfer2-fee-preview">
+                    <div><span>{t("xfer2_fee_label")}</span><strong>{formatAmount(previewFeeXaf, "XAF")}</strong></div>
+                    <div className="np-xfer2-fee-total"><span>{t("xfer2_total_debited")}</span><strong>{formatAmount(previewTotalXaf, "XAF")}</strong></div>
                   </div>
                 )}
 
-                {/* Liste complète des contacts */}
-                {!searchQuery.trim() && (
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                        Tous les contacts enregistrés ({beneficiaries.length})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddBeneficiaryModal(true)}
-                        className="text-xs text-[#1859bb] hover:text-[#10264f] font-bold flex items-center gap-1"
-                      >
-                        <UserPlus size={13} /> Nouveau contact
-                      </button>
-                    </div>
-
-                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                      {beneficiaries.map((b) => (
-                        <div
-                          key={b.id}
-                          className="p-3.5 hover:bg-slate-50 transition-colors flex items-center justify-between gap-4"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleSelectBeneficiary(b)}
-                            className="flex items-center gap-3 text-left flex-1 min-w-0"
-                          >
-                            <div
-                              className={`w-10 h-10 rounded-full bg-gradient-to-tr ${b.avatarColor} text-white font-bold flex items-center justify-center text-xs flex-shrink-0`}
-                            >
-                              {b.initials}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-sm font-bold text-slate-900 truncate">{b.name}</span>
-                                {b.isVerified && (
-                                  <UserCheck size={13} className="text-blue-600 flex-shrink-0" aria-label="Compte actif" />
-                                )}
-                              </div>
-                              <div className="text-xs text-slate-500 flex items-center gap-2 truncate">
-                                <span className="text-blue-600 font-medium">{b.handle}</span>
-                                <span>·</span>
-                                <span>{b.maskedPhone}</span>
-                              </div>
-                            </div>
-                          </button>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleFavorite(b.id)}
-                              className="p-1.5 text-slate-300 hover:text-amber-400 transition-colors"
-                              title={b.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-                            >
-                              <Star
-                                size={16}
-                                className={b.isFavorite ? "text-amber-400 fill-amber-400" : ""}
-                              />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSelectBeneficiary(b)}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-[#1859bb] hover:text-white text-slate-700 text-xs font-bold rounded-lg transition-all"
-                            >
-                              Envoyer
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {sendError && (
+                  <div className="np-xfer2-error"><AlertTriangle size={15} /> <span>{sendError}</span></div>
                 )}
-              </div>
+
+                <button type="button" className="np-xfer2-send" onClick={handleCardSend} disabled={verifying}>
+                  {verifying ? <><RefreshCw size={16} className="animate-spin" /> {t("xfer2_verifying")}</> : <><ArrowUpRight size={17} /> {t("xfer2_send_btn")}</>}
+                </button>
+                <p className="np-xfer2-hint">{t("xfer2_cascade_hint")}</p>
+              </>
             )}
-
-            {/* ÉTAPE 2 : MONTANT, MOTIF ET CATÉGORIE */}
-            {step === 2 && selectedBeneficiary && (
-              <div className="space-y-6 max-w-xl mx-auto">
-                {/* Carte destinataire choisi */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-11 h-11 rounded-full bg-gradient-to-tr ${selectedBeneficiary.avatarColor} text-white font-bold flex items-center justify-center text-sm shadow-sm`}
-                    >
-                      {selectedBeneficiary.initials}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-bold text-slate-900">{selectedBeneficiary.name}</span>
-                        {selectedBeneficiary.isVerified && (
-                          <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.2 rounded">
-                            Compte actif
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {selectedBeneficiary.handle} · {selectedBeneficiary.maskedPhone}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="text-xs text-blue-600 hover:underline font-semibold"
-                  >
-                    Changer
-                  </button>
-                </div>
-
-                {/* Saisie du montant */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Montant à transférer
-                    </label>
-                    <span className="text-xs text-slate-500">
-                      Disponible :{" "}
-                      <strong className="text-slate-900">{balance.toLocaleString("fr-FR")} FCFA</strong>
-                    </span>
-                  </div>
-
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={amountInput}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setAmountInput(val);
-                      }}
-                      placeholder="0"
-                      className={`w-full py-4 px-4 text-3xl font-black rounded-xl border text-center transition-all ${
-                        isOverBalance
-                          ? "border-red-400 bg-red-50/50 text-red-900 focus:ring-red-400"
-                          : "border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500"
-                      }`}
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-extrabold text-slate-400">
-                      FCFA
-                    </span>
-                  </div>
-
-                  {/* Raccourcis de montants */}
-                  <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
-                    {QUICK_AMOUNTS.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => setAmountInput(q.toString())}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                      >
-                        +{q.toLocaleString("fr-FR")}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setAmountInput(balance.toString())}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
-                    >
-                      Tout le solde
-                    </button>
-                  </div>
-
-                  {/* Messages de validation */}
-                  {isOverBalance && (
-                    <div className="p-2.5 rounded-lg bg-red-50 text-red-700 text-xs flex items-center gap-2">
-                      <AlertTriangle size={15} className="flex-shrink-0" />
-                      <span>Solde insuffisant. Votre solde disponible est de {balance.toLocaleString("fr-FR")} FCFA.</span>
-                    </div>
-                  )}
-                  {isBelowMin && (
-                    <div className="p-2.5 rounded-lg bg-amber-50 text-amber-700 text-xs flex items-center gap-2">
-                      <Info size={15} className="flex-shrink-0" />
-                      <span>Le montant minimum par transfert est de {limits.singleMin.toLocaleString("fr-FR")} FCFA.</span>
-                    </div>
-                  )}
-                  {isAboveMax && (
-                    <div className="p-2.5 rounded-lg bg-amber-50 text-amber-700 text-xs flex items-center gap-2">
-                      <Info size={15} className="flex-shrink-0" />
-                      <span>Le montant maximum autorisé par opération est de {limits.singleMax.toLocaleString("fr-FR")} FCFA.</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Frais et solde après opération */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Frais de transfert NovaPay :</span>
-                    <span className="font-bold text-emerald-600">0 FCFA (Gratuit entre comptes)</span>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Montant net reçu par le destinataire :</span>
-                    <span className="font-bold text-slate-900">
-                      {parsedAmount > 0 ? parsedAmount.toLocaleString("fr-FR") : 0} FCFA
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200 font-semibold text-slate-700">
-                    <span>Solde restant estimé :</span>
-                    <span className={remainingBalance < 0 ? "text-red-600 font-bold" : "text-slate-900 font-bold"}>
-                      {remainingBalance >= 0 ? remainingBalance.toLocaleString("fr-FR") : 0} FCFA
-                    </span>
-                  </div>
-                </div>
-
-                {/* Motif & Catégorie */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                      Catégorie du transfert
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {CATEGORIES.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setCategory(c.id)}
-                          className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all text-left ${
-                            category === c.id
-                              ? "bg-blue-50 border-blue-400 text-[#1859bb]"
-                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                          }`}
-                        >
-                          <span>{c.icon}</span>
-                          <span className="truncate">{c.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                      Note / Message pour le destinataire (optionnel)
-                    </label>
-                    <input
-                      type="text"
-                      value={note}
-                      maxLength={120}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="Ex: Remboursement déjeuner, loyer octobre, etc."
-                      className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="text-[10px] text-slate-600 text-right mt-1">{note.length} / 120 caractères</div>
-                  </div>
-                </div>
-
-                {/* Bouton vers étape 3 */}
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    disabled={!isAmountValid}
-                    onClick={() => setStep(3)}
-                    className="w-full py-3.5 px-4 rounded-xl bg-[#1859bb] hover:bg-[#124491] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2"
-                  >
-                    Vérifier et confirmer <ArrowRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ÉTAPE 3 : RÉCAPITULATIF ET CONFIRMATION */}
-            {step === 3 && selectedBeneficiary && (
-              <div className="space-y-6 max-w-xl mx-auto">
-                <div className="text-center">
-                  <div className="inline-flex p-3 rounded-2xl bg-blue-50 text-[#1859bb] mb-2">
-                    <ShieldCheck size={28} />
-                  </div>
-                  <h2 className="text-xl font-extrabold text-slate-900">Confirmation du transfert</h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Vérifiez attentivement les détails avant de signer l’opération dans le Grand Livre.
-                  </p>
-                </div>
-
-                {/* Boîte de synthèse financière */}
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-200/90 space-y-4">
-                  <div className="text-center py-2">
-                    <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
-                      Montant débité de votre portefeuille
-                    </span>
-                    <div className="text-3xl font-black text-slate-900 tracking-tight mt-1">
-                      {parsedAmount.toLocaleString("fr-FR")}{" "}
-                      <small className="text-base font-semibold text-[#1859bb]">FCFA</small>
-                    </div>
-                    <span className="inline-block mt-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      Frais de transfert : 0 FCFA (Offerts)
-                    </span>
-                  </div>
-
-                  <div className="border-t border-slate-200 pt-3 space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Bénéficiaire certifié :</span>
-                      <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                        {selectedBeneficiary.maskedName}
-                        <UserCheck size={14} className="text-blue-600" />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Identifiant :</span>
-                      <span className="font-semibold text-blue-700">{selectedBeneficiary.handle}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Compte de destination :</span>
-                      <span className="font-mono text-slate-700">{selectedBeneficiary.email || selectedBeneficiary.phone}</span>
-                    </div>
-                    {note && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Motif :</span>
-                        <span className="font-medium text-slate-800 italic">&quot;{note}&quot;</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Avertissement anti-fraude contextuel */}
-                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 flex items-start gap-2.5 text-xs text-amber-900">
-                  <ShieldAlert size={17} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong>Vérifiez le destinataire et le montant :</strong> le transfert est enregistré immédiatement après confirmation et ne peut pas être annulé depuis cette page.
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-2">
-                  <ShieldCheck size={17} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                  <span>La confirmation utilise votre session NovaPaid. Vérifiez soigneusement le bénéficiaire et le montant.</span>
-                </div>
-
-                {/* Bouton de confirmation finale */}
-                <div className="pt-2 space-y-2">
-                  <button
-                    type="button"
-                    disabled={isProcessing}
-                    onClick={handleExecuteTransfer}
-                    className="w-full py-4 px-4 rounded-xl bg-[#1859bb] hover:bg-[#124491] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-extrabold shadow-lg shadow-blue-900/15 transition-all flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <RefreshCw size={17} className="animate-spin" />
-                        Écriture atomique dans le Grand Livre…
-                      </>
-                    ) : (
-                      <>
-                        <ShieldCheck size={18} />
-                        Signer et transférer {parsedAmount.toLocaleString("fr-FR")} FCFA
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isProcessing}
-                    onClick={() => setStep(2)}
-                    className="w-full py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
-                  >
-                    Modifier le montant
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ÉTAPE 4 : CONFIRMATION ET REÇU OFFICIEL */}
-            {step === 4 && completedTransfer && (
-              <div className="space-y-6 max-w-xl mx-auto py-2">
-                <>
-                    {/* Carte de succès */}
-                    <div className="text-center space-y-2">
-                      <div className="inline-flex p-3 rounded-full bg-emerald-100 text-emerald-600 mb-1 animate-bounce">
-                        <CheckCircle2 size={36} />
-                      </div>
-                      <h2 className="text-2xl font-black text-slate-900">Transfert réussi !</h2>
-                      <p className="text-xs text-slate-500">
-                        Les fonds ont été immédiatement crédités sur le compte de {completedTransfer.recipientName}.
-                      </p>
-                    </div>
-
-                    {/* Récapitulatif de confirmation */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3.5 text-xs">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                        <span className="font-bold text-slate-700">Confirmation NovaPaid</span>
-                        <span className="font-mono text-[11px] text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded font-semibold">
-                          {completedTransfer.id}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Montant transféré :</span>
-                        <span className="font-extrabold text-slate-900 text-sm">
-                          {completedTransfer.amount.toLocaleString("fr-FR")} FCFA
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Bénéficiaire :</span>
-                        <span className="font-bold text-slate-900">{completedTransfer.recipientName}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Identifiant :</span>
-                        <span className="text-blue-700 font-semibold">{completedTransfer.recipientHandle}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Date et heure :</span>
-                        <span className="text-slate-700 font-medium">
-                          {new Date(completedTransfer.createdAt).toLocaleString("fr-FR")}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                        <span className="text-slate-500">Nouveau solde portefeuille :</span>
-                        <span className="font-bold text-slate-900">{balance.toLocaleString("fr-FR")} FCFA</span>
-                      </div>
-                    </div>
-
-                    {/* Boutons d'action : Téléchargement PDF, Partage, Nouveau */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => downloadTransferReceiptPDF(completedTransfer)}
-                        className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow transition-all flex items-center justify-center gap-2"
-                      >
-                        <Download size={15} /> Télécharger la confirmation PDF
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const text = `Reçu NovaPay: J'ai transféré ${completedTransfer.amount.toLocaleString("fr-FR")} FCFA à ${completedTransfer.recipientName}. Réf: ${completedTransfer.id}`;
-                          copyToClipboard(text, "receipt-share");
-                        }}
-                        className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center justify-center gap-2"
-                      >
-                        {copiedKey === "receipt-share" ? (
-                          <>
-                            <Check size={15} className="text-emerald-600" /> Preuve copiée !
-                          </>
-                        ) : (
-                          <>
-                            <Share2 size={15} /> Partager la preuve
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="text-center pt-2">
-                      <button
-                        type="button"
-                        onClick={handleResetForm}
-                        className="text-xs font-bold text-[#1859bb] hover:underline"
-                      >
-                        Effectuer un autre transfert
-                      </button>
-                    </div>
-                </>
-              </div>
-            )}
-          </div>
+          </section>
         </div>
       )}
 
@@ -1122,9 +704,9 @@ export function TransferExperience({
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Annuaire des bénéficiaires</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t("xfer_directory_title")}</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Gérez vos contacts fréquents pour des transferts sécurisés en 1 clic.
+                {t("xfer_directory_subtitle")}
               </p>
             </div>
             <button
@@ -1132,7 +714,7 @@ export function TransferExperience({
               onClick={() => setShowAddBeneficiaryModal(true)}
               className="px-4 py-2 bg-[#1859bb] hover:bg-[#124491] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 self-start sm:self-auto"
             >
-              <UserPlus size={15} /> Ajouter un bénéficiaire
+              <UserPlus size={15} /> {t("xfer_add_beneficiary")}
             </button>
           </div>
 
@@ -1154,7 +736,7 @@ export function TransferExperience({
                         <span className="text-sm font-bold text-slate-900">{b.name}</span>
                         {b.isVerified && (
                           <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.2 rounded">
-                            Compte actif
+                            {t("xfer_account_active")}
                           </span>
                         )}
                       </div>
@@ -1176,16 +758,16 @@ export function TransferExperience({
 
                 <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span>Téléphone :</span>
+                    <span>{t("xfer_phone")}</span>
                     <span className="font-mono text-slate-700">{b.phone}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Coordonnées :</span>
+                    <span>{t("xfer_contact_info")}</span>
                     <span className="font-mono text-slate-700">{b.email || b.phone}</span>
                   </div>
                   {b.lastTransferDate && (
                     <div className="flex items-center justify-between">
-                      <span>Dernier envoi :</span>
+                      <span>{t("xfer_last_sent")}</span>
                       <span>{new Date(b.lastTransferDate).toLocaleDateString("fr-FR")}</span>
                     </div>
                   )}
@@ -1201,7 +783,7 @@ export function TransferExperience({
                     }}
                     className="flex-1 py-2 bg-blue-50 hover:bg-[#1859bb] hover:text-white text-[#1859bb] text-xs font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1.5"
                   >
-                    <ArrowLeftRight size={13} /> Envoyer de l’argent
+                    <ArrowLeftRight size={13} /> {t("xfer_send_money")}
                   </button>
                 </div>
               </div>
@@ -1217,9 +799,9 @@ export function TransferExperience({
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Journal d’audit des transferts</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t("xfer_history_title")}</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Consultez toutes les opérations enregistrées avec leurs références Grand Livre et reçus conformes.
+                {t("xfer_history_subtitle")}
               </p>
             </div>
 
@@ -1232,7 +814,7 @@ export function TransferExperience({
                   historyFilter === "ALL" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Tous ({transfers.length})
+                {t("xfer_filter_all")} ({transfers.length})
               </button>
               <button
                 type="button"
@@ -1243,7 +825,7 @@ export function TransferExperience({
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Validés
+                {t("xfer_filter_completed")}
               </button>
               <button
                 type="button"
@@ -1254,7 +836,7 @@ export function TransferExperience({
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Litiges
+                {t("xfer_filter_disputed")}
               </button>
             </div>
           </div>
@@ -1266,7 +848,7 @@ export function TransferExperience({
               type="text"
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
-              placeholder="Rechercher par référence TRF-..., bénéficiaire ou motif..."
+              placeholder={t("xfer_history_search_placeholder")}
               className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -1275,48 +857,48 @@ export function TransferExperience({
           <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
             {filteredTransfers.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500">
-                Aucun transfert ne correspond aux critères sélectionnés.
+                {t("xfer_no_transfers")}
               </div>
             ) : (
-              filteredTransfers.map((t) => (
+              filteredTransfers.map((tx) => (
                 <div
-                  key={t.id}
+                  key={tx.id}
                   className="p-4 hover:bg-slate-50/70 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-10 h-10 rounded-full bg-gradient-to-tr ${t.recipientAvatarColor} text-white font-bold flex items-center justify-center text-xs flex-shrink-0 shadow-sm`}
+                      className={`w-10 h-10 rounded-full bg-gradient-to-tr ${tx.recipientAvatarColor} text-white font-bold flex items-center justify-center text-xs flex-shrink-0 shadow-sm`}
                     >
-                      {t.recipientInitials}
+                      {tx.recipientInitials}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900">{t.direction === "received" ? `De ${t.counterpartyName || t.recipientName}` : `À ${t.counterpartyName || t.recipientName}`}</span>
-                        <span className="text-xs text-slate-500 font-medium">({t.recipientHandle})</span>
-                        {t.status === "COMPLETED" && (
+                        <span className="text-sm font-bold text-slate-900">{tx.direction === "received" ? t("xfer_from_name").replace("{n}", tx.counterpartyName || tx.recipientName) : t("xfer_to_name").replace("{n}", tx.counterpartyName || tx.recipientName)}</span>
+                        <span className="text-xs text-slate-500 font-medium">({tx.recipientHandle})</span>
+                        {tx.status === "COMPLETED" && (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
-                            Confirmé
+                            {t("xfer_status_confirmed")}
                           </span>
                         )}
-                        {t.status === "DISPUTED" && (
+                        {tx.status === "DISPUTED" && (
                           <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded flex items-center gap-1">
-                            <AlertTriangle size={10} /> En litige
+                            <AlertTriangle size={10} /> {t("xfer_status_disputed")}
                           </span>
                         )}
-                        {t.status === "CANCELLED" && (
+                        {tx.status === "CANCELLED" && (
                           <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-1.5 py-0.2 rounded">
-                            Annulé
+                            {t("xfer_status_cancelled")}
                           </span>
                         )}
                       </div>
                       <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="font-mono text-[11px] text-blue-600">{t.id}</span>
+                        <span className="font-mono text-[11px] text-blue-600">{tx.id}</span>
                         <span>·</span>
-                        <span>{new Date(t.createdAt).toLocaleDateString("fr-FR", { dateStyle: "medium" })}</span>
-                        {t.note && (
+                        <span>{new Date(tx.createdAt).toLocaleDateString("fr-FR", { dateStyle: "medium" })}</span>
+                        {tx.note && (
                           <>
                             <span>·</span>
-                            <span className="italic text-slate-600 truncate max-w-[200px]">&quot;{t.note}&quot;</span>
+                            <span className="italic text-slate-600 truncate max-w-[200px]">&quot;{tx.note}&quot;</span>
                           </>
                         )}
                       </div>
@@ -1326,26 +908,26 @@ export function TransferExperience({
                   <div className="flex items-center justify-between sm:justify-end gap-4 pl-13 sm:pl-0">
                     <div className="text-right">
                       <div className="text-sm font-extrabold text-slate-900">
-                        {t.direction === "received" ? "+" : "−"} {t.amount.toLocaleString("fr-FR")} <small className="text-xs font-semibold">FCFA</small>
+                        {tx.direction === "received" ? "+" : "−"} {tx.amount.toLocaleString("fr-FR")} <small className="text-xs font-semibold">FCFA</small>
                       </div>
-                      <div className="text-[10px] text-slate-600 font-mono">Frais: 0 FCFA</div>
+                      <div className="text-[10px] text-slate-600 font-mono">{t("xfer_fee_zero")}</div>
                     </div>
 
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => downloadTransferReceiptPDF(t)}
-                        title="Télécharger le reçu PDF"
+                        onClick={() => downloadTransferReceiptPDF(tx)}
+                        title={t("xfer_download_receipt_title")}
                         className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                       >
                         <Download size={14} />
                       </button>
                       <button
                         type="button"
-                        onClick={() => setViewingTransfer(t)}
+                        onClick={() => setViewingTransfer(tx)}
                         className="px-2.5 py-1.5 bg-[#1859bb] hover:bg-[#124491] text-white text-xs font-bold rounded-lg transition-all"
                       >
-                        Détails
+                        {t("xfer_details")}
                       </button>
                     </div>
                   </div>
@@ -1365,16 +947,16 @@ export function TransferExperience({
             <div className="inline-flex p-3 rounded-2xl bg-blue-50 text-[#1859bb] mb-2">
               <ArrowDownLeft size={32} />
             </div>
-            <h2 className="text-xl font-black text-slate-900">Recevoir un transfert NovaPaid</h2>
+            <h2 className="text-xl font-black text-slate-900">{t("xfer_receive_title")}</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Partagez l’email ou le téléphone associé à votre compte. L’expéditeur doit confirmer votre identité avant l’envoi.
+              {t("xfer_receive_subtitle")}
             </p>
           </div>
 
           <div className="space-y-3">
             {receiveDetails.email && <div className="p-3 bg-blue-50 rounded-xl border border-blue-200/80 flex items-center justify-between gap-3">
               <div className="text-left">
-                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider block">Email du compte</span>
+                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider block">{t("xfer_account_email")}</span>
                 <span className="text-sm font-extrabold text-[#10264f] break-all">{receiveDetails.email}</span>
               </div>
               <button
@@ -1383,13 +965,13 @@ export function TransferExperience({
                 className="px-3 py-1.5 bg-white text-blue-700 text-xs font-bold rounded-lg border border-blue-200 hover:bg-blue-100/50 transition-all flex items-center gap-1.5"
               >
                 {copiedKey === "email" ? <Check size={14} /> : <Copy size={14} />}
-                {copiedKey === "email" ? "Copié !" : "Copier"}
+                {copiedKey === "email" ? t("xfer_copied") : t("xfer_copy")}
               </button>
             </div>}
 
             {receiveDetails.phone && <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
               <div className="text-left">
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Téléphone du compte</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">{t("xfer_account_phone")}</span>
                 <span className="font-mono text-xs font-bold text-slate-800">{receiveDetails.phone}</span>
               </div>
               <button
@@ -1398,10 +980,10 @@ export function TransferExperience({
                 className="px-3 py-1.5 bg-white text-slate-700 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-100 transition-all flex items-center gap-1.5"
               >
                 {copiedKey === "phone" ? <Check size={14} /> : <Copy size={14} />}
-                {copiedKey === "phone" ? "Copié !" : "Copier"}
+                {copiedKey === "phone" ? t("xfer_copied") : t("xfer_copy")}
               </button>
             </div>}
-            {!receiveDetails.email && !receiveDetails.phone && <p className="text-sm text-slate-500">Les coordonnées de réception ne sont pas disponibles. Reconnectez-vous puis réessayez.</p>}
+            {!receiveDetails.email && !receiveDetails.phone && <p className="text-sm text-slate-500">{t("xfer_receive_unavailable")}</p>}
           </div>
         </div>
       )}
@@ -1424,7 +1006,7 @@ export function TransferExperience({
                   <ArrowLeftRight size={16} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Détail de l’écriture comptable</h3>
+                  <h3 className="text-sm font-bold text-slate-900">{t("xfer_entry_detail_title")}</h3>
                   <span className="text-[10px] text-slate-600 font-mono">{viewingTransfer.id}</span>
                 </div>
               </div>
@@ -1440,25 +1022,25 @@ export function TransferExperience({
             <div className="space-y-3 text-xs">
               <div className="p-3.5 bg-slate-50 rounded-xl space-y-2 border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">{viewingTransfer.direction === "received" ? "Expéditeur :" : "Bénéficiaire :"}</span>
+                  <span className="text-slate-500">{viewingTransfer.direction === "received" ? t("xfer_sender") : t("xfer_beneficiary")}</span>
                   <span className="font-bold text-slate-900">{viewingTransfer.counterpartyName || viewingTransfer.recipientName}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">{viewingTransfer.direction === "received" ? "Identifiant expéditeur :" : "Identifiant destinataire :"}</span>
+                  <span className="text-slate-500">{viewingTransfer.direction === "received" ? t("xfer_sender_id") : t("xfer_recipient_id")}</span>
                   <span className="font-semibold text-blue-700">{viewingTransfer.recipientHandle}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Montant débité :</span>
+                  <span className="text-slate-500">{t("xfer_amount_debited_short")}</span>
                   <span className="font-extrabold text-slate-900 text-sm">
                     {viewingTransfer.amount.toLocaleString("fr-FR")} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Frais de traitement :</span>
+                  <span className="text-slate-500">{t("xfer_processing_fee")}</span>
                   <span className="text-emerald-600 font-bold">0 FCFA</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Statut de la transaction :</span>
+                  <span className="text-slate-500">{t("xfer_transaction_status")}</span>
                   <span
                     className={`font-bold px-2 py-0.5 rounded text-[10px] ${
                       viewingTransfer.status === "COMPLETED"
@@ -1476,14 +1058,14 @@ export function TransferExperience({
               {/* Détail des écritures de portefeuille */}
               <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 space-y-1.5 font-mono text-[11px]">
                 <div className="text-[10px] font-bold text-blue-900 uppercase font-sans mb-1 flex items-center gap-1">
-                  <ShieldCheck size={13} /> Débit et crédit enregistrés ensemble
+                  <ShieldCheck size={13} /> {t("xfer_debit_credit_together")}
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span>Débit Compte Source :</span>
+                  <span>{t("xfer_debit_source")}</span>
                   <span className="text-red-700">− {viewingTransfer.amount.toLocaleString("fr-FR")} FCFA</span>
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span>Crédit Compte Bénéficiaire :</span>
+                  <span>{t("xfer_credit_beneficiary")}</span>
                   <span className="text-emerald-700">+ {viewingTransfer.amount.toLocaleString("fr-FR")} FCFA</span>
                 </div>
               </div>
@@ -1495,7 +1077,7 @@ export function TransferExperience({
                 onClick={() => downloadTransferReceiptPDF(viewingTransfer)}
                 className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
               >
-                <Download size={14} /> Télécharger la confirmation PDF
+                <Download size={14} /> {t("xfer_download_pdf")}
               </button>
 
               {viewingTransfer.status !== "DISPUTED" && viewingTransfer.status !== "CANCELLED" && (
@@ -1504,7 +1086,7 @@ export function TransferExperience({
                   onClick={() => setShowDisputeModal(true)}
                   className="px-3 py-2.5 border border-red-200 hover:bg-red-50 text-red-600 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
                 >
-                  <ShieldAlert size={14} /> Contester
+                  <ShieldAlert size={14} /> {t("xfer_dispute")}
                 </button>
               )}
             </div>
@@ -1526,7 +1108,7 @@ export function TransferExperience({
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <UserPlus size={16} className="text-[#1859bb]" /> Nouveau bénéficiaire
+                <UserPlus size={16} className="text-[#1859bb]" /> {t("xfer_new_beneficiary")}
               </h3>
               <button
                 type="button"
@@ -1539,7 +1121,7 @@ export function TransferExperience({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Téléphone associé au compte :</label>
+                <label className="font-bold text-slate-700 block mb-1">{t("xfer_form_phone_label")}</label>
                 <input
                   type="text"
                   value={newBenForm.phone}
@@ -1550,12 +1132,12 @@ export function TransferExperience({
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Email associé au compte :</label>
+                <label className="font-bold text-slate-700 block mb-1">{t("xfer_form_email_label")}</label>
                 <input
                   type="email"
                   value={newBenForm.email}
                   onChange={(e) => setNewBenForm({ ...newBenForm, email: e.target.value })}
-                  placeholder="nom@domaine.com"
+                  placeholder={t("xfer_form_email_placeholder")}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -1567,7 +1149,7 @@ export function TransferExperience({
                 onClick={() => setShowAddBeneficiaryModal(false)}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
               >
-                Annuler
+                {t("xfer_cancel")}
               </button>
               <button
                 type="button"
@@ -1575,7 +1157,7 @@ export function TransferExperience({
                 onClick={handleSaveNewBeneficiary}
                 className="px-4 py-2 bg-[#1859bb] hover:bg-[#124491] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow transition-all"
               >
-                Enregistrer le contact
+                {t("xfer_save_contact")}
               </button>
             </div>
           </div>
@@ -1596,7 +1178,7 @@ export function TransferExperience({
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-red-600 flex items-center gap-2">
-                <ShieldAlert size={16} /> Contester une opération
+                <ShieldAlert size={16} /> {t("xfer_dispute_title")}
               </h3>
               <button
                 type="button"
@@ -1610,28 +1192,28 @@ export function TransferExperience({
             {disputeSubmitted ? (
               <div className="text-center py-6 space-y-2">
                 <CheckCircle2 size={36} className="text-emerald-500 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-900">Dossier de litige ouvert</h4>
+                <h4 className="text-sm font-bold text-slate-900">{t("xfer_dispute_opened_title")}</h4>
                 <p className="text-xs text-slate-500">
-                  Notre équipe de conformité et sécurité examine cette transaction. Vous serez contacté sous 24h ouvrées.
+                  {t("xfer_dispute_opened_body")}
                 </p>
               </div>
             ) : (
               <>
                 <p className="text-xs text-slate-600">
-                  Vous contestez le transfert <strong>{viewingTransfer.id}</strong> d’un montant de{" "}
-                  <strong>{viewingTransfer.amount.toLocaleString("fr-FR")} FCFA</strong> vers{" "}
+                  {t("xfer_dispute_intro")} <strong>{viewingTransfer.id}</strong> {t("xfer_dispute_amount_of")}{" "}
+                  <strong>{viewingTransfer.amount.toLocaleString("fr-FR")} FCFA</strong> {t("xfer_dispute_to")}{" "}
                   <strong>{viewingTransfer.recipientName}</strong>.
                 </p>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 block">
-                    Motif de la contestation (fraude, erreur de destinataire, piratage) :
+                    {t("xfer_dispute_reason_label")}
                   </label>
                   <textarea
                     rows={3}
                     value={disputeReason}
                     onChange={(e) => setDisputeReason(e.target.value)}
-                    placeholder="Expliquez ce qui s'est passé..."
+                    placeholder={t("xfer_dispute_reason_placeholder")}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-400"
                   />
                 </div>
@@ -1642,7 +1224,7 @@ export function TransferExperience({
                     onClick={() => setShowDisputeModal(false)}
                     className="px-4 py-2 text-xs font-semibold text-slate-600"
                   >
-                    Annuler
+                    {t("xfer_cancel")}
                   </button>
                   <button
                     type="button"
@@ -1650,7 +1232,7 @@ export function TransferExperience({
                     onClick={handleDisputeSubmit}
                     className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow transition-all"
                   >
-                    Transmettre au Support Risque
+                    {t("xfer_dispute_submit")}
                   </button>
                 </div>
               </>
@@ -1658,6 +1240,12 @@ export function TransferExperience({
           </div>
         </div>
       )}
+
+      <NovaProgressLoader
+        active={loaderActive}
+        label={t("xfer2_processing")}
+        onComplete={finishCardSend}
+      />
     </div>
   );
 }

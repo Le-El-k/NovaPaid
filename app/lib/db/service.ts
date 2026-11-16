@@ -116,12 +116,13 @@ const FUNDING_PROVIDER_LABELS: Record<string, string> = {
   bank: "Virement bancaire (CEMAC)",
 };
 
+// Pay-in and pay-out (deposit & withdrawal) both charge 1% for every aggregator.
 const DEFAULT_FUNDING_FEES: Record<string, number> = {
   orange: 1,
   mtn: 1,
-  wave: 0.5,
-  card: 1.8,
-  bank: 0.8,
+  wave: 1,
+  card: 1,
+  bank: 1,
 };
 
 function validateFinancialRequestKey(value: string) {
@@ -252,6 +253,138 @@ export interface TransactionData {
 }
 
 export const NovaDbService = {
+  // Internet (Geny) codes purchased by a user.
+  saveInternetCode(userId: number, data: { orderRef: string; code: string; planName?: string; amountXaf?: number; phone?: string; operator?: string }) {
+    const db = getDatabase();
+    db.prepare(`
+      INSERT INTO internet_codes (user_id, order_ref, code, plan_name, amount_xaf, phone, operator)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(order_ref) DO UPDATE SET code = excluded.code
+    `).run(
+      userId,
+      String(data.orderRef).slice(0, 64),
+      String(data.code).slice(0, 120),
+      String(data.planName || "").slice(0, 100),
+      Number.isFinite(data.amountXaf) ? Math.round(Number(data.amountXaf)) : 0,
+      String(data.phone || "").slice(0, 20),
+      String(data.operator || "").slice(0, 16),
+    );
+  },
+
+  getInternetCodes(userId: number) {
+    const rows = getDatabase().prepare(`
+      SELECT order_ref, code, plan_name, amount_xaf, phone, operator, created_at
+      FROM internet_codes WHERE user_id = ? ORDER BY id DESC LIMIT 200
+    `).all(userId) as any[];
+    return rows.map((row) => ({
+      orderRef: String(row.order_ref),
+      code: String(row.code),
+      planName: String(row.plan_name || ""),
+      amountXaf: Number(row.amount_xaf) || 0,
+      phone: String(row.phone || ""),
+      operator: String(row.operator || ""),
+      createdAt: String(row.created_at || ""),
+    }));
+  },
+
+  // ---- Geny internet orders (full lifecycle, recorded server-side) ----
+
+  // Record an internet order at creation, attributed to the buyer. Upsert by
+  // order_ref so re-sends don't duplicate; never overwrites a delivered code.
+  recordGenyOrderCreated(data: {
+    orderRef: string; userId?: number | null; userName?: string; userEmail?: string;
+    planId?: string; planName?: string; amountXaf?: number; phone?: string; operator?: string;
+    status?: string; livemode?: boolean;
+  }) {
+    const db = getDatabase();
+    db.prepare(`
+      INSERT INTO geny_orders (order_ref, user_id, user_name, user_email, plan_id, plan_name, amount_xaf, phone, operator, status, livemode)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(order_ref) DO UPDATE SET
+        user_id = COALESCE(excluded.user_id, geny_orders.user_id),
+        user_name = CASE WHEN excluded.user_name <> '' THEN excluded.user_name ELSE geny_orders.user_name END,
+        user_email = CASE WHEN excluded.user_email <> '' THEN excluded.user_email ELSE geny_orders.user_email END,
+        plan_id = excluded.plan_id, plan_name = excluded.plan_name, amount_xaf = excluded.amount_xaf,
+        phone = excluded.phone, operator = excluded.operator, livemode = excluded.livemode,
+        updated_at = CURRENT_TIMESTAMP
+    `).run(
+      String(data.orderRef).slice(0, 64),
+      data.userId ?? null,
+      String(data.userName || "").slice(0, 120),
+      String(data.userEmail || "").slice(0, 254),
+      String(data.planId || "").slice(0, 64),
+      String(data.planName || "").slice(0, 100),
+      Number.isFinite(data.amountXaf) ? Math.round(Number(data.amountXaf)) : 0,
+      String(data.phone || "").slice(0, 20),
+      String(data.operator || "").slice(0, 16),
+      String(data.status || "pending").slice(0, 24),
+      data.livemode ? 1 : 0,
+    );
+  },
+
+  // Update an order's status (and delivered code) as the Geny flow progresses.
+  updateGenyOrderStatus(orderRef: string, data: { status?: string; code?: string; livemode?: boolean }) {
+    const db = getDatabase();
+    const row = db.prepare("SELECT id FROM geny_orders WHERE order_ref = ?").get(String(orderRef).slice(0, 64)) as any;
+    if (!row) return;
+    db.prepare(`
+      UPDATE geny_orders SET
+        status = COALESCE(?, status),
+        code = CASE WHEN ? <> '' THEN ? ELSE code END,
+        livemode = COALESCE(?, livemode),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE order_ref = ?
+    `).run(
+      data.status ? String(data.status).slice(0, 24) : null,
+      String(data.code || ""), String(data.code || "").slice(0, 120),
+      data.livemode === undefined ? null : (data.livemode ? 1 : 0),
+      String(orderRef).slice(0, 64),
+    );
+  },
+
+  // Real admin analytics for internet (Geny) sales: summary stats, recent orders
+  // (with buyer names) and daily revenue for the last `days` days.
+  getGenyAnalytics(days = 30) {
+    const db = getDatabase();
+    const s = db.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) AS succeeded,
+        SUM(CASE WHEN status IN ('failed','expired') THEN 1 ELSE 0 END) AS failed,
+        SUM(CASE WHEN status NOT IN ('succeeded','failed','expired') THEN 1 ELSE 0 END) AS pending,
+        COALESCE(SUM(CASE WHEN status = 'succeeded' THEN amount_xaf ELSE 0 END), 0) AS revenue
+      FROM geny_orders
+    `).get() as any;
+    const today = db.prepare("SELECT COALESCE(SUM(amount_xaf),0) AS r FROM geny_orders WHERE status='succeeded' AND date(created_at)=date('now')").get() as any;
+    const month = db.prepare("SELECT COALESCE(SUM(amount_xaf),0) AS r FROM geny_orders WHERE status='succeeded' AND created_at >= datetime('now','-30 days')").get() as any;
+    const orders = db.prepare(`
+      SELECT order_ref, user_name, user_email, plan_name, amount_xaf, phone, operator, status, code, livemode, created_at
+      FROM geny_orders ORDER BY id DESC LIMIT 100
+    `).all() as any[];
+    const daily = db.prepare(`
+      SELECT date(created_at) AS day, COALESCE(SUM(CASE WHEN status='succeeded' THEN amount_xaf ELSE 0 END),0) AS amount
+      FROM geny_orders WHERE created_at >= datetime('now', ?) GROUP BY day ORDER BY day ASC
+    `).all(`-${Math.max(1, Math.min(365, days))} days`) as any[];
+    return {
+      stats: {
+        total: Number(s?.total) || 0,
+        succeeded: Number(s?.succeeded) || 0,
+        failed: Number(s?.failed) || 0,
+        pending: Number(s?.pending) || 0,
+        revenue: Number(s?.revenue) || 0,
+        revenueToday: Number(today?.r) || 0,
+        revenueMonth: Number(month?.r) || 0,
+      },
+      orders: orders.map((r) => ({
+        orderRef: String(r.order_ref), userName: String(r.user_name || ""), userEmail: String(r.user_email || ""),
+        planName: String(r.plan_name || ""), amountXaf: Number(r.amount_xaf) || 0, phone: String(r.phone || ""),
+        operator: String(r.operator || ""), status: String(r.status || ""), code: String(r.code || ""),
+        livemode: Boolean(r.livemode), createdAt: String(r.created_at || ""),
+      })),
+      dailyRevenue: daily.map((r) => ({ date: String(r.day), amount: Number(r.amount) || 0 })),
+    };
+  },
+
   assertWalletActive(userId: number) {
     const wallet = getDatabase().prepare("SELECT status FROM wallets WHERE user_id = ? AND currency = 'XAF' ORDER BY id LIMIT 1").get(userId) as any;
     if (!wallet) throw new Error("Portefeuille introuvable.");
@@ -340,6 +473,41 @@ export const NovaDbService = {
         brand: isVisa ? "visa" : "mastercard",
       };
     });
+  },
+
+  // Vérifie qu'un destinataire existe : l'email/téléphone doit correspondre à un
+  // compte NovaPaid actif qui possède une carte active se terminant par `last4`.
+  verifyCardRecipient(contact: string, last4: string): { ok: boolean; recipientUserId?: number; error?: string } {
+    const db = getDatabase();
+    const raw = String(contact || "").trim();
+    const digits = String(last4 || "").replace(/\D/g, "");
+    if (!raw) return { ok: false, error: "Renseignez l'email ou le téléphone du destinataire." };
+    if (!/^[0-9]{4}$/.test(digits)) return { ok: false, error: "Les 4 derniers chiffres de la carte sont invalides." };
+
+    const email = raw.toLowerCase();
+    const phone = normalizePhone(raw);
+    const user = db.prepare(
+      `SELECT id FROM users WHERE status = 'active' AND (lower(email) = ? OR (? <> '' AND replace(replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '') = ?)) LIMIT 1`
+    ).get(email, phone, phone) as any;
+    if (!user) return { ok: false, error: "Aucun compte NovaPaid ne correspond à ce contact." };
+
+    const card = db.prepare(
+      `SELECT id FROM cards WHERE user_id = ? AND status = 'active' AND replace(masked_pan, ' ', '') LIKE ? LIMIT 1`
+    ).get(user.id, `%${digits}`) as any;
+    if (!card) return { ok: false, error: "Les 4 derniers chiffres ne correspondent à aucune carte de ce destinataire." };
+
+    return { ok: true, recipientUserId: Number(user.id) };
+  },
+
+  getCardProviderInfo(userId: number, cardId: number): { provider: string; providerCardRef: string | null; status: string } | null {
+    const db = getDatabase();
+    const row = db.prepare("SELECT provider, provider_card_ref, status FROM cards WHERE id = ? AND user_id = ?").get(cardId, userId) as any;
+    if (!row) return null;
+    return {
+      provider: String(row.provider || "sandbox"),
+      providerCardRef: row.provider_card_ref || null,
+      status: String(row.status),
+    };
   },
 
   getCardTransactions(userId: number, cardId: number) {
@@ -559,6 +727,325 @@ export const NovaDbService = {
     });
   },
 
+  // =====================================================================
+  // INTÉGRATION PRESTATAIRE DE CARTES / COMPTES (Maplerad, etc.)
+  // =====================================================================
+
+  /** Profil minimal nécessaire à l'enrôlement d'un client chez le prestataire. */
+  getUserForProviderEnrollment(userId: number): {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    dateOfBirth: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    postalCode: string | null;
+    kycData: string | null;
+  } | null {
+    const db = getDatabase();
+    const u = db.prepare(
+      `SELECT id, name, first_name, last_name, email, phone, date_of_birth,
+              address, city, state, country, postal_code, kyc_data
+         FROM users WHERE id = ? AND deleted_at IS NULL`
+    ).get(userId) as any;
+    if (!u) return null;
+    const nameParts = String(u.name || "").trim().split(/\s+/);
+    return {
+      id: u.id,
+      firstName: (u.first_name || nameParts[0] || "").trim(),
+      lastName: (u.last_name || nameParts.slice(1).join(" ") || "").trim(),
+      email: String(u.email || "").trim(),
+      phone: String(u.phone || "").trim(),
+      dateOfBirth: u.date_of_birth || null,
+      address: u.address || null,
+      city: u.city || null,
+      state: u.state || null,
+      country: u.country || null,
+      postalCode: u.postal_code || null,
+      kycData: u.kyc_data || null,
+    };
+  },
+
+  /** Identifiant client du prestataire pour un (user, provider, environment). */
+  getProviderCustomerId(userId: number, provider: string, environment: string): string | null {
+    const db = getDatabase();
+    const row = db.prepare(
+      "SELECT provider_customer_id FROM card_provider_customers WHERE user_id = ? AND provider = ? AND environment = ?"
+    ).get(userId, provider, environment) as any;
+    return row?.provider_customer_id || null;
+  },
+
+  /** Persiste l'identifiant client du prestataire (upsert idempotent). */
+  saveProviderCustomer(
+    userId: number,
+    provider: string,
+    environment: string,
+    providerCustomerId: string,
+    metadata?: Record<string, unknown>
+  ): void {
+    const db = getDatabase();
+    db.prepare(
+      `INSERT INTO card_provider_customers (user_id, provider, provider_customer_id, environment, metadata)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(user_id, provider, environment)
+       DO UPDATE SET provider_customer_id = excluded.provider_customer_id,
+                     metadata = excluded.metadata`
+    ).run(userId, provider, providerCustomerId, environment, metadata ? JSON.stringify(metadata) : null);
+  },
+
+  /**
+   * Débite le portefeuille XAF et insère une carte « en attente » liée à la
+   * référence d'émission Maplerad. Les détails (PAN, statut actif) sont complétés
+   * plus tard par le webhook issuing.created.successful.
+   */
+  createPendingMapleradCard(
+    userId: number,
+    opts: { brand: "visa" | "mastercard"; label: string; amountUsd: number; reference: string; environment: string; mapleradCustomerId: string }
+  ): { cardId: number; costXaf: number; newWalletBalanceXaf: number } {
+    const db = getDatabase();
+    const RATE = 610.0;
+    return withImmediateTransaction(db, () => {
+      this.assertWalletActive(userId);
+      const activeOrFrozenCount = (db.prepare(
+        "SELECT count(*) as c FROM cards WHERE user_id = ? AND status NOT IN ('cancelled','rejected')"
+      ).get(userId) as any)?.c || 0;
+      if (activeOrFrozenCount >= 3) {
+        throw new Error("Vous avez atteint la limite maximale de 3 cartes autorisées sur votre compte.");
+      }
+
+      const wallet = db.prepare(
+        "SELECT id, available_minor, status FROM wallets WHERE user_id = ? AND currency = 'XAF' ORDER BY id LIMIT 1"
+      ).get(userId) as any;
+      if (!wallet || wallet.status !== "active") throw new Error("Portefeuille indisponible ou gelé.");
+
+      const costXaf = Math.ceil(opts.amountUsd * RATE);
+      const costMinor = costXaf * 100;
+      if (Number(wallet.available_minor) < costMinor) {
+        throw new Error("Solde insuffisant dans votre portefeuille. Montant requis : " + costXaf.toLocaleString("fr-FR") + " FCFA.");
+      }
+
+      const debit = db.prepare(
+        "UPDATE wallets SET available_minor = available_minor - ? WHERE id = ? AND available_minor >= ?"
+      ).run(costMinor, wallet.id, costMinor);
+      if (Number(debit.changes) !== 1) throw new Error("Solde insuffisant.");
+
+      const txRef = "TX-CRD-NEW-" + Date.now();
+      const desc = "Émission carte " + opts.label + " (" + opts.amountUsd.toFixed(2) + " USD)";
+      const insTx = db.prepare(
+        "INSERT INTO ledger_transactions (public_ref, idempotency_key, type, status, currency, amount_minor, description, created_by) VALUES (?, ?, 'card_creation', 'succeeded', 'XAF', ?, ?, ?)"
+      ).run(txRef, txRef, costMinor, desc, userId);
+      db.prepare(
+        "INSERT INTO ledger_entries (transaction_id, wallet_id, direction, amount_minor) VALUES (?, ?, 'debit', ?)"
+      ).run(Number(insTx.lastInsertRowid), wallet.id, costMinor);
+
+      const amountMinor = Math.round(opts.amountUsd * 100);
+      const metadata = JSON.stringify({ debitMinor: costMinor, walletId: wallet.id, reference: opts.reference, mapleradCustomerId: opts.mapleradCustomerId, ledgerTxRef: txRef });
+      const result = db.prepare(
+        `INSERT INTO cards (user_id, provider, provider_card_ref, label, masked_pan, card_type, network, status, external_balance_minor, maplerad_id, api_environment, metadata)
+         VALUES (?, 'maplerad', ?, ?, ?, 'virtual', ?, 'pending', ?, NULL, ?, ?)`
+      ).run(userId, opts.reference, opts.label, "•••• •••• •••• ••••", opts.brand, amountMinor, opts.environment, metadata);
+
+      createUserNotification(
+        db,
+        userId,
+        "info",
+        "Carte en cours d'émission",
+        opts.label + " est en cours de création. Elle sera active dès validation par notre prestataire.",
+        "/cards"
+      );
+
+      return {
+        cardId: Number(result.lastInsertRowid),
+        costXaf,
+        newWalletBalanceXaf: Math.round((Number(wallet.available_minor) - costMinor) / 100),
+      };
+    });
+  },
+
+  /** Applique un webhook d'émission de carte Maplerad (succès ou échec). */
+  applyMapleradCardWebhook(payload: {
+    reference?: string;
+    event: string;
+    card?: { id?: string; name?: string; masked_pan?: string; issuer?: string; status?: string; balance?: number; expiry?: string };
+    reason?: string;
+  }): { matched: boolean; cardId?: number } {
+    const db = getDatabase();
+    const ref = payload.reference || payload.card?.id;
+    if (!ref) return { matched: false };
+
+    return withImmediateTransaction(db, () => {
+      const card = db.prepare(
+        "SELECT * FROM cards WHERE provider = 'maplerad' AND (provider_card_ref = ? OR maplerad_id = ?) LIMIT 1"
+      ).get(ref, ref) as any;
+      if (!card) return { matched: false };
+
+      const success = /successful|success/i.test(payload.event) && payload.card;
+      if (success && payload.card) {
+        const c = payload.card;
+        const network = (c.issuer || card.network || "visa").toLowerCase() === "mastercard" ? "mastercard" : "visa";
+        const balanceMinor = Number.isFinite(c.balance) ? Number(c.balance) : card.external_balance_minor;
+        db.prepare(
+          `UPDATE cards SET maplerad_id = ?, masked_pan = ?, card_holder = ?, network = ?, status = 'active',
+                  external_balance_minor = ?, synced_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+        ).run(
+          c.id || card.maplerad_id || null,
+          this.formatMaskedPan(c.masked_pan) || card.masked_pan,
+          c.name || card.card_holder || null,
+          network,
+          balanceMinor,
+          card.id
+        );
+        createUserNotification(
+          db,
+          card.user_id,
+          "success",
+          "Carte virtuelle activée",
+          card.label + " est maintenant active et prête à être utilisée.",
+          "/cards"
+        );
+        return { matched: true, cardId: card.id };
+      }
+
+      // Échec : marquer rejetée et rembourser le portefeuille débité.
+      if (card.status !== "cancelled" && card.status !== "rejected") {
+        let meta: any = {};
+        try { meta = card.metadata ? JSON.parse(card.metadata) : {}; } catch { meta = {}; }
+        const debitMinor = Number(meta.debitMinor || 0);
+        const walletId = Number(meta.walletId || 0);
+        if (debitMinor > 0 && walletId > 0) {
+          const refunded = db.prepare(
+            "UPDATE wallets SET available_minor = available_minor + ? WHERE id = ?"
+          ).run(debitMinor, walletId);
+          if (Number(refunded.changes) === 1) {
+            const txRef = "TX-CRD-REFUND-" + Date.now();
+            const insTx = db.prepare(
+              "INSERT INTO ledger_transactions (public_ref, idempotency_key, type, status, currency, amount_minor, description, created_by) VALUES (?, ?, 'card_creation_refund', 'succeeded', 'XAF', ?, ?, ?)"
+            ).run(txRef, txRef, debitMinor, "Remboursement émission carte échouée: " + card.label, card.user_id);
+            db.prepare(
+              "INSERT INTO ledger_entries (transaction_id, wallet_id, direction, amount_minor) VALUES (?, ?, 'credit', ?)"
+            ).run(Number(insTx.lastInsertRowid), walletId, debitMinor);
+          }
+        }
+        db.prepare(
+          "UPDATE cards SET status = 'rejected', freeze_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        ).run((payload.reason || "Émission refusée par le prestataire.").slice(0, 300), card.id);
+        createUserNotification(
+          db,
+          card.user_id,
+          "error",
+          "Échec de l'émission de la carte",
+          "La création de " + card.label + " a échoué" + (payload.reason ? " (" + payload.reason + ")" : "") + ". Le montant débité a été remboursé.",
+          "/cards"
+        );
+      }
+      return { matched: true, cardId: card.id };
+    });
+  },
+
+  formatMaskedPan(pan?: string): string | null {
+    if (!pan) return null;
+    const digits = pan.replace(/[^0-9*]/g, "");
+    if (digits.length < 8) return pan;
+    const first = digits.slice(0, 6).replace(/[0-9]/g, (d) => d);
+    const last4 = digits.slice(-4);
+    return `${first.slice(0, 4)} ${first.slice(4)}•• •••• ${last4}`;
+  },
+
+  // ---- Comptes bancaires virtuels (Maplerad) --------------------------
+
+  listBankAccounts(userId: number): Array<{
+    id: number; currency: string; accountNumber: string | null; accountName: string | null;
+    bankName: string | null; routingNumber: string | null; status: string; createdAt: string;
+  }> {
+    const db = getDatabase();
+    const rows = db.prepare(
+      "SELECT id, currency, account_number, account_name, bank_name, routing_number, status, created_at FROM bank_accounts WHERE user_id = ? ORDER BY id DESC"
+    ).all(userId) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      currency: r.currency,
+      accountNumber: r.account_number,
+      accountName: r.account_name,
+      bankName: r.bank_name,
+      routingNumber: r.routing_number,
+      status: r.status,
+      createdAt: r.created_at,
+    }));
+  },
+
+  insertBankAccount(
+    userId: number,
+    data: {
+      provider?: string; environment: string; currency: string; status: string;
+      providerAccountId?: string | null; providerReference?: string | null;
+      accountNumber?: string | null; accountName?: string | null; bankName?: string | null;
+      routingNumber?: string | null; metadata?: Record<string, unknown>;
+    }
+  ): number {
+    const db = getDatabase();
+    const result = db.prepare(
+      `INSERT INTO bank_accounts (user_id, provider, environment, provider_account_id, provider_reference, currency, account_number, account_name, bank_name, routing_number, status, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      userId,
+      data.provider || "maplerad",
+      data.environment,
+      data.providerAccountId || null,
+      data.providerReference || null,
+      data.currency,
+      data.accountNumber || null,
+      data.accountName || null,
+      data.bankName || null,
+      data.routingNumber || null,
+      data.status,
+      data.metadata ? JSON.stringify(data.metadata) : null
+    );
+    createUserNotification(
+      db,
+      userId,
+      data.status === "active" || data.status === "open" ? "success" : "info",
+      "Compte bancaire virtuel",
+      data.status === "active" || data.status === "open"
+        ? "Votre compte " + data.currency + " est prêt à recevoir des paiements."
+        : "Votre demande de compte " + data.currency + " est en cours de traitement.",
+      "/wallet"
+    );
+    return Number(result.lastInsertRowid);
+  },
+
+  applyMapleradAccountWebhook(payload: {
+    event: string; id?: string; reference?: string;
+    account_number?: string; account_name?: string; bank_name?: string; status?: string; reason?: string;
+  }): { matched: boolean } {
+    const db = getDatabase();
+    const ref = payload.reference || payload.id;
+    if (!ref) return { matched: false };
+    const acct = db.prepare(
+      "SELECT * FROM bank_accounts WHERE provider_reference = ? OR provider_account_id = ? LIMIT 1"
+    ).get(ref, ref) as any;
+    if (!acct) return { matched: false };
+
+    const success = /successful|success|open/i.test(payload.event);
+    if (success) {
+      db.prepare(
+        `UPDATE bank_accounts SET provider_account_id = COALESCE(?, provider_account_id),
+                account_number = COALESCE(?, account_number), account_name = COALESCE(?, account_name),
+                bank_name = COALESCE(?, bank_name), status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+      ).run(payload.id || null, payload.account_number || null, payload.account_name || null, payload.bank_name || null, acct.id);
+      createUserNotification(db, acct.user_id, "success", "Compte bancaire virtuel actif", "Votre compte " + acct.currency + " est maintenant actif.", "/wallet");
+    } else {
+      db.prepare(
+        "UPDATE bank_accounts SET status = 'failed', failure_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run((payload.reason || "Création refusée.").slice(0, 300), acct.id);
+      createUserNotification(db, acct.user_id, "error", "Échec création du compte", "La création de votre compte " + acct.currency + " a échoué.", "/wallet");
+    }
+    return { matched: true };
+  },
+
   getBeneficiaries(userId: number): BeneficiaryData[] {
     const db = getDatabase();
     const rows = db.prepare(`
@@ -722,10 +1209,15 @@ export const NovaDbService = {
       if (!recipient) throw new Error("Le compte du bénéficiaire est indisponible.");
       const senderWallet = db.prepare("SELECT id, available_minor FROM wallets WHERE user_id = ? AND currency = 'XAF' ORDER BY id LIMIT 1").get(userId) as any;
       if (!senderWallet) throw new Error("Portefeuille introuvable.");
-      const newBalanceMinor = Number(senderWallet.available_minor) - amountMinor;
-      if (newBalanceMinor < 0) throw new Error(`Solde insuffisant. Disponible: ${this.getWallet(userId).balanceXaf.toLocaleString()} FCFA`);
+      // Frais de transfert entre utilisateurs de la plateforme (2% par défaut, configurable
+      // via transfer_fees). L'émetteur règle le montant + les frais, le bénéficiaire reçoit le montant.
+      const feeXaf = this.calculateTransferFee(amountXaf);
+      const feeMinor = feeXaf * 100;
+      const totalDebitMinor = amountMinor + feeMinor;
+      const newBalanceMinor = Number(senderWallet.available_minor) - totalDebitMinor;
+      if (newBalanceMinor < 0) throw new Error(`Solde insuffisant pour couvrir le transfert et ses frais (${feeXaf.toLocaleString("fr-FR")} FCFA). Disponible: ${this.getWallet(userId).balanceXaf.toLocaleString()} FCFA`);
       const debit = db.prepare("UPDATE wallets SET available_minor = available_minor - ? WHERE id = ? AND status = 'active' AND available_minor >= ?")
-        .run(amountMinor, senderWallet.id, amountMinor);
+        .run(totalDebitMinor, senderWallet.id, totalDebitMinor);
       if (Number(debit.changes) !== 1) throw new Error("Solde insuffisant ou portefeuille gelé.");
       const credit = db.prepare("UPDATE wallets SET available_minor = available_minor + ? WHERE id = ? AND status = 'active'")
         .run(amountMinor, recipient.wallet_id);
@@ -733,15 +1225,16 @@ export const NovaDbService = {
       const publicRef = `TRF-${Date.now()}-${randomBytes(5).toString("hex").toUpperCase()}`;
       const desc = `Transfert à ${String(recipient.name).slice(0, 120)}${note?.trim() ? ` · ${note.trim().slice(0, 180)}` : ""}`;
       const inserted = db.prepare(`
-        INSERT INTO ledger_transactions (public_ref, idempotency_key, type, status, currency, amount_minor, description, created_by, recipient_user_id)
-        VALUES (?, ?, 'transfer', 'succeeded', 'XAF', ?, ?, ?, ?)
-      `).run(publicRef, idempotencyKey, amountMinor, desc, userId, recipientUserId);
+        INSERT INTO ledger_transactions (public_ref, idempotency_key, type, status, currency, amount_minor, fee_minor, description, created_by, recipient_user_id)
+        VALUES (?, ?, 'transfer', 'succeeded', 'XAF', ?, ?, ?, ?, ?)
+      `).run(publicRef, idempotencyKey, amountMinor, feeMinor, desc, userId, recipientUserId);
       const transactionId = Number(inserted.lastInsertRowid);
       const entry = db.prepare("INSERT INTO ledger_entries (transaction_id, wallet_id, direction, amount_minor) VALUES (?, ?, ?, ?)");
       entry.run(transactionId, senderWallet.id, "debit", amountMinor);
       entry.run(transactionId, recipient.wallet_id, "credit", amountMinor);
+      if (feeMinor > 0) entry.run(transactionId, senderWallet.id, "debit", feeMinor);
 
-      return { success: true, publicRef, amountXaf, newBalanceXaf: Math.round(newBalanceMinor / 100), description: desc, recipientName: recipient.name };
+      return { success: true, publicRef, amountXaf, feeXaf, totalDebitXaf: amountXaf + feeXaf, newBalanceXaf: Math.round(newBalanceMinor / 100), description: desc, recipientName: recipient.name };
     });
   },
 
@@ -1098,6 +1591,89 @@ export const NovaDbService = {
       wallet: this.getWallet(user.id),
       sessionToken,
     };
+  },
+
+  // Step 1 of email-2FA login: validate the password WITHOUT creating a session.
+  // Returns the user's id/email so the caller can generate and email a code.
+  beginLogin(emailOrPhone: string, password: string) {
+    const db = getDatabase();
+    const identifier = emailOrPhone.trim();
+    const normalizedPhone = normalizePhone(identifier);
+    const user = db.prepare(`
+      SELECT id, name, email, phone, password_hash, role, status, kyc_status
+      FROM users
+      WHERE lower(email) = ? OR replace(replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '') = ?
+      LIMIT 1
+    `).get(identifier.toLowerCase(), normalizedPhone) as any;
+
+    if (!user) throw new Error("Identifiant ou mot de passe incorrect.");
+    if (user.status !== "active") throw new Error("Ce compte est suspendu ou en attente de validation. Contactez le support.");
+
+    const currentHash = String(user.password_hash || "");
+    const valid = verifySecret(password, currentHash) || verifyLegacyPassword(password, currentHash);
+    if (!valid) throw new Error("Identifiant ou mot de passe incorrect.");
+    if (!currentHash.startsWith("scrypt$")) {
+      db.prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hashSecret(password), user.id);
+    }
+
+    return { success: true, userId: Number(user.id), name: String(user.name), email: String(user.email) };
+  },
+
+  // Step 2 of email-2FA login: verify the code, then open the session.
+  completeLogin(userId: number, code: string, context: { ipAddress?: string | null; userAgent?: string | null } = {}) {
+    const db = getDatabase();
+    this.verifyCode(userId, code, "login");
+    const user = db.prepare(`
+      SELECT id, name, email, phone, role, status, kyc_status FROM users WHERE id = ? LIMIT 1
+    `).get(userId) as any;
+    if (!user) throw new Error("Compte utilisateur introuvable.");
+    if (user.status !== "active") throw new Error("Ce compte est suspendu ou en attente de validation. Contactez le support.");
+
+    const sessionToken = makeSessionToken();
+    db.prepare(`
+      INSERT INTO user_sessions (user_id, session_token, ip_address, user_agent, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(user.id, digestToken(sessionToken), context.ipAddress || null, context.userAgent || null, sqlDateAfterHours(USER_SESSION_HOURS));
+
+    return {
+      success: true,
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, status: user.status, kycStatus: user.kyc_status },
+      wallet: this.getWallet(user.id),
+      sessionToken,
+    };
+  },
+
+  // Password reset by 6-digit email code. Returns the code for the caller to email
+  // (never exposed to the client). Returns no code when the email is unknown, so we
+  // don't reveal whether an account exists.
+  createPasswordResetCode(email: string) {
+    const db = getDatabase();
+    const cleanEmail = email.trim().toLowerCase();
+    const user = db.prepare("SELECT id, name, email FROM users WHERE lower(email) = ? AND status = 'active'").get(cleanEmail) as any;
+    if (!user) return { success: true as const, sent: false as const };
+    const created = this.createVerificationCode(user.id, "password_reset");
+    return { success: true as const, sent: true as const, code: created.code, userId: Number(user.id), name: String(user.name), email: String(user.email) };
+  },
+
+  resetPasswordWithCode(email: string, code: string, newPassword: string) {
+    const db = getDatabase();
+    const cleanEmail = email.trim().toLowerCase();
+    if (newPassword.length < 10 || newPassword.length > 200) {
+      throw new Error("Le mot de passe doit contenir entre 10 et 200 caractères.");
+    }
+    const user = db.prepare("SELECT id FROM users WHERE lower(email) = ? AND status = 'active'").get(cleanEmail) as any;
+    if (!user) throw new Error("Code invalide ou expiré. Demandez un nouveau code.");
+    this.verifyCode(user.id, code, "password_reset");
+    return withImmediateTransaction(db, () => {
+      db.prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hashSecret(newPassword), user.id);
+      db.prepare("DELETE FROM user_sessions WHERE user_id = ?").run(user.id);
+      db.prepare(`
+        INSERT INTO user_activity_logs (user_id, action, details, request_id)
+        VALUES (?, 'password_reset', 'Mot de passe réinitialisé via code email', ?)
+      `).run(user.id, randomBytes(16).toString("hex"));
+      createUserNotification(db, user.id, "security", "Mot de passe modifié", "Votre mot de passe a été réinitialisé. Si ce n'est pas vous, contactez le support immédiatement.", "/support");
+      return { success: true, message: "Mot de passe réinitialisé avec succès. Connectez-vous avec votre nouveau mot de passe." };
+    });
   },
 
   logoutUser(sessionToken: string | null) {
@@ -2509,11 +3085,11 @@ export const NovaDbService = {
   // OTP VERIFICATION CODES (PrismCard parity)
   // ============================================================
 
-  createVerificationCode(userId: number, type: "registration" | "login" | "card_verification" | "email_change" = "login", channel: "email" | "sms" = "email") {
+  createVerificationCode(userId: number, type: "registration" | "login" | "card_verification" | "email_change" | "password_reset" = "login", channel: "email" | "sms" = "email") {
     const db = getDatabase();
     // Invalider les anciens codes non utilisés du même type
     db.prepare("UPDATE verification_codes SET used = 1 WHERE user_id = ? AND type = ? AND used = 0").run(userId, type);
-    const code = String(Math.floor(1000 + Math.random() * 9000)); // 4 digits
+    const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 digits
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString().slice(0, 19).replace("T", " "); // 10 min
     db.prepare(`
       INSERT INTO verification_codes (user_id, code, type, channel, expires_at)
@@ -2525,7 +3101,7 @@ export const NovaDbService = {
   verifyCode(userId: number, code: string, type: string) {
     const db = getDatabase();
     const cleanCode = code.trim();
-    if (!/^\d{4}$/.test(cleanCode)) throw new Error("Le code de vérification doit contenir 4 chiffres.");
+    if (!/^\d{6}$/.test(cleanCode)) throw new Error("Le code de vérification doit contenir 6 chiffres.");
     return withImmediateTransaction(db, () => {
       const row = db.prepare(`
         SELECT id, attempts FROM verification_codes
@@ -4155,5 +4731,644 @@ export const NovaDbService = {
     const db = getDatabase();
     db.prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP").run(key, value);
     return { success: true };
+  },
+
+  // ============================================================
+  // PHASE 6 — SÉCURITÉ AVANCÉE (PrismCard parity)
+  // ============================================================
+
+  // ── Login History ──
+
+  recordLoginHistory(data: { userId: number; method?: string; ip?: string; userAgent?: string; status?: string; failureReason?: string }) {
+    const ua = data.userAgent || "";
+    let browser = "Inconnu", os = "Inconnu", deviceName = "Appareil inconnu";
+    if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
+    else if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
+    else if (ua.includes("Edg")) browser = "Edge";
+    if (ua.includes("Windows")) os = "Windows";
+    else if (ua.includes("Mac OS") || ua.includes("Macintosh")) os = "macOS";
+    else if (ua.includes("Android")) os = "Android";
+    else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+    else if (ua.includes("Linux")) os = "Linux";
+    if (ua.includes("iPhone")) deviceName = "iPhone";
+    else if (ua.includes("iPad")) deviceName = "iPad";
+    else if (ua.includes("Android")) deviceName = "Android";
+    else if (ua.includes("Macintosh")) deviceName = "Mac";
+    else if (ua.includes("Windows")) deviceName = "PC Windows";
+    else if (ua.includes("Linux")) deviceName = "Linux";
+    getDatabase().prepare(`
+      INSERT INTO login_history (user_id, method, ip_address, user_agent, device_name, browser, os, status, failure_reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(data.userId, data.method || "password", data.ip || null, ua || null, deviceName, browser, os, data.status || "success", data.failureReason || null);
+  },
+
+  getLoginHistory(userId: number, limit = 20) {
+    return getDatabase().prepare(
+      "SELECT id, method, ip_address, device_name, browser, os, country, status, failure_reason, created_at FROM login_history WHERE user_id = ? ORDER BY created_at DESC LIMIT ?"
+    ).all(userId, limit) as any[];
+  },
+
+  // ── Active Sessions (list, revoke individual) ──
+
+  listActiveSessions(userId: number) {
+    return getDatabase().prepare(`
+      SELECT id, ip_address, user_agent, expires_at, created_at
+      FROM user_sessions WHERE user_id = ? AND expires_at > datetime('now') ORDER BY created_at DESC
+    `).all(userId) as any[];
+  },
+
+  revokeSession(userId: number, sessionId: number, currentTokenDigest?: string) {
+    const session = getDatabase().prepare("SELECT id, session_token FROM user_sessions WHERE id = ? AND user_id = ?").get(sessionId, userId) as any;
+    if (!session) throw new Error("Session introuvable.");
+    if (currentTokenDigest && session.session_token === currentTokenDigest) throw new Error("Impossible de révoquer la session actuelle.");
+    getDatabase().prepare("DELETE FROM user_sessions WHERE id = ?").run(sessionId);
+    return { success: true };
+  },
+
+  // ── WebAuthn Credentials ──
+
+  listWebAuthnCredentials(userId: number) {
+    return getDatabase().prepare(
+      "SELECT id, name, sign_count, created_at, updated_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC"
+    ).all(userId) as any[];
+  },
+
+  getWebAuthnCredential(credentialId: string, userId: number) {
+    return getDatabase().prepare(
+      "SELECT * FROM webauthn_credentials WHERE id = ? AND user_id = ?"
+    ).get(credentialId, userId) as any;
+  },
+
+  saveWebAuthnCredential(data: { id: string; userId: number; name: string; credentialSource: string; signCount: number }) {
+    const db = getDatabase();
+    const existing = db.prepare("SELECT id FROM webauthn_credentials WHERE id = ?").get(data.id) as any;
+    if (existing) {
+      db.prepare("UPDATE webauthn_credentials SET credential_source = ?, sign_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .run(data.credentialSource, data.signCount, data.id);
+    } else {
+      db.prepare(`
+        INSERT INTO webauthn_credentials (id, user_id, name, credential_source, sign_count)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(data.id, data.userId, data.name, data.credentialSource, data.signCount);
+    }
+    return { success: true };
+  },
+
+  deleteWebAuthnCredential(credentialId: string, userId: number) {
+    const result = getDatabase().prepare("DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?").run(credentialId, userId);
+    if (result.changes === 0) throw new Error("Credential non trouvé.");
+    return { success: true };
+  },
+
+  hasWebAuthnCredentials(userId: number): boolean {
+    const row = getDatabase().prepare("SELECT id FROM webauthn_credentials WHERE user_id = ? LIMIT 1").get(userId) as any;
+    return !!row;
+  },
+
+  // ── Card Verification (email OTP for card access) ──
+
+  createCardVerificationCode(userId: number, cardId: number) {
+    const db = getDatabase();
+    db.prepare("UPDATE card_verification_codes SET used = 1 WHERE user_id = ? AND card_id = ? AND used = 0").run(userId, cardId);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+    db.prepare(`
+      INSERT INTO card_verification_codes (user_id, card_id, code, expires_at)
+      VALUES (?, ?, ?, ?)
+    `).run(userId, cardId, code, expiresAt);
+    return { success: true, code };
+  },
+
+  verifyCardCode(userId: number, cardId: number, code: string) {
+    const db = getDatabase();
+    const row = db.prepare(
+      "SELECT id FROM card_verification_codes WHERE user_id = ? AND card_id = ? AND code = ? AND used = 0 AND expires_at > datetime('now') ORDER BY created_at DESC LIMIT 1"
+    ).get(userId, cardId, code.trim()) as any;
+    if (!row) throw new Error("Code de vérification invalide ou expiré.");
+    db.prepare("UPDATE card_verification_codes SET used = 1 WHERE id = ?").run(row.id);
+    return { success: true };
+  },
+
+  // ── Enhanced Settings (notification preferences, 2FA) ──
+
+  toggleTwoFactorAuth(userId: number, enable: boolean) {
+    const db = getDatabase();
+    this.getUserSettings(userId);
+    db.prepare("UPDATE user_settings SET two_factor_auth = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?").run(enable ? 1 : 0, userId);
+    db.prepare("UPDATE users SET mfa_enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(enable ? 1 : 0, userId);
+    db.prepare(`
+      INSERT INTO user_activity_logs (user_id, action, details, request_id)
+      VALUES (?, ?, ?, ?)
+    `).run(userId, enable ? "2fa_enabled" : "2fa_disabled", enable ? "Authentification à deux facteurs activée" : "Authentification à deux facteurs désactivée", randomBytes(16).toString("hex"));
+    createUserNotification(db, userId, "security", enable ? "2FA activée" : "2FA désactivée", enable ? "L'authentification à deux facteurs est maintenant active sur votre compte." : "L'authentification à deux facteurs a été désactivée.");
+    return { success: true, enabled: enable };
+  },
+
+  // ── Admin Security Management ──
+
+  adminGetUserSecurityInfo(userId: number) {
+    const db = getDatabase();
+    const user = db.prepare(`
+      SELECT id, name, email, phone, role, status, mfa_enabled, pin_hash, pin_attempts, pin_locked_until,
+             email_verified_at, kyc_status, created_at, updated_at
+      FROM users WHERE id = ?
+    `).get(userId) as any;
+    if (!user) throw new Error("Utilisateur introuvable.");
+    const trustedDevices = db.prepare("SELECT COUNT(*) as count FROM trusted_devices WHERE user_id = ?").get(userId) as any;
+    const webauthnCreds = db.prepare("SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?").get(userId) as any;
+    const activeSessions = db.prepare("SELECT COUNT(*) as count FROM user_sessions WHERE user_id = ? AND expires_at > datetime('now')").get(userId) as any;
+    const recentLogins = db.prepare("SELECT * FROM login_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 10").all(userId) as any[];
+    const settings = this.getUserSettings(userId);
+    return {
+      user,
+      hasPin: !!user.pin_hash,
+      isPinLocked: !!(user.pin_locked_until && new Date(user.pin_locked_until) > new Date()),
+      trustedDeviceCount: trustedDevices.count,
+      webauthnCredentialCount: webauthnCreds.count,
+      activeSessionCount: activeSessions.count,
+      twoFactorEnabled: !!settings.two_factor_auth,
+      emailVerified: !!user.email_verified_at,
+      recentLogins,
+    };
+  },
+
+  adminForceResetPassword(userId: number, adminId: number, newPassword: string) {
+    const db = getDatabase();
+    const user = db.prepare("SELECT id, name, email FROM users WHERE id = ?").get(userId) as any;
+    if (!user) throw new Error("Utilisateur introuvable.");
+    if (newPassword.length < 10) throw new Error("Le mot de passe doit contenir au moins 10 caractères.");
+    return withImmediateTransaction(db, () => {
+      db.prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hashSecret(newPassword), userId);
+      db.prepare("DELETE FROM user_sessions WHERE user_id = ?").run(userId);
+      db.prepare(`
+        INSERT INTO user_activity_logs (user_id, action, details, request_id)
+        VALUES (?, 'admin_password_reset', ?, ?)
+      `).run(userId, `Mot de passe réinitialisé par admin #${adminId}`, randomBytes(16).toString("hex"));
+      createUserNotification(db, userId, "security", "Mot de passe réinitialisé", "Votre mot de passe a été réinitialisé par un administrateur. Si ce n'est pas prévu, contactez le support.");
+      return { success: true, message: `Mot de passe de ${user.name} réinitialisé. Toutes les sessions ont été fermées.` };
+    });
+  },
+
+  adminResetUserPin(userId: number, adminId: number) {
+    const db = getDatabase();
+    db.prepare("UPDATE users SET pin_hash = NULL, pin_attempts = 0, pin_locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(userId);
+    db.prepare(`
+      INSERT INTO user_activity_logs (user_id, action, details, request_id)
+      VALUES (?, 'admin_pin_reset', ?, ?)
+    `).run(userId, `PIN réinitialisé par admin #${adminId}`, randomBytes(16).toString("hex"));
+    return { success: true };
+  },
+
+  adminRevokeAllUserSessions(userId: number) {
+    const result = getDatabase().prepare("DELETE FROM user_sessions WHERE user_id = ?").run(userId);
+    return { success: true, revokedCount: result.changes };
+  },
+
+  adminClearUserTrustedDevices(userId: number) {
+    const result = getDatabase().prepare("DELETE FROM trusted_devices WHERE user_id = ?").run(userId);
+    return { success: true, clearedCount: result.changes };
+  },
+
+  adminClearUserWebAuthn(userId: number) {
+    const result = getDatabase().prepare("DELETE FROM webauthn_credentials WHERE user_id = ?").run(userId);
+    return { success: true, clearedCount: result.changes };
+  },
+
+  adminDisableUser2FA(userId: number) {
+    const db = getDatabase();
+    db.prepare("UPDATE user_settings SET two_factor_auth = 0, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?").run(userId);
+    db.prepare("UPDATE users SET mfa_enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(userId);
+    return { success: true };
+  },
+
+  // ================================================================
+  // PHASE 7 — COMMUNICATION
+  // ================================================================
+
+  // --- Push Announcements ---
+  createAnnouncement(data: { title: string; message: string; target_audience?: string; created_by?: number }) {
+    const db = getDatabase();
+    const result = db.prepare(`
+      INSERT INTO push_announcements (title, message, target_audience, status, created_by) VALUES (?, ?, ?, 'draft', ?)
+    `).run(data.title, data.message, data.target_audience || "all", data.created_by || null);
+    return { id: result.lastInsertRowid };
+  },
+
+  listAnnouncements(limit = 50, offset = 0) {
+    return getDatabase().prepare(`SELECT * FROM push_announcements ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(limit, offset);
+  },
+
+  getAnnouncement(id: number) {
+    return getDatabase().prepare("SELECT * FROM push_announcements WHERE id = ?").get(id);
+  },
+
+  sendAnnouncement(id: number) {
+    const db = getDatabase();
+    const ann = db.prepare("SELECT * FROM push_announcements WHERE id = ?").get(id) as any;
+    if (!ann) return { success: false, error: "Annonce introuvable" };
+    const users = db.prepare("SELECT id FROM users WHERE status = 'active'").all() as any[];
+    const insert = db.prepare("INSERT OR IGNORE INTO push_announcement_recipients (push_announcement_id, user_id, status) VALUES (?, ?, 'delivered')");
+    const insertNotif = db.prepare("INSERT INTO notifications (user_id, type, title, message) VALUES (?, 'announcement', ?, ?)");
+    let sent = 0;
+    for (const u of users) {
+      insert.run(id, u.id);
+      insertNotif.run(u.id, ann.title, ann.message);
+      sent++;
+    }
+    db.prepare("UPDATE push_announcements SET status = 'sent', sent_count = ? WHERE id = ?").run(sent, id);
+    return { success: true, sent };
+  },
+
+  deleteAnnouncement(id: number) {
+    getDatabase().prepare("DELETE FROM push_announcements WHERE id = ?").run(id);
+    return { success: true };
+  },
+
+  // --- Email Campaigns ---
+  createEmailCampaign(data: { subject: string; message: string; scheduled_for?: string }) {
+    const result = getDatabase().prepare(`
+      INSERT INTO email_campaigns (subject, message, status, scheduled_for) VALUES (?, ?, 'draft', ?)
+    `).run(data.subject, data.message, data.scheduled_for || null);
+    return { id: result.lastInsertRowid };
+  },
+
+  listEmailCampaigns(limit = 50) {
+    return getDatabase().prepare("SELECT * FROM email_campaigns ORDER BY created_at DESC LIMIT ?").all(limit);
+  },
+
+  getEmailCampaign(id: number) {
+    const db = getDatabase();
+    const campaign = db.prepare("SELECT * FROM email_campaigns WHERE id = ?").get(id) as any;
+    if (!campaign) return null;
+    const recipients = db.prepare("SELECT * FROM email_campaign_recipients WHERE email_campaign_id = ? ORDER BY created_at DESC LIMIT 100").all(id);
+    return { ...campaign, recipients };
+  },
+
+  sendEmailCampaign(id: number) {
+    const db = getDatabase();
+    const campaign = db.prepare("SELECT * FROM email_campaigns WHERE id = ?").get(id) as any;
+    if (!campaign) return { success: false, error: "Campagne introuvable" };
+    const users = db.prepare("SELECT id, email FROM users WHERE status = 'active' AND email IS NOT NULL AND email <> ''").all() as any[];
+    const insert = db.prepare("INSERT INTO email_campaign_recipients (email_campaign_id, user_id, email, status, sent_at) VALUES (?, ?, ?, 'sent', CURRENT_TIMESTAMP)");
+    let sent = 0;
+    for (const u of users) { insert.run(id, u.id, u.email); sent++; }
+    db.prepare("UPDATE email_campaigns SET status = 'completed', total_recipients = ?, sent_count = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?").run(sent, sent, id);
+    return { success: true, sent };
+  },
+
+  deleteEmailCampaign(id: number) {
+    getDatabase().prepare("DELETE FROM email_campaigns WHERE id = ?").run(id);
+    return { success: true };
+  },
+
+  // --- Email Settings ---
+  listEmailSettings() {
+    return getDatabase().prepare("SELECT * FROM email_settings ORDER BY id").all();
+  },
+
+  getActiveEmailSetting() {
+    return getDatabase().prepare("SELECT * FROM email_settings WHERE is_active = 1 LIMIT 1").get();
+  },
+
+  saveEmailSetting(data: { id?: number; mail_host?: string; mail_port?: number; mail_username?: string; mail_password?: string; mail_encryption?: string; mail_from_address?: string; mail_from_name?: string; is_active?: number }) {
+    const db = getDatabase();
+    if (data.id) {
+      db.prepare(`UPDATE email_settings SET mail_host=?, mail_port=?, mail_username=?, mail_password=?, mail_encryption=?, mail_from_address=?, mail_from_name=?, is_active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+        .run(data.mail_host, data.mail_port || 587, data.mail_username, data.mail_password, data.mail_encryption || "tls", data.mail_from_address, data.mail_from_name, data.is_active ? 1 : 0, data.id);
+      return { id: data.id };
+    }
+    const r = db.prepare(`INSERT INTO email_settings (mail_host, mail_port, mail_username, mail_password, mail_encryption, mail_from_address, mail_from_name, is_active) VALUES (?,?,?,?,?,?,?,?)`)
+      .run(data.mail_host, data.mail_port || 587, data.mail_username, data.mail_password, data.mail_encryption || "tls", data.mail_from_address, data.mail_from_name, data.is_active ? 1 : 0);
+    return { id: r.lastInsertRowid };
+  },
+
+  deleteEmailSetting(id: number) {
+    getDatabase().prepare("DELETE FROM email_settings WHERE id = ?").run(id);
+    return { success: true };
+  },
+
+  // --- Support Messages (chat) ---
+  listSupportMessages(ticketId: number, limit = 100) {
+    return getDatabase().prepare("SELECT * FROM support_messages WHERE ticket_id = ? ORDER BY created_at ASC LIMIT ?").all(ticketId, limit);
+  },
+
+  createSupportMessage(data: { ticket_id: number; sender_type: string; sender_id?: number; content: string; message_type?: string; attachment_url?: string; attachment_name?: string; attachment_size?: number; attachment_mime?: string; reply_to_id?: number }) {
+    const db = getDatabase();
+    const r = db.prepare(`
+      INSERT INTO support_messages (ticket_id, sender_type, sender_id, content, message_type, attachment_url, attachment_name, attachment_size, attachment_mime, reply_to_id)
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+    `).run(data.ticket_id, data.sender_type, data.sender_id || null, data.content, data.message_type || "text", data.attachment_url || null, data.attachment_name || null, data.attachment_size || null, data.attachment_mime || null, data.reply_to_id || null);
+    db.prepare("UPDATE support_tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(data.ticket_id);
+    return { id: r.lastInsertRowid };
+  },
+
+  markSupportMessagesRead(ticketId: number, readerType: string) {
+    const opposite = readerType === "user" ? "admin" : "user";
+    getDatabase().prepare("UPDATE support_messages SET read_at = CURRENT_TIMESTAMP WHERE ticket_id = ? AND sender_type = ? AND read_at IS NULL").run(ticketId, opposite);
+    return { success: true };
+  },
+
+  togglePinMessage(messageId: number) {
+    const db = getDatabase();
+    const msg = db.prepare("SELECT is_pinned FROM support_messages WHERE id = ?").get(messageId) as any;
+    if (!msg) return { success: false };
+    db.prepare("UPDATE support_messages SET is_pinned = ? WHERE id = ?").run(msg.is_pinned ? 0 : 1, messageId);
+    return { success: true, pinned: !msg.is_pinned };
+  },
+
+  reactToMessage(messageId: number, emoji: string, userId: number) {
+    const db = getDatabase();
+    const msg = db.prepare("SELECT reactions FROM support_messages WHERE id = ?").get(messageId) as any;
+    if (!msg) return { success: false };
+    const reactions = msg.reactions ? JSON.parse(msg.reactions) : {};
+    if (!reactions[emoji]) reactions[emoji] = [];
+    const idx = reactions[emoji].indexOf(userId);
+    if (idx >= 0) reactions[emoji].splice(idx, 1); else reactions[emoji].push(userId);
+    if (reactions[emoji].length === 0) delete reactions[emoji];
+    db.prepare("UPDATE support_messages SET reactions = ? WHERE id = ?").run(JSON.stringify(reactions), messageId);
+    return { success: true, reactions };
+  },
+
+  deleteSupportMessage(messageId: number) {
+    getDatabase().prepare("DELETE FROM support_messages WHERE id = ?").run(messageId);
+    return { success: true };
+  },
+
+  // --- Push Subscriptions ---
+  savePushSubscription(data: { user_id: number; endpoint: string; p256dh: string; auth_key: string; device_name?: string; browser?: string; os?: string }) {
+    const db = getDatabase();
+    const existing = db.prepare("SELECT id FROM push_subscriptions WHERE endpoint = ?").get(data.endpoint) as any;
+    if (existing) {
+      db.prepare("UPDATE push_subscriptions SET user_id=?, p256dh=?, auth_key=?, device_name=?, browser=?, os=?, is_active=1, updated_at=CURRENT_TIMESTAMP WHERE id=?")
+        .run(data.user_id, data.p256dh, data.auth_key, data.device_name || null, data.browser || null, data.os || null, existing.id);
+      return { id: existing.id };
+    }
+    const r = db.prepare("INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth_key, device_name, browser, os) VALUES (?,?,?,?,?,?,?)")
+      .run(data.user_id, data.endpoint, data.p256dh, data.auth_key, data.device_name || null, data.browser || null, data.os || null);
+    return { id: r.lastInsertRowid };
+  },
+
+  removePushSubscription(endpoint: string) {
+    getDatabase().prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").run(endpoint);
+    return { success: true };
+  },
+
+  listPushSubscriptions(userId?: number) {
+    if (userId) return getDatabase().prepare("SELECT * FROM push_subscriptions WHERE user_id = ? AND is_active = 1").all(userId);
+    return getDatabase().prepare("SELECT * FROM push_subscriptions WHERE is_active = 1").all();
+  },
+
+  // ================================================================
+  // PHASE 8 — FONCTIONNALITÉS SUPPLÉMENTAIRES
+  // ================================================================
+
+  // --- Identity Verification / KYC ---
+  submitIdentityVerification(data: { user_id: number; document_type: string; front_image?: string; back_image?: string; selfie_image?: string }) {
+    const r = getDatabase().prepare(`
+      INSERT INTO identity_verifications (user_id, document_type, front_image, back_image, selfie_image, status, submitted_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+    `).run(data.user_id, data.document_type, data.front_image || null, data.back_image || null, data.selfie_image || null);
+    return { id: r.lastInsertRowid };
+  },
+
+  getUserVerification(userId: number) {
+    return getDatabase().prepare("SELECT * FROM identity_verifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 1").get(userId);
+  },
+
+  listIdentityVerifications(status?: string, limit = 50) {
+    if (status) {
+      return getDatabase().prepare(`
+        SELECT iv.*, u.name as user_name, u.email as user_email FROM identity_verifications iv
+        LEFT JOIN users u ON u.id = iv.user_id WHERE iv.status = ? ORDER BY iv.created_at DESC LIMIT ?
+      `).all(status, limit);
+    }
+    return getDatabase().prepare(`
+      SELECT iv.*, u.name as user_name, u.email as user_email FROM identity_verifications iv
+      LEFT JOIN users u ON u.id = iv.user_id ORDER BY iv.created_at DESC LIMIT ?
+    `).all(limit);
+  },
+
+  reviewIdentityVerification(id: number, adminId: number, status: string, reason?: string) {
+    getDatabase().prepare(`
+      UPDATE identity_verifications SET status = ?, decision_reason = ?, decided_by = ?, reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).run(status, reason || null, adminId, id);
+    return { success: true };
+  },
+
+  // --- Activity Log ---
+  recordActivity(data: { user_id?: number; action: string; details?: string; ip_address?: string; user_agent?: string; method?: string; url?: string }) {
+    getDatabase().prepare(`
+      INSERT INTO activities (user_id, action, details, ip_address, user_agent, method, url) VALUES (?,?,?,?,?,?,?)
+    `).run(data.user_id || null, data.action, data.details || null, data.ip_address || null, data.user_agent || null, data.method || null, data.url || null);
+  },
+
+  listActivities(limit = 100, userId?: number) {
+    if (userId) {
+      return getDatabase().prepare("SELECT * FROM activities WHERE user_id = ? ORDER BY created_at DESC LIMIT ?").all(userId, limit);
+    }
+    return getDatabase().prepare("SELECT * FROM activities ORDER BY created_at DESC LIMIT ?").all(limit);
+  },
+
+  // --- Revenue Analytics ---
+  recordRevenue(data: { source: string; amount_minor: number; currency?: string; reference_id?: number; reference_type?: string; description?: string }) {
+    getDatabase().prepare(`
+      INSERT INTO revenue_records (source, amount_minor, currency, reference_id, reference_type, description, recorded_at)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(data.source, data.amount_minor, data.currency || "XAF", data.reference_id || null, data.reference_type || null, data.description || null);
+  },
+
+  getRevenueAnalytics(days = 30) {
+    const db = getDatabase();
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const bySource = db.prepare(`
+      SELECT source, SUM(amount_minor) as total, COUNT(*) as count FROM revenue_records
+      WHERE recorded_at >= ? GROUP BY source ORDER BY total DESC
+    `).all(since);
+    const byDay = db.prepare(`
+      SELECT DATE(recorded_at) as day, SUM(amount_minor) as total, COUNT(*) as count
+      FROM revenue_records WHERE recorded_at >= ? GROUP BY DATE(recorded_at) ORDER BY day
+    `).all(since);
+    const totalRow = db.prepare("SELECT SUM(amount_minor) as total, COUNT(*) as count FROM revenue_records WHERE recorded_at >= ?").get(since) as any;
+    return { bySource, byDay, total: totalRow?.total || 0, count: totalRow?.count || 0, days };
+  },
+
+  // --- Help Articles ---
+  listHelpArticles(category?: string) {
+    if (category) {
+      return getDatabase().prepare("SELECT * FROM help_articles WHERE is_active = 1 AND category = ? ORDER BY sort_order, title").all(category);
+    }
+    return getDatabase().prepare("SELECT * FROM help_articles WHERE is_active = 1 ORDER BY category, sort_order, title").all();
+  },
+
+  getHelpArticle(slug: string) {
+    const db = getDatabase();
+    const article = db.prepare("SELECT * FROM help_articles WHERE slug = ?").get(slug) as any;
+    if (article) db.prepare("UPDATE help_articles SET views = views + 1 WHERE id = ?").run(article.id);
+    return article;
+  },
+
+  saveHelpArticle(data: { id?: number; category: string; title: string; slug: string; content: string; excerpt?: string; sort_order?: number; is_active?: number }) {
+    const db = getDatabase();
+    if (data.id) {
+      db.prepare(`UPDATE help_articles SET category=?, title=?, slug=?, content=?, excerpt=?, sort_order=?, is_active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+        .run(data.category, data.title, data.slug, data.content, data.excerpt || null, data.sort_order || 0, data.is_active ?? 1, data.id);
+      return { id: data.id };
+    }
+    const r = db.prepare("INSERT INTO help_articles (category, title, slug, content, excerpt, sort_order, is_active) VALUES (?,?,?,?,?,?,?)")
+      .run(data.category, data.title, data.slug, data.content, data.excerpt || null, data.sort_order || 0, data.is_active ?? 1);
+    return { id: r.lastInsertRowid };
+  },
+
+  deleteHelpArticle(id: number) {
+    getDatabase().prepare("DELETE FROM help_articles WHERE id = ?").run(id);
+    return { success: true };
+  },
+
+  // --- Landing Page CMS (update) ---
+  updateLandingPageSettings(data: Record<string, any>) {
+    const db = getDatabase();
+    const existing = db.prepare("SELECT id FROM landing_page_settings LIMIT 1").get() as any;
+    if (!existing) db.prepare("INSERT INTO landing_page_settings (site_name) VALUES ('NovaPaid')").run();
+    const allowed = [
+      "site_name", "site_logo", "favicon", "hero_title", "hero_subtitle", "hero_image", "hero_cta_text", "hero_cta_url",
+      "stats_json", "features_json", "testimonials_json", "pricing_json", "faq_json",
+      "cta_title", "cta_subtitle", "cta_button_text", "cta_button_url",
+      "footer_text", "footer_links_json", "social_links_json",
+      "contact_email", "contact_phone", "contact_address",
+      "seo_title", "seo_description", "seo_keywords", "seo_og_image",
+      "font_heading", "font_body", "primary_color", "secondary_color", "marketplace_overlay_enabled",
+    ];
+    const sets: string[] = [];
+    const vals: any[] = [];
+    for (const key of allowed) {
+      if (key in data) { sets.push(`${key} = ?`); vals.push(data[key]); }
+    }
+    if (sets.length === 0) return { success: false, error: "Aucun champ valide" };
+    sets.push("updated_at = CURRENT_TIMESTAMP");
+    db.prepare(`UPDATE landing_page_settings SET ${sets.join(", ")} WHERE id = (SELECT id FROM landing_page_settings LIMIT 1)`).run(...vals);
+    return { success: true };
+  },
+
+  // --- Webhook Relay ---
+  listWebhookRelays() {
+    return getDatabase().prepare("SELECT * FROM webhook_relays ORDER BY created_at DESC").all();
+  },
+
+  getWebhookRelay(id: number) {
+    const db = getDatabase();
+    const relay = db.prepare("SELECT * FROM webhook_relays WHERE id = ?").get(id) as any;
+    if (!relay) return null;
+    const destinations = db.prepare("SELECT * FROM webhook_destinations WHERE webhook_relay_id = ?").all(id);
+    const recentEvents = db.prepare("SELECT * FROM webhook_events WHERE webhook_relay_id = ? ORDER BY created_at DESC LIMIT 20").all(id);
+    return { ...relay, destinations, recentEvents };
+  },
+
+  createWebhookRelay(data: { name: string; api_key_id?: number }) {
+    const publicId = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    const token = crypto.randomUUID();
+    const r = getDatabase().prepare("INSERT INTO webhook_relays (name, public_id, token, api_key_id) VALUES (?,?,?,?)")
+      .run(data.name, publicId, token, data.api_key_id || null);
+    return { id: r.lastInsertRowid, public_id: publicId, token };
+  },
+
+  deleteWebhookRelay(id: number) {
+    getDatabase().prepare("DELETE FROM webhook_relays WHERE id = ?").run(id);
+    return { success: true };
+  },
+
+  addWebhookDestination(relayId: number, url: string, secret?: string) {
+    const r = getDatabase().prepare("INSERT INTO webhook_destinations (webhook_relay_id, url, secret) VALUES (?,?,?)").run(relayId, url, secret || null);
+    return { id: r.lastInsertRowid };
+  },
+
+  removeWebhookDestination(id: number) {
+    getDatabase().prepare("DELETE FROM webhook_destinations WHERE id = ?").run(id);
+    return { success: true };
+  },
+
+  // --- Card Issuing Settings ---
+  getCardIssuingSettings() {
+    const row = getDatabase().prepare("SELECT * FROM card_issuing_settings LIMIT 1").get();
+    if (!row) {
+      getDatabase().prepare("INSERT INTO card_issuing_settings (active_provider) VALUES ('sandbox')").run();
+      return getDatabase().prepare("SELECT * FROM card_issuing_settings LIMIT 1").get();
+    }
+    return row;
+  },
+
+  updateCardIssuingSettings(data: Record<string, any>) {
+    const db = getDatabase();
+    db.prepare("SELECT * FROM card_issuing_settings LIMIT 1").get() || db.prepare("INSERT INTO card_issuing_settings (active_provider) VALUES ('sandbox')").run();
+    const allowed = ["active_provider", "maplerad_environment", "ziiropay_environment", "max_cards_per_user", "card_creation_enabled"];
+    const sets: string[] = [];
+    const vals: any[] = [];
+    for (const k of allowed) { if (k in data) { sets.push(`${k} = ?`); vals.push(data[k]); } }
+    if (!sets.length) return { success: false };
+    sets.push("updated_at = CURRENT_TIMESTAMP");
+    db.prepare(`UPDATE card_issuing_settings SET ${sets.join(", ")} WHERE id = (SELECT id FROM card_issuing_settings LIMIT 1)`).run(...vals);
+    return { success: true };
+  },
+
+  // --- Card Termination Requests ---
+  listCardTerminationRequests(status?: string) {
+    if (status) return getDatabase().prepare("SELECT ctr.*, u.name as user_name, c.card_number FROM card_termination_requests ctr LEFT JOIN users u ON u.id = ctr.user_id LEFT JOIN cards c ON c.id = ctr.card_id WHERE ctr.status = ? ORDER BY ctr.created_at DESC").all(status);
+    return getDatabase().prepare("SELECT ctr.*, u.name as user_name, c.card_number FROM card_termination_requests ctr LEFT JOIN users u ON u.id = ctr.user_id LEFT JOIN cards c ON c.id = ctr.card_id ORDER BY ctr.created_at DESC").all();
+  },
+
+  createCardTerminationRequest(cardId: number, userId: number, reason?: string) {
+    const r = getDatabase().prepare("INSERT INTO card_termination_requests (card_id, user_id, reason) VALUES (?,?,?)").run(cardId, userId, reason || null);
+    return { id: r.lastInsertRowid };
+  },
+
+  reviewCardTermination(id: number, status: string, refundAmount?: number) {
+    getDatabase().prepare("UPDATE card_termination_requests SET status = ?, refund_amount = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, refundAmount || null, id);
+    return { success: true };
+  },
+
+  // --- Deposit Help Popup ---
+  getDepositHelpPopup() {
+    const row = getDatabase().prepare("SELECT * FROM deposit_help_popup_settings LIMIT 1").get();
+    if (!row) {
+      getDatabase().prepare("INSERT INTO deposit_help_popup_settings (title) VALUES ('Besoin d''aide pour déposer?')").run();
+      return getDatabase().prepare("SELECT * FROM deposit_help_popup_settings LIMIT 1").get();
+    }
+    return row;
+  },
+
+  updateDepositHelpPopup(data: { title?: string; message?: string; video_url?: string; is_active?: number; show_after_seconds?: number }) {
+    const db = getDatabase();
+    db.prepare("SELECT id FROM deposit_help_popup_settings LIMIT 1").get() || db.prepare("INSERT INTO deposit_help_popup_settings (title) VALUES ('Besoin d''aide?')").run();
+    const sets: string[] = [];
+    const vals: any[] = [];
+    for (const [k, v] of Object.entries(data)) { sets.push(`${k} = ?`); vals.push(v); }
+    if (!sets.length) return { success: false };
+    sets.push("updated_at = CURRENT_TIMESTAMP");
+    db.prepare(`UPDATE deposit_help_popup_settings SET ${sets.join(", ")} WHERE id = (SELECT id FROM deposit_help_popup_settings LIMIT 1)`).run(...vals);
+    return { success: true };
+  },
+
+  // --- Marketing Settings (update) ---
+  updateMarketingSettings(data: Record<string, any>) {
+    const db = getDatabase();
+    db.prepare("SELECT id FROM marketing_settings LIMIT 1").get() || db.prepare("INSERT INTO marketing_settings (is_active) VALUES (0)").run();
+    const allowed = ["facebook_pixel_id", "google_analytics_id", "google_tag_manager_id", "tiktok_pixel_id", "is_active"];
+    const sets: string[] = [];
+    const vals: any[] = [];
+    for (const k of allowed) { if (k in data) { sets.push(`${k} = ?`); vals.push(data[k]); } }
+    if (!sets.length) return { success: false };
+    sets.push("updated_at = CURRENT_TIMESTAMP");
+    db.prepare(`UPDATE marketing_settings SET ${sets.join(", ")} WHERE id = (SELECT id FROM marketing_settings LIMIT 1)`).run(...vals);
+    return { success: true };
+  },
+
+  // --- Admin Global Search ---
+  adminGlobalSearch(query: string) {
+    const db = getDatabase();
+    const term = `%${query}%`;
+    const users = db.prepare("SELECT id, name, email, role, status FROM users WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? LIMIT 10").all(term, term, term);
+    const transactions = db.prepare("SELECT id, user_id, type, amount_minor, status, created_at FROM ledger_transactions WHERE reference LIKE ? OR description LIKE ? LIMIT 10").all(term, term);
+    const tickets = db.prepare("SELECT id, user_id, subject, status FROM support_tickets WHERE subject LIKE ? OR ticket_number LIKE ? LIMIT 10").all(term, term);
+    return { users, transactions, tickets };
   },
 };

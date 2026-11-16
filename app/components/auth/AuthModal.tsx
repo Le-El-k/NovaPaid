@@ -211,7 +211,7 @@ export function AuthModal({
                   id="log-ident"
                   type="text"
                   className="np-text-input with-prefix"
-                  placeholder="Ex : roddy@novapaid.com ou +237..."
+                  placeholder="vous@exemple.com ou +237..."
                   value={emailOrPhone}
                   onChange={(e) => setEmailOrPhone(e.target.value)}
                   required

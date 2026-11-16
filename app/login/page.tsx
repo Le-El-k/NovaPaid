@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ArrowLeft, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
 import { getAssetPath } from "@/app/lib/asset-path";
 import { resolveAuthRedirect } from "@/app/lib/auth/redirect";
+import { PwaInstallButton } from "@/app/components/pwa/PwaInstallButton";
+import { OtpStep } from "@/app/components/auth/OtpStep";
 
 export default function LoginPage() {
   const [emailOrPhone, setEmailOrPhone] = useState("");
@@ -13,7 +15,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [returnTo, setReturnTo] = useState("/dashboard");
+  const [returnTo, setReturnTo] = useState("/boutique");
+  const [step, setStep] = useState<"credentials" | "code">("credentials");
+  const [pendingUserId, setPendingUserId] = useState<number | null>(null);
+  const [emailMasked, setEmailMasked] = useState("");
 
   useEffect(() => {
     setReturnTo(resolveAuthRedirect(window.location.search));
@@ -40,16 +45,43 @@ export default function LoginPage() {
         throw new Error(data.error || "Identifiant ou mot de passe incorrect.");
       }
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem("novapaid_current_user", JSON.stringify(data.user));
-        localStorage.removeItem("novapaid_token");
-        window.location.replace(resolveAuthRedirect(window.location.search));
+      // Email 2FA: a 6-digit code was sent; switch to the verification step.
+      if (data.requiresCode) {
+        setPendingUserId(Number(data.userId));
+        setEmailMasked(data.emailMasked || "");
+        setStep("code");
+        return;
       }
     } catch (err: any) {
       setErrorMsg(err?.message || "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const verifyLoginCode = async (code: string) => {
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "login_verify", userId: pendingUserId, code }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "Code incorrect.");
+    if (typeof window !== "undefined") {
+      localStorage.setItem("novapaid_current_user", JSON.stringify(data.user));
+      localStorage.removeItem("novapaid_token");
+      window.location.replace(resolveAuthRedirect(window.location.search));
+    }
+  };
+
+  const resendLoginCode = async () => {
+    const res = await fetch("/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "send_login_code", userId: pendingUserId }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "Impossible de renvoyer le code.");
   };
 
   return (
@@ -71,6 +103,17 @@ export default function LoginPage() {
         </header>
 
         <div className="np-auth-layout">
+          {step === "code" ? (
+            <OtpStep
+              title="Confirmez votre connexion"
+              description="Nous avons envoyé un code à 6 chiffres à"
+              emailMasked={emailMasked}
+              submitLabel="Se connecter"
+              onVerify={verifyLoginCode}
+              onResend={resendLoginCode}
+              onBack={() => { setStep("credentials"); setErrorMsg(null); }}
+            />
+          ) : (
           <section className="np-auth-card">
             <div className="np-auth-card-heading">
               <span className="np-auth-card-kicker">ESPACE CLIENT</span>
@@ -95,7 +138,7 @@ export default function LoginPage() {
                 type="text"
                 className="np-text-input with-prefix"
                 autoComplete="username"
-                placeholder="roddy@novapaid.com ou +237..."
+                placeholder="vous@exemple.com ou +237..."
                 value={emailOrPhone}
                 onChange={(e) => setEmailOrPhone(e.target.value)}
                 required
@@ -147,6 +190,10 @@ export default function LoginPage() {
           </div>
         </form>
 
+        <div className="np-auth-pwa">
+          <PwaInstallButton className="np-pwa-install-btn--auth" />
+        </div>
+
         <div className="np-auth-card-switch">
           Vous n'avez pas encore de compte ?{" "}
           <Link href={`/register?redirect=${encodeURIComponent(returnTo)}`} className="font-bold text-blue-600 hover:underline">
@@ -154,6 +201,7 @@ export default function LoginPage() {
           </Link>
         </div>
           </section>
+          )}
         </div>
       </div>
     </main>

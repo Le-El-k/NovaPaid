@@ -6,17 +6,20 @@ import Link from "next/link";
 import { ArrowLeft, Eye, EyeOff, Info, Loader2, Lock, Mail, Smartphone, User } from "lucide-react";
 import { getAssetPath } from "@/app/lib/asset-path";
 import { resolveAuthRedirect } from "@/app/lib/auth/redirect";
+import { PwaInstallButton } from "@/app/components/pwa/PwaInstallButton";
+import { OtpStep } from "@/app/components/auth/OtpStep";
 
 export default function RegisterPage() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [returnTo, setReturnTo] = useState("/dashboard");
+  const [returnTo, setReturnTo] = useState("/boutique");
+  const [step, setStep] = useState<"form" | "code">("form");
+  const [emailMasked, setEmailMasked] = useState("");
 
   useEffect(() => {
     setReturnTo(resolveAuthRedirect(window.location.search));
@@ -33,7 +36,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "register",
-          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          name: fullName.trim(),
           email: email.trim(),
           phone: phone.trim(),
           password,
@@ -45,16 +48,41 @@ export default function RegisterPage() {
         throw new Error(data.error || "Impossible de créer votre compte.");
       }
 
+      // The account + session exist; require the emailed 6-digit code before entering.
       if (typeof window !== "undefined") {
         localStorage.setItem("novapaid_current_user", JSON.stringify(data.user));
         localStorage.removeItem("novapaid_token");
-        window.location.replace(resolveAuthRedirect(window.location.search));
       }
+      setEmailMasked(data.emailMasked || "");
+      setStep("code");
     } catch (err: any) {
       setErrorMsg(err?.message || "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const verifyEmailCode = async (code: string) => {
+    const res = await fetch("/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "verify_email", code }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "Code incorrect.");
+    if (typeof window !== "undefined") {
+      window.location.replace(resolveAuthRedirect(window.location.search));
+    }
+  };
+
+  const resendEmailCode = async () => {
+    const res = await fetch("/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "send_email_code" }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "Impossible de renvoyer le code.");
   };
 
   return (
@@ -76,6 +104,16 @@ export default function RegisterPage() {
         </header>
 
         <div className="np-auth-layout">
+          {step === "code" ? (
+            <OtpStep
+              title="Vérifiez votre email"
+              description="Nous avons envoyé un code à 6 chiffres à"
+              emailMasked={emailMasked}
+              submitLabel="Vérifier et continuer"
+              onVerify={verifyEmailCode}
+              onResend={resendEmailCode}
+            />
+          ) : (
           <section className="np-auth-card np-auth-card-register">
             <div className="np-auth-card-heading">
               <span className="np-auth-card-kicker">NOUVEAU COMPTE</span>
@@ -92,34 +130,17 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="np-auth-page-form">
           <div className="np-form-group">
-            <label className="np-form-label" htmlFor="reg-first-name">Prénom</label>
+            <label className="np-form-label" htmlFor="reg-name">Nom complet</label>
             <div className="np-input-wrapper">
               <span className="np-input-prefix"><User size={16} /></span>
               <input
-                id="reg-first-name"
+                id="reg-name"
                 type="text"
                 className="np-text-input with-prefix"
-                autoComplete="given-name"
-                placeholder="Votre prénom"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="np-form-group">
-            <label className="np-form-label" htmlFor="reg-last-name">Nom</label>
-            <div className="np-input-wrapper">
-              <span className="np-input-prefix"><User size={16} /></span>
-              <input
-                id="reg-last-name"
-                type="text"
-                className="np-text-input with-prefix"
-                autoComplete="family-name"
-                placeholder="Votre nom"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                autoComplete="name"
+                placeholder="Votre nom complet"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 required
               />
             </div>
@@ -198,6 +219,10 @@ export default function RegisterPage() {
           </button>
         </form>
 
+        <div className="np-auth-pwa">
+          <PwaInstallButton className="np-pwa-install-btn--auth" />
+        </div>
+
         <div className="np-auth-card-switch">
           Vous avez déjà un compte ?{" "}
           <Link href={`/login?redirect=${encodeURIComponent(returnTo)}`} className="font-bold text-blue-600 hover:underline">
@@ -205,6 +230,7 @@ export default function RegisterPage() {
           </Link>
         </div>
           </section>
+          )}
         </div>
       </div>
     </main>

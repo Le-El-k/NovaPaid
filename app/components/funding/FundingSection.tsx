@@ -1,6 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLanguage } from "@/app/lib/i18n";
+import { SoleasPayCheckoutV3 } from "@/app/components/payments/SoleasPayCheckoutV3";
+import { payWithBkpay } from "@/app/lib/payments/pay-with-bkpay";
+import { NovaProgressLoader } from "@/app/components/shared/NovaProgressLoader";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -26,6 +30,7 @@ type Mode = "deposit" | "withdraw";
 interface ProviderOption {
   id: string;
   name: string;
+  nameKey?: string;
   subtext: string;
   icon: string;
   badge?: string;
@@ -35,93 +40,37 @@ interface ProviderOption {
   currency: string;
 }
 
-const DEPOSIT_PROVIDERS: ProviderOption[] = [
-  {
-    id: "orange",
-    name: "Orange Money",
-    subtext: "Vérification manuelle du paiement",
-    icon: "OM",
-    badge: "Populaire",
-    feePercent: 1.0,
-    minAmount: 1000,
-    maxAmount: 500000,
-    currency: "FCFA",
-  },
-  {
-    id: "mtn",
-    name: "MTN Mobile Money",
-    subtext: "Vérification manuelle du paiement",
-    icon: "MTN",
-    feePercent: 1.0,
-    minAmount: 1000,
-    maxAmount: 500000,
-    currency: "FCFA",
-  },
-  {
-    id: "wave",
-    name: "Wave Mobile",
-    subtext: "Vérification manuelle du paiement",
-    icon: "WV",
-    feePercent: 0.5,
-    minAmount: 500,
-    maxAmount: 300000,
-    currency: "FCFA",
-  },
-  {
-    id: "card",
-    name: "Carte Bancaire",
-    subtext: "Vérification manuelle du paiement",
-    icon: "CB",
-    feePercent: 1.8,
-    minAmount: 2500,
-    maxAmount: 1000000,
-    currency: "FCFA",
-  },
-];
+// Opérateurs retirés : les passerelles de paiement seront ajoutées ultérieurement.
+const DEPOSIT_PROVIDERS: ProviderOption[] = [];
 
-const WITHDRAW_PROVIDERS: ProviderOption[] = [
-  {
-    id: "orange",
-    name: "Orange Money",
-    subtext: "Règlement manuel après validation",
-    icon: "OM",
-    badge: "Recommandé",
-    feePercent: 1.0,
-    minAmount: 2000,
-    maxAmount: 350000,
-    currency: "FCFA",
-  },
-  {
-    id: "mtn",
-    name: "MTN Mobile Money",
-    subtext: "Règlement manuel après validation",
-    icon: "MTN",
-    feePercent: 1.0,
-    minAmount: 2000,
-    maxAmount: 350000,
-    currency: "FCFA",
-  },
-  {
-    id: "bank",
-    name: "Virement Bancaire (CEMAC)",
-    subtext: "Règlement manuel après validation",
-    icon: "RIB",
-    feePercent: 0.8,
-    minAmount: 10000,
-    maxAmount: 2500000,
-    currency: "FCFA",
-  },
-];
+const WITHDRAW_PROVIDERS: ProviderOption[] = [];
 
 const PRESET_AMOUNTS = [5000, 10000, 25000, 50000, 100000];
 
 export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: FundingSectionProps) {
+  const { t, language } = useLanguage();
   const requestKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.success && d.user) {
+          setProfileName(d.user.name || "");
+          if (d.user.phone) setPhone(d.user.phone);
+        }
+      })
+      .catch(() => {});
+  }, []);
   const [mode, setMode] = useState<Mode>("deposit");
-  const [selectedProvider, setSelectedProvider] = useState<string>("orange");
+  const [spOrder, setSpOrder] = useState<{ orderRef: string; amountXaf: number; description: string } | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [bkLoading, setBkLoading] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [amount, setAmount] = useState<string>("25000");
   const [phone, setPhone] = useState<string>("+237 690 12 34 56");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [withdrawLoader, setWithdrawLoader] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successReceipt, setSuccessReceipt] = useState<{
     ref: string;
@@ -135,10 +84,12 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
   } | null>(null);
 
   const providers = mode === "deposit" ? DEPOSIT_PROVIDERS : WITHDRAW_PROVIDERS;
-  const provider = providers.find((p) => p.id === selectedProvider) ?? providers[0];
+  const provider = providers.find((p) => p.id === selectedProvider) ?? providers[0] ?? null;
+  const providerName = (p: ProviderOption | null) => (p ? (p.nameKey ? t(p.nameKey) : p.name) : "—");
 
   const parsedAmount = Math.max(0, parseInt(amount.replace(/[^0-9]/g, ""), 10) || 0);
-  const feeAmount = Math.round((parsedAmount * provider.feePercent) / 100);
+  const feePercent = provider?.feePercent ?? 0;
+  const feeAmount = Math.round((parsedAmount * feePercent) / 100);
   const netAmount = mode === "deposit" ? parsedAmount - feeAmount : parsedAmount + feeAmount;
 
   const handleSelectPreset = (val: number) => {
@@ -148,7 +99,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
-    setSelectedProvider(newMode === "deposit" ? "orange" : "orange");
+    setSelectedProvider("");
     setErrorMsg(null);
     setSuccessReceipt(null);
   };
@@ -157,20 +108,64 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
     e.preventDefault();
     setErrorMsg(null);
 
+    // Deposits are collected through SoleasPay — the operator (Orange, MTN, Wave…)
+    // is chosen on SoleasPay's page, so no local provider is required here.
+    if (mode === "deposit") {
+      if (parsedAmount < 100) {
+        setErrorMsg(t("fund_err_min").replace("{n}", "100"));
+        return;
+      }
+      if (parsedAmount > 5_000_000) {
+        setErrorMsg(t("fund_err_max").replace("{n}", "5 000 000"));
+        return;
+      }
+      await initDepositPayment();
+      return;
+    }
+
+    // Withdrawals still use the configured payout provider.
+    if (!provider) {
+      setErrorMsg(t("fund_no_provider_text"));
+      return;
+    }
     if (parsedAmount < provider.minAmount) {
-      setErrorMsg(`Le montant minimum pour ce mode est de ${provider.minAmount.toLocaleString("fr-FR")} FCFA.`);
+      setErrorMsg(t("fund_err_min").replace("{n}", provider.minAmount.toLocaleString("fr-FR")));
       return;
     }
     if (parsedAmount > provider.maxAmount) {
-      setErrorMsg(`Le montant maximum autorisé est de ${provider.maxAmount.toLocaleString("fr-FR")} FCFA.`);
+      setErrorMsg(t("fund_err_max").replace("{n}", provider.maxAmount.toLocaleString("fr-FR")));
+      return;
+    }
+    if (parsedAmount > currentBalance) {
+      setErrorMsg(t("fund_err_insufficient").replace("{n}", currentBalance.toLocaleString("fr-FR")));
       return;
     }
 
-    if (mode === "withdraw" && parsedAmount > currentBalance) {
-      setErrorMsg(`Solde insuffisant (${currentBalance.toLocaleString("fr-FR")} FCFA disponible).`);
-      return;
-    }
+    // Pour un retrait, on affiche d'abord le loader NovaPaid puis on exécute.
+    setWithdrawLoader(true);
+  };
 
+  const initDepositPayment = async () => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/payments/soleaspay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "wallet_deposit", amountXaf: parsedAmount }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || t("fund_err_generic"));
+      setSpOrder({ orderRef: data.orderRef, amountXaf: data.amountXaf, description: data.description });
+    } catch (e: any) {
+      setErrorMsg(e?.message || t("fund_err_generic"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const executeFunding = async () => {
+    if (!provider) return;
     setIsSubmitting(true);
 
     try {
@@ -190,7 +185,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Une erreur est survenue.");
+        throw new Error(data.error || t("fund_err_generic"));
       }
 
       const receipt = {
@@ -198,7 +193,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
         amount: data.amountXaf,
         fee: data.feeXaf,
         netAmount: mode === "deposit" ? data.netAmountXaf : data.totalDebitXaf,
-        provider: provider.name,
+        provider: providerName(provider),
         phone,
         type: mode,
         date: new Date().toLocaleString("fr-FR"),
@@ -214,7 +209,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
         );
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || "Échec de l'opération.");
+      setErrorMsg(err?.message || t("fund_err_failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -222,6 +217,44 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
 
   return (
     <div className="np-funding-container">
+      {spOrder && (
+        <div className="npvc-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(e) => { if (e.target === e.currentTarget) setSpOrder(null); }}>
+          <div className="npvc-confirm-dialog" style={{ maxWidth: "420px" }}>
+            <div className="npvc-confirm-icon is-info"><Smartphone size={26} /></div>
+            <h3>Dépôt via SoleasPay</h3>
+            <p>Payez <strong>{spOrder.amountXaf.toLocaleString("fr-FR")} FCFA</strong> par Mobile Money. Votre portefeuille sera crédité automatiquement après confirmation du paiement.</p>
+            <p className="npvc-pay-choice-label">Choisissez votre moyen de paiement</p>
+            <div className="npvc-soleaspay-wrap">
+              <SoleasPayCheckoutV3
+                language={language}
+                amount={spOrder.amountXaf}
+                orderId={spOrder.orderRef}
+                description={spOrder.description}
+                username={profileName || "Client"}
+                whatsapp={phone}
+                coins={0}
+                productType="coins"
+                buttonLabel="Payer avec SoleasPay"
+              />
+            </div>
+            <button
+              type="button"
+              className="npvc-bkpay-btn"
+              disabled={bkLoading}
+              onClick={async () => {
+                setBkLoading(true);
+                setErrorMsg(null);
+                try { await payWithBkpay({ type: "wallet_deposit", amountXaf: parsedAmount }); }
+                catch (e: any) { setErrorMsg(e?.message || "BKApay indisponible."); setBkLoading(false); }
+              }}
+            >
+              {bkLoading ? "Redirection…" : "Payer avec BKApay"}
+            </button>
+            <button type="button" className="npvc-confirm-cancel" style={{ width: "100%", marginTop: "10px" }} onClick={() => setSpOrder(null)}>Retour</button>
+          </div>
+        </div>
+      )}
+
       {/* Sélecteur de mode */}
       <div className="np-funding-toggle-bar">
         <button
@@ -230,7 +263,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
           onClick={() => handleModeChange("deposit")}
         >
           <ArrowDownLeft size={18} />
-          <span>Ajouter de l’argent (Dépôt)</span>
+          <span>{t("fund_toggle_deposit")}</span>
         </button>
         <button
           type="button"
@@ -238,7 +271,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
           onClick={() => handleModeChange("withdraw")}
         >
           <ArrowUpRight size={18} />
-          <span>Retirer des fonds</span>
+          <span>{t("fund_toggle_withdraw")}</span>
         </button>
       </div>
 
@@ -248,45 +281,45 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
             <span className="np-receipt-icon success">
               <CheckCircle2 size={36} />
             </span>
-            <h3>{successReceipt.type === "deposit" ? "Demande de dépôt enregistrée" : "Demande de retrait enregistrée"}</h3>
+            <h3>{successReceipt.type === "deposit" ? t("fund_receipt_title_deposit") : t("fund_receipt_title_withdraw")}</h3>
             <p className="np-receipt-sub">
               {successReceipt.type === "deposit"
-                ? "Le portefeuille sera crédité après vérification du paiement par l’équipe NovaPaid. Aucun paiement n’a été lancé depuis cette page."
-                : "Le montant et les frais sont réservés. Le paiement sera traité après validation administrative."}
+                ? t("fund_receipt_sub_deposit")
+                : t("fund_receipt_sub_withdraw")}
             </p>
           </div>
 
           <div className="np-receipt-body">
             <div className="np-receipt-row">
-              <span>Référence d'opération</span>
+              <span>{t("fund_receipt_ref")}</span>
               <strong>{successReceipt.ref}</strong>
             </div>
             <div className="np-receipt-row">
-              <span>Montant demandé</span>
+              <span>{t("fund_receipt_amount")}</span>
               <strong>{successReceipt.amount.toLocaleString("fr-FR")} FCFA</strong>
             </div>
             <div className="np-receipt-row">
-              <span>Frais de service ({provider.feePercent}%)</span>
+              <span>{t("fund_receipt_fee").replace("{n}", String(feePercent))}</span>
               <span>{successReceipt.fee.toLocaleString("fr-FR")} FCFA</span>
             </div>
             <div className="np-receipt-row highlight">
-              <span>{successReceipt.type === "deposit" ? "Montant net à créditer après contrôle" : "Montant total réservé"}</span>
+              <span>{successReceipt.type === "deposit" ? t("fund_receipt_net_deposit") : t("fund_receipt_net_withdraw")}</span>
               <strong>{successReceipt.netAmount.toLocaleString("fr-FR")} FCFA</strong>
             </div>
             <div className="np-receipt-row">
-              <span>Statut</span>
-              <strong>En attente de vérification</strong>
+              <span>{t("fund_receipt_status_label")}</span>
+              <strong>{t("fund_receipt_status_pending")}</strong>
             </div>
             <div className="np-receipt-row">
-              <span>Opérateur / Moyen</span>
+              <span>{t("fund_receipt_operator")}</span>
               <span>{successReceipt.provider}</span>
             </div>
             <div className="np-receipt-row">
-              <span>Numéro / Destination</span>
+              <span>{t("fund_receipt_destination")}</span>
               <span>{successReceipt.phone}</span>
             </div>
             <div className="np-receipt-row">
-              <span>Date et heure</span>
+              <span>{t("fund_receipt_datetime")}</span>
               <span>{successReceipt.date}</span>
             </div>
           </div>
@@ -301,7 +334,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
               }}
             >
               <RefreshCw size={16} />
-              <span>Effectuer une autre opération</span>
+              <span>{t("fund_receipt_new_operation")}</span>
             </button>
           </div>
         </div>
@@ -311,14 +344,11 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
           <form className="np-panel np-funding-form" onSubmit={handleSubmit}>
             <div className="np-panel-heading">
               <div>
-                <span className="np-overline">
-                  {mode === "deposit" ? "APPROVISIONNEMENT EN LIGNE" : "SORTIE DE FONDS SÉCURISÉE"}
-                </span>
-                <h2>{mode === "deposit" ? "Recharger mon portefeuille" : "Retirer vers Mobile Money"}</h2>
+                <h2>{mode === "deposit" ? t("fund_title_deposit") : t("fund_title_withdraw")}</h2>
               </div>
               <div className="np-funding-balance-badge">
                 <Wallet size={14} />
-                <span>Dispo: <b>{currentBalance.toLocaleString("fr-FR")} FCFA</b></span>
+                <span>{t("fund_available_label")} <b>{currentBalance.toLocaleString("fr-FR")} FCFA</b></span>
               </div>
             </div>
 
@@ -331,33 +361,40 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
 
             {/* Choix du prestataire */}
             <div className="np-form-group">
-              <label className="np-form-label">Choisissez un opérateur</label>
-              <div className="np-provider-grid">
-                {providers.map((p) => {
-                  const isSelected = p.id === selectedProvider;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={`np-provider-chip ${isSelected ? "selected" : ""}`}
-                      onClick={() => setSelectedProvider(p.id)}
-                    >
-                      <span className="np-provider-icon">{p.icon}</span>
-                      <div className="np-provider-meta">
-                        <strong>{p.name}</strong>
-                        <small>{p.subtext}</small>
-                      </div>
-                      {p.badge && <span className="np-provider-badge">{p.badge}</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              <label className="np-form-label">{t("fund_choose_operator")}</label>
+              {providers.length === 0 ? (
+                <div className="np-provider-empty">
+                  <Info size={16} />
+                  <span>{t("fund_no_provider_text")}</span>
+                </div>
+              ) : (
+                <div className="np-provider-grid">
+                  {providers.map((p) => {
+                    const isSelected = p.id === selectedProvider;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`np-provider-chip ${isSelected ? "selected" : ""}`}
+                        onClick={() => setSelectedProvider(p.id)}
+                      >
+                        <span className="np-provider-icon">{p.icon}</span>
+                        <div className="np-provider-meta">
+                          <strong>{providerName(p)}</strong>
+                          <small>{t(p.subtext)}</small>
+                        </div>
+                        {p.badge && <span className="np-provider-badge">{t(p.badge)}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Saisie montant */}
             <div className="np-form-group">
               <label className="np-form-label" htmlFor="funding-amount">
-                Montant à {mode === "deposit" ? "déposer" : "retirer"} (FCFA)
+                {mode === "deposit" ? t("fund_amount_label_deposit") : t("fund_amount_label_withdraw")}
               </label>
               <div className="np-input-wrapper">
                 <input
@@ -366,7 +403,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
                   className="np-text-input amount"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="Ex: 25000"
+                  placeholder={t("fund_amount_placeholder")}
                   required
                 />
                 <span className="np-input-suffix">FCFA</span>
@@ -390,7 +427,7 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
             {/* Numéro de téléphone / compte */}
             <div className="np-form-group">
               <label className="np-form-label" htmlFor="funding-phone">
-                {mode === "withdraw" && provider.id === "bank" ? "IBAN ou compte bancaire destination" : `Numéro de compte (${provider.name})`}
+                {mode === "withdraw" && provider?.id === "bank" ? t("fund_phone_label_iban") : t("fund_phone_label_account").replace("{n}", providerName(provider))}
               </label>
               <div className="np-input-wrapper">
                 <span className="np-input-prefix">
@@ -402,30 +439,30 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
                   className="np-text-input with-prefix"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder={mode === "withdraw" && provider.id === "bank" ? "Ex. CM21 1000 1000 0000 0000 0000 0000" : "+237 6XX XX XX XX"}
+                  placeholder={mode === "withdraw" && provider?.id === "bank" ? t("fund_phone_placeholder_iban") : t("fund_phone_placeholder_phone")}
                   required
                 />
               </div>
               <small className="np-form-hint">
                 {mode === "deposit"
-                  ? "Ce numéro aide l’équipe à vérifier le paiement externe. Ce formulaire ne lance pas de paiement auprès de l’opérateur."
-                  : "Vérifiez le numéro : le retrait sera envoyé manuellement après validation de la demande."}
+                  ? t("fund_phone_hint_deposit")
+                  : t("fund_phone_hint_withdraw")}
               </small>
             </div>
 
-            <button type="submit" className="np-primary-button np-submit-btn" disabled={isSubmitting}>
+            <button type="submit" className="np-primary-button np-submit-btn" disabled={isSubmitting || (mode === "withdraw" && !provider)}>
               {isSubmitting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  <span>Traitement en cours...</span>
+                  <span>{t("fund_submitting")}</span>
                 </>
               ) : (
                 <>
                   <Lock size={16} />
                   <span>
                     {mode === "deposit"
-                      ? `Demander un dépôt de ${parsedAmount.toLocaleString("fr-FR")} FCFA`
-                      : `Demander un retrait de ${parsedAmount.toLocaleString("fr-FR")} FCFA`}
+                      ? t("fund_submit_deposit").replace("{n}", parsedAmount.toLocaleString("fr-FR"))
+                      : t("fund_submit_withdraw").replace("{n}", parsedAmount.toLocaleString("fr-FR"))}
                   </span>
                 </>
               )}
@@ -436,30 +473,30 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
           <aside className="np-funding-summary-col">
             <div className="np-panel np-summary-card">
               <div className="np-summary-header">
-                <span className="np-overline">DÉTAIL DU PAIEMENT</span>
-                <h3>Récapitulatif transparent</h3>
+                <span className="np-overline">{t("fund_summary_overline")}</span>
+                <h3>{t("fund_summary_title")}</h3>
               </div>
 
               <div className="np-summary-list">
                 <div className="np-summary-item">
-                  <span>Opération</span>
-                  <strong>{mode === "deposit" ? "Dépôt soumis à vérification" : "Retrait soumis à validation"}</strong>
+                  <span>{t("fund_summary_operation_label")}</span>
+                  <strong>{mode === "deposit" ? t("fund_summary_operation_deposit") : t("fund_summary_operation_withdraw")}</strong>
                 </div>
                 <div className="np-summary-item">
-                  <span>Prestataire</span>
-                  <strong>{provider.name}</strong>
+                  <span>{t("fund_summary_provider")}</span>
+                  <strong>{providerName(provider)}</strong>
                 </div>
                 <div className="np-summary-item">
-                  <span>Montant brut</span>
+                  <span>{t("fund_summary_gross")}</span>
                   <strong>{parsedAmount.toLocaleString("fr-FR")} FCFA</strong>
                 </div>
                 <div className="np-summary-item">
-                  <span>Frais de réseau ({provider.feePercent}%)</span>
+                  <span>{t("fund_summary_network_fee").replace("{n}", String(feePercent))}</span>
                   <span>{feeAmount.toLocaleString("fr-FR")} FCFA</span>
                 </div>
                 <div className="np-summary-divider" />
                 <div className="np-summary-total">
-                  <span>{mode === "deposit" ? "Crédit estimé après validation" : "Total réservé"}</span>
+                  <span>{mode === "deposit" ? t("fund_summary_total_deposit") : t("fund_summary_total_withdraw")}</span>
                   <div className="np-total-val">
                     <strong>{netAmount.toLocaleString("fr-FR")}</strong>
                     <small>FCFA</small>
@@ -470,26 +507,32 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
               <div className="np-funding-guarantee">
                 <ShieldCheck size={20} className="np-guar-icon" />
                 <div>
-                  <strong>Sécurité bancaire 256-bit</strong>
-                  <span>Toutes les transactions sont chiffrées de bout en bout et protégées contre la fraude.</span>
+                  <strong>{t("fund_guarantee_title")}</strong>
+                  <span>{t("fund_guarantee_text")}</span>
                 </div>
               </div>
             </div>
 
             <div className="np-panel np-faq-snippet">
-              <h4>Questions fréquentes</h4>
+              <h4>{t("fund_faq_title")}</h4>
               <details className="np-faq-item">
-                <summary>Combien de temps prend un dépôt Mobile Money ?</summary>
-                <p>Les dépôts Orange Money et MTN MoMo sont crédités immédiatement une fois le code PIN validé.</p>
+                <summary>{t("fund_faq_q1")}</summary>
+                <p>{t("fund_faq_a1")}</p>
               </details>
               <details className="np-faq-item">
-                <summary>Quels sont les plafonds applicables ?</summary>
-                <p>En compte vérifié (Niveau 2), le plafond journalier est de 500 000 FCFA et le plafond mensuel de 2 500 000 FCFA.</p>
+                <summary>{t("fund_faq_q2")}</summary>
+                <p>{t("fund_faq_a2")}</p>
               </details>
             </div>
           </aside>
         </div>
       )}
+
+      <NovaProgressLoader
+        active={withdrawLoader}
+        label={t("fund_withdraw_processing")}
+        onComplete={async () => { setWithdrawLoader(false); await executeFunding(); }}
+      />
     </div>
   );
 }
