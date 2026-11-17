@@ -143,13 +143,6 @@ export default function LoginPage() {
               <p>Accédez à votre compte NovaPaid.</p>
             </div>
 
-        {(errorMsg || lockRemaining > 0) && (
-          <div className="np-alert-banner danger np-auth-error">
-            <Info size={16} />
-            <span>{lockRemaining > 0 ? `Trop de tentatives. Réessayez dans ${formatMmSs(lockRemaining)}.` : errorMsg}</span>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="np-auth-page-form">
           <div className="np-form-group">
             <label className="np-form-label" htmlFor="login-email">Adresse email ou téléphone</label>
@@ -167,6 +160,13 @@ export default function LoginPage() {
               />
             </div>
           </div>
+
+          {(errorMsg || lockRemaining > 0) && (
+            <div className="np-auth-error" role="alert">
+              <Info size={16} />
+              <span>{lockRemaining > 0 ? `Trop de tentatives. Réessayez dans ${formatMmSs(lockRemaining)}.` : errorMsg}</span>
+            </div>
+          )}
 
           <div className="np-form-group">
             <label className="np-form-label" htmlFor="login-pass">Mot de passe</label>
