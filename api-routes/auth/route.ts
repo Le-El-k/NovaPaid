@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       const { sessionToken, ...payload } = result;
       return Response.json(
         { ...payload, requiresEmailVerification: true, emailMasked: maskEmail(result.user.email) },
-        { status: 201, headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, 14 * 24 * 60 * 60) } }
+        { status: 201, headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, 30 * 24 * 60 * 60) } }
       );
     }
 
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       const result = NovaDbService.completeLogin(userId, code, context);
       NovaDbService.clearAuthRateLimit(rateKey);
       const { sessionToken, ...payload } = result;
-      return Response.json(payload, { headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, 14 * 24 * 60 * 60) } });
+      return Response.json(payload, { headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, 30 * 24 * 60 * 60) } });
     }
 
     return Response.json({ success: false, error: "Action non reconnue (register, login, login_verify ou logout attendu)." }, { status: 400 });

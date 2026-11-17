@@ -3,7 +3,7 @@ import { getIntegrationConfigForAdmin, getPublicConfig as readPublicConfig } fro
 import { INTEGRATION_CONFIG, CONFIG_PREFIX } from "../config/config-registry.ts";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
-const USER_SESSION_HOURS = 24 * 14;
+const USER_SESSION_HOURS = 24 * 30;
 const ADMIN_SESSION_HOURS = 8;
 
 function makeSessionToken() {
