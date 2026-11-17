@@ -19,16 +19,7 @@ La base locale `novapaid` existe et comprend les tables de comptes, ledger, opé
 
 La boutique de cartes virtuelles, pièces TikTok et jeux vidéo est conservée à `/boutique/`. Les intégrations de paiement existantes restent dans cette section.
 
-## Configuration : tout est en base
-
-Aucun fichier `.env` n'est utilisé. Toute la configuration est stockée dans la base de données :
-
-- **Premier administrateur** : au premier lancement, `/admin` affiche un écran d'installation pour créer le compte super administrateur. Il disparaît une fois le compte créé.
-- **Clés des fournisseurs** (Mailjet, SoleasPay, Maplerad, Geny, BKPay, EmailJS, URLs des proxys) : `/admin` → **Intégrations** (réservé au super administrateur). Les secrets ne sont jamais réaffichés ni envoyés au navigateur ; seuls les champs marqués « public » sont servis par `/api/public-config`.
-
-Seules deux variables d'environnement techniques, facultatives, restent lues au démarrage : `PORT` (3000 par défaut) et `NOVAPAID_DB_PATH` (emplacement de la base, `novapaid_app.db` par défaut).
-
-Les proxys Cloudflare (SebPay, LeekPay, Mailjet) gardent leurs propres secrets dans Cloudflare Workers (`wrangler secret put`), car ils ne s'exécutent pas sur ce serveur.
+Pour configurer les fournisseurs, copier `.env.example` vers `.env.local` et renseigner les valeurs nécessaires. Les secrets SebPay restent uniquement dans Cloudflare Workers (`worker/.dev.vars` en local, jamais dans le frontend).
 
 SebPay passe par le proxy minimal situé dans `worker/sebpay-proxy.js`. Le navigateur affiche les informations de pays, d’opérateur et de numéro Mobile Money, puis interroge le statut de collecte par le proxy.
 
@@ -57,15 +48,3 @@ pnpm run build:vinext
 
 Les montants, cartes et transactions affichés dans le nouveau tableau de bord sont fictifs. Les actions financières n’exécutent aucun mouvement d’argent. La base locale n’est pas encore connectée à une API frontend. Les opérations réelles nécessitent l’intégration des API partenaires et les validations réglementaires décrites dans le cahier des charges.
 
-
-## Production (VPS)
-
-Le site tourne sur https://app.novapaid.net, dans le conteneur Docker `novapaid_app` (voir `docker-compose.yml`). Le dépôt est monté en volume ; la base SQLite est hors dépôt dans `/root/NovaPaid-data`.
-
-Mettre à jour la production, depuis le VPS :
-
-```bash
-cd /root/NovaPaid && git pull --ff-only origin main
-```
-
-Le hook `docker/git-hooks/post-merge` recompile et redémarre le site automatiquement. Seule une modification du `Dockerfile` ou de `docker/entrypoint.sh` demande `docker compose build && docker compose up -d`.

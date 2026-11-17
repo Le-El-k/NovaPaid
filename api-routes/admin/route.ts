@@ -1,5 +1,4 @@
 import { NovaDbService } from "../../app/lib/db/service.ts";
-import { listIntegrationsForAdmin, saveIntegrationValues } from "../../app/lib/integrations.ts";
 import { ADMIN_SESSION_COOKIE, clientContext, expiredSessionCookie, getAuthenticatedAdmin, readCookie, sessionCookie } from "../../app/lib/auth/session.ts";
 
 const SECTION_PERMISSION: Record<string, string> = {
@@ -7,6 +6,7 @@ const SECTION_PERMISSION: Record<string, string> = {
   session: "overview",
   revenue: "overview",
   boutique_analytics: "overview",
+  integrations: "settings",
   transactions: "transactions",
   support: "support",
   users: "users",
@@ -43,7 +43,6 @@ const SECTION_PERMISSION: Record<string, string> = {
   revenue_analytics: "overview",
   global_search: "overview",
   identity_verifications: "kyc",
-  integrations: "settings",
 };
 
 const ACTION_PERMISSION: Record<string, string> = {
@@ -59,6 +58,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   delete_review: "reviews",
   add_review: "reviews",
   update_setting: "settings",
+  update_integration_config: "settings",
   review_transaction: "transactions",
   update_ticket: "support",
   reply_ticket: "support",
@@ -87,7 +87,6 @@ const ACTION_PERMISSION: Record<string, string> = {
   upsert_manual_payment_field: "settings",
   delete_manual_payment_field: "settings",
   upsert_marketing_setting: "settings",
-  save_integration: "settings",
   delete_marketing_setting: "settings",
   create_category: "shop",
   update_category: "shop",
@@ -151,12 +150,7 @@ export async function GET(request: Request) {
   const section = url.searchParams.get("section") || "overview";
   if (section === "session") {
     const admin = getAuthenticatedAdmin(request);
-    return Response.json({
-      success: true,
-      authenticated: Boolean(admin),
-      admin: admin || null,
-      setupRequired: admin ? false : NovaDbService.adminSetupRequired(),
-    });
+    return Response.json({ success: true, authenticated: Boolean(admin), admin: admin || null });
   }
 
   const admin = getAuthenticatedAdmin(request);
@@ -187,6 +181,7 @@ export async function GET(request: Request) {
         const days = Number(url.searchParams.get("days") || 30);
         return Response.json({ success: true, internet: NovaDbService.getGenyAnalytics(days) });
       }
+      case "integrations": return Response.json({ success: true, config: NovaDbService.getIntegrationConfig() });
       case "landing_cms": return Response.json({ success: true, sections: NovaDbService.getLandingPageSettings() });
       case "email_settings": return Response.json({ success: true, settings: NovaDbService.getEmailSettings() });
       case "email_campaigns": return Response.json({ success: true, campaigns: NovaDbService.getEmailCampaigns() });
@@ -235,11 +230,6 @@ export async function GET(request: Request) {
       }
       case "deposit_help": return Response.json({ success: true, settings: NovaDbService.getDepositHelpPopup() });
       case "help_articles": return Response.json({ success: true, articles: NovaDbService.listHelpArticles() });
-      case "integrations": {
-        // Clés des fournisseurs : réservé au super administrateur.
-        if (admin.role !== "super_admin") return Response.json({ success: false, error: "Réservé au super administrateur." }, { status: 403 });
-        return Response.json({ success: true, integrations: listIntegrationsForAdmin() });
-      }
       case "revenue_analytics": {
         const days = Number(url.searchParams.get("days") || 30);
         return Response.json({ success: true, analytics: NovaDbService.getRevenueAnalytics(days) });
@@ -273,25 +263,6 @@ export async function POST(request: Request) {
       const retryAfter = NovaDbService.checkAuthRateLimit(retryKey, 5, 15 * 60 * 1000, 30 * 60 * 1000);
       if (retryAfter) return Response.json({ success: false, error: "Trop d’essais de connexion admin. Réessayez plus tard." }, { status: 429, headers: { "Retry-After": String(retryAfter) } });
       const result = NovaDbService.loginAdmin(email, String(body?.password || ""), clientContext(request));
-      NovaDbService.clearAuthRateLimit(retryKey);
-      return Response.json(
-        { success: true, admin: result.admin },
-        { headers: { "Set-Cookie": sessionCookie(ADMIN_SESSION_COOKIE, result.sessionToken, 8 * 60 * 60) } }
-      );
-    }
-
-    if (action === "setup") {
-      if (!NovaDbService.adminSetupRequired()) {
-        return Response.json({ success: false, error: "L’installation est déjà terminée. Connectez-vous." }, { status: 409 });
-      }
-      const ip = clientContext(request).ipAddress || "unknown";
-      const retryKey = `admin-setup:${ip}`;
-      const retryAfter = NovaDbService.checkAuthRateLimit(retryKey, 10, 15 * 60 * 1000, 15 * 60 * 1000);
-      if (retryAfter) return Response.json({ success: false, error: "Trop d’essais. Réessayez plus tard." }, { status: 429, headers: { "Retry-After": String(retryAfter) } });
-      const result = NovaDbService.completeAdminSetup(
-        { name: String(body?.name || ""), email: String(body?.email || ""), password: String(body?.password || "") },
-        clientContext(request)
-      );
       NovaDbService.clearAuthRateLimit(retryKey);
       return Response.json(
         { success: true, admin: result.admin },
@@ -402,6 +373,11 @@ export async function POST(request: Request) {
     }
     if (action === "update_setting") {
       const result = NovaDbService.updateAdminSetting(String(body.key || ""), body.value, admin.id);
+      return Response.json(result);
+    }
+
+    if (action === "update_integration_config") {
+      const result = NovaDbService.setIntegrationConfig(body.config || {}, admin.id);
       return Response.json(result);
     }
     if (action === "save_shop_section") {
@@ -640,12 +616,6 @@ export async function POST(request: Request) {
     }
     if (action === "remove_webhook_destination") {
       return Response.json(NovaDbService.removeWebhookDestination(Number(body.id)));
-    }
-    if (action === "save_integration") {
-      if (admin.role !== "super_admin") return Response.json({ success: false, error: "Réservé au super administrateur." }, { status: 403 });
-      const values = body?.values && typeof body.values === "object" ? body.values : {};
-      const clear = Array.isArray(body?.clear) ? body.clear.map(String) : [];
-      return Response.json(saveIntegrationValues(String(body?.provider || ""), values, clear, admin.id));
     }
     if (action === "review_identity") {
       return Response.json(NovaDbService.reviewIdentityVerification(Number(body.id), admin.id, String(body.status), body.reason));

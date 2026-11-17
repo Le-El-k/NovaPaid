@@ -1,7 +1,6 @@
 ﻿"use client";
 
-import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { getPublicConfig } from "@/app/lib/public-config";
+import { type FormEvent, useRef, useState, useSyncExternalStore } from "react";
 import {
   PAYMENT_PENDING_CHECKOUT_KEY,
   PAYMENT_NOTIFICATION_DATA_KEY,
@@ -40,6 +39,7 @@ type SoleasPayCheckoutV3Props = {
 };
 
 const CHECKOUT_URL = "https://pay.soleaspay.com";
+const SOLEASPAY_API_KEY = process.env.NEXT_PUBLIC_SOLEASPAY_API_KEY ?? "";
 const subscribeToOrigin = () => () => {};
 
 export function SoleasPayCheckoutV3({
@@ -65,13 +65,6 @@ export function SoleasPayCheckoutV3({
   buttonLabel,
 }: SoleasPayCheckoutV3Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Clé checkout SoleasPay lue en base (admin → Intégrations).
-  const [SOLEASPAY_API_KEY, setSoleaspayApiKey] = useState("");
-  useEffect(() => {
-    let active = true;
-    getPublicConfig().then((config) => { if (active) setSoleaspayApiKey(config.soleaspay?.api_key || ""); });
-    return () => { active = false; };
-  }, []);
   const submissionStartedRef = useRef(false);
   const allowNativeSubmitRef = useRef(false);
   const origin = useSyncExternalStore(

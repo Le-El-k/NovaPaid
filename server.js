@@ -5,8 +5,37 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Aucune configuration n'est lue depuis des fichiers .env : les clés des
-// fournisseurs sont stockées en base (admin → Intégrations, app/lib/integrations.ts).
+// Load runtime server secrets from local (git-ignored) env files so that keys
+// such as GENY_API_KEY are available via process.env without ever living in the
+// committed repository. Existing process.env values always win.
+function loadEnvFile(relativePath) {
+  try {
+    const full = path.join(__dirname, relativePath);
+    if (!fs.existsSync(full)) return;
+    const content = fs.readFileSync(full, "utf-8");
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq < 1) continue;
+      const key = line.slice(0, eq).trim();
+      if (key in process.env) continue;
+      let value = line.slice(eq + 1).trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  } catch {
+    // Env file loading is best-effort; never block startup on it.
+  }
+}
+loadEnvFile(".env.geny.local");
+loadEnvFile(".env.admin.local");
+loadEnvFile(".env.maplerad.local");
+loadEnvFile(".env.soleaspay.local");
+loadEnvFile(".env.bkpay.local");
+loadEnvFile(".env.mailjet.local");
 
 const PORT = process.env.PORT || 3000;
 const CLIENT_DIST = path.join(__dirname, "dist", "client");
@@ -80,6 +109,34 @@ const MIME_TYPES = {
   ".woff2": "font/woff2",
 };
 
+// Confine un chemin de requête à un dossier de base et REFUSE toute traversée
+// (../, séquences encodées %2e%2e%2f / ..%2f, etc. une fois décodées). Retourne
+// un chemin absolu garanti à l'intérieur de baseDir, ou null si la requête tente
+// d'en sortir. Sans ce verrou, `/..%2f..%2f.env.soleaspay.local` ou
+// `/..%2f..%2fnovapaid_app.db` permettraient de lire secrets et base de données.
+function safeResolve(baseDir, requestPath) {
+  const resolvedBase = path.resolve(baseDir);
+  const target = path.resolve(resolvedBase, "." + path.sep + requestPath);
+  const rel = path.relative(resolvedBase, target);
+  if (rel && (rel.startsWith("..") || path.isAbsolute(rel))) return null;
+  return target;
+}
+
+// En-têtes de durcissement appliqués à CHAQUE réponse. Le serveur Node de
+// production (npm start) ne lit pas public/_headers (ce fichier n'est honoré que
+// par Cloudflare Pages), ces en-têtes doivent donc être posés ici.
+function applySecurityHeaders(res) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
+  }
+}
+
 // Import dynamique des routes API
 async function loadApiHandler(endpoint) {
   switch (endpoint) {
@@ -151,6 +208,7 @@ async function loadApiHandler(endpoint) {
 const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = decodeURIComponent(urlObj.pathname);
+  applySecurityHeaders(res);
 
   if (
     pathname === "/portal-prive-gestion" ||
@@ -240,7 +298,14 @@ const server = http.createServer(async (req, res) => {
 
   // 2. FICHIERS DU DOSSIER APP OU MODULES LOCAUX
   if (pathname.startsWith("/app/")) {
-    let candidatePath = path.join(__dirname, pathname);
+    // Confiné strictement au dossier ./app : empêche /app/../server.js ou
+    // /app/..%2f..%2f.env.* de remonter hors de l'arborescence des sources UI.
+    const candidatePath = safeResolve(path.join(__dirname, "app"), pathname.slice("/app".length));
+    if (!candidatePath) {
+      res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("403 Forbidden");
+      return;
+    }
     let resolved = null;
     const extensionsToTry = ["", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".css"];
     for (const ext of extensionsToTry) {
@@ -275,12 +340,12 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  let filePath = path.join(CLIENT_DIST, pathname);
-  let fileFound = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+  let filePath = safeResolve(CLIENT_DIST, pathname);
+  let fileFound = Boolean(filePath) && fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   if (!fileFound) {
-    filePath = path.join(PUBLIC_DIR, pathname);
-    fileFound = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+    filePath = safeResolve(PUBLIC_DIR, pathname);
+    fileFound = Boolean(filePath) && fs.existsSync(filePath) && fs.statSync(filePath).isFile();
   }
 
   // Next.js App Router static RSC segment payloads are REQUESTED with dotted
@@ -295,8 +360,8 @@ const server = http.createServer(async (req, res) => {
       const inner = rscMatch[1].split(".");
       if (inner.length > 1) {
         const nested = `__next.${inner[0]}/${inner.slice(1).join("/")}.txt`;
-        const candidate = path.join(CLIENT_DIST, path.dirname(pathname), nested);
-        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        const candidate = safeResolve(CLIENT_DIST, path.join(path.dirname(pathname), nested));
+        if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
           filePath = candidate;
           fileFound = true;
         }

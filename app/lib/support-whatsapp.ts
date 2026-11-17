@@ -1,4 +1,4 @@
-﻿export type SupportLanguage = "fr" | "en";
+export type SupportLanguage = "fr" | "en";
 
 export type SupportWhatsAppContact = {
   id: string;

@@ -1,8 +1,0 @@
-#!/bin/sh
-# Lancé automatiquement par `git pull` (core.hooksPath = docker/git-hooks).
-# Depuis l'hôte : délègue la mise à jour au conteneur novapaid_app.
-set -eu
-if [ -f /.dockerenv ]; then
-  exec /usr/local/bin/novapaid-refresh
-fi
-exec docker exec novapaid_app novapaid-refresh

@@ -9,15 +9,6 @@
         "dev"
       ],
       "port": 3000
-    },
-    {
-      "name": "dev-vinext",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev:vinext"
-      ],
-      "port": 3001
     }
   ]
 }

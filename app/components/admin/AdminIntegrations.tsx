@@ -1,54 +1,31 @@
 "use client";
 
-// Admin → Intégrations : clés et réglages des fournisseurs, stockés en base
-// (table integration_settings). Les secrets ne sont jamais renvoyés en clair :
-// on affiche seulement s'ils sont définis, et un champ vide les conserve.
-import { useEffect, useState } from "react";
-import { Check, KeyRound, RefreshCw, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { KeyRound, Loader2, Save, ShieldCheck } from "lucide-react";
 
-type Field = {
-  key: string;
-  label: string;
-  secret: boolean;
-  public: boolean;
-  help: string;
-  placeholder: string;
-  options: string[] | null;
-  defaultValue: string;
-  isSet: boolean;
-  value: string;
-  masked: string;
-  updatedAt: string | null;
-};
+type Field =
+  | { key: string; group: string; label: string; secret: true; isSet: boolean; preview: string }
+  | { key: string; group: string; label: string; secret: false; value: string };
 
-type Provider = { id: string; name: string; description: string; fields: Field[] };
-
-export function AdminIntegrations() {
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, Record<string, string>>>({});
+// Admin editor for all runtime config (API keys, emails, numbers) stored in the DB.
+export default function AdminIntegrations() {
+  const [fields, setFields] = useState<Field[]>([]);
+  const [form, setForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
-
-  const applyProviders = (list: Provider[]) => {
-    setProviders(list);
-    const next: Record<string, Record<string, string>> = {};
-    for (const p of list) {
-      next[p.id] = {};
-      for (const f of p.fields) next[p.id][f.key] = f.secret ? "" : f.value;
-    }
-    setDrafts(next);
-  };
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin?section=integrations");
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || "Chargement impossible.");
-      applyProviders(json.integrations);
-    } catch (e: any) {
-      setMessage({ type: "error", text: e.message });
+      const j = await fetch("/api/admin?section=integrations", { cache: "no-store" }).then((r) => r.json());
+      const list: Field[] = j?.success ? j.config : [];
+      setFields(list);
+      const init: Record<string, string> = {};
+      for (const f of list) init[f.key] = f.secret ? "" : (f.value || "");
+      setForm(init);
+    } catch {
+      setMsg({ kind: "err", text: "Chargement impossible." });
     } finally {
       setLoading(false);
     }
@@ -56,117 +33,83 @@ export function AdminIntegrations() {
 
   useEffect(() => { load(); }, []);
 
-  const save = async (provider: Provider, clear: string[] = []) => {
-    setSaving(provider.id);
-    setMessage(null);
+  const groups = useMemo(() => {
+    const map = new Map<string, Field[]>();
+    for (const f of fields) { if (!map.has(f.group)) map.set(f.group, []); map.get(f.group)!.push(f); }
+    return [...map.entries()];
+  }, [fields]);
+
+  const save = async () => {
+    setSaving(true);
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin", {
+      // Send all non-secret fields, and only secret fields the admin actually typed.
+      const config: Record<string, string> = {};
+      for (const f of fields) {
+        if (f.secret) { if (form[f.key] && form[f.key].trim()) config[f.key] = form[f.key].trim(); }
+        else config[f.key] = form[f.key] ?? "";
+      }
+      const j = await fetch("/api/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save_integration", provider: provider.id, values: drafts[provider.id] || {}, clear }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || "Enregistrement impossible.");
-      applyProviders(json.integrations);
-      setMessage({ type: "ok", text: `${provider.name} : réglages enregistrés.` });
+        body: JSON.stringify({ action: "update_integration_config", config }),
+      }).then((r) => r.json());
+      if (!j?.success) throw new Error(j?.error || "Échec de l'enregistrement.");
+      setMsg({ kind: "ok", text: `Enregistré (${j.changed} paramètre(s)).` });
+      await load();
     } catch (e: any) {
-      setMessage({ type: "error", text: e.message });
+      setMsg({ kind: "err", text: e?.message || "Erreur." });
     } finally {
-      setSaving(null);
+      setSaving(false);
     }
   };
 
-  const setDraft = (providerId: string, key: string, value: string) =>
-    setDrafts((d) => ({ ...d, [providerId]: { ...(d[providerId] || {}), [key]: value } }));
+  if (loading) {
+    return <div style={{ padding: 24, color: "var(--np-text-muted)", display: "flex", gap: 8, alignItems: "center" }}><Loader2 size={16} className="animate-spin" /> Chargement…</div>;
+  }
 
   return (
-    <div className="np-admin-integrations">
-      <div className="np-admin-integrations-head">
-        <p>
-          Toutes les clés sont stockées en base, aucune dans un fichier <code>.env</code>. Un secret déjà défini
-          n’est jamais réaffiché : laissez le champ vide pour le conserver.
-        </p>
-        <button type="button" className="np-secondary-button" onClick={load} disabled={loading}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
+    <div style={{ padding: "0 0 40px", maxWidth: 820 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 20, padding: "11px 14px", borderRadius: 12, background: "rgba(245,158,11,.1)", border: "1px solid rgba(245,158,11,.3)", color: "var(--np-text-secondary)", fontSize: 12.5, lineHeight: 1.5 }}>
+        <ShieldCheck size={18} style={{ flex: "0 0 auto", marginTop: 1 }} />
+        <span>Ces valeurs sont lues depuis la base de données (repli sur les fichiers .env). Les clés secrètes sont masquées : laissez un champ secret <strong>vide</strong> pour conserver la valeur actuelle. Garde ce panneau réservé aux administrateurs.</span>
       </div>
 
-      {message && (
-        <div className={`np-admin-integrations-msg is-${message.type}`} role="status">
-          {message.type === "ok" ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {message.text}
+      {groups.map(([group, list]) => (
+        <div key={group} className="np-stat-card" style={{ marginBottom: 18, padding: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontWeight: 700, color: "var(--np-text)", fontSize: 15 }}>
+            <KeyRound size={16} /> {group}
+          </div>
+          <div style={{ display: "grid", gap: 14 }}>
+            {list.map((f) => (
+              <div key={f.key}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--np-text-secondary)", marginBottom: 5 }}>
+                  {f.label}{f.secret && <span style={{ color: "var(--np-text-muted)", fontWeight: 400 }}> — secret{(f as any).isSet ? ` (actuel : ${(f as any).preview})` : " (non défini)"}</span>}
+                </label>
+                <input
+                  className="np-text-input"
+                  style={{ width: "100%" }}
+                  type={f.secret ? "password" : "text"}
+                  value={form[f.key] ?? ""}
+                  placeholder={f.secret ? "Laisser vide pour conserver" : ""}
+                  autoComplete="off"
+                  onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {msg && (
+        <div style={{ marginBottom: 14, padding: "10px 13px", borderRadius: 10, fontSize: 13, background: msg.kind === "ok" ? "rgba(16,185,129,.12)" : "rgba(239,68,68,.12)", color: msg.kind === "ok" ? "#10b981" : "#ef4444" }}>
+          {msg.text}
         </div>
       )}
 
-      {loading && providers.length === 0 ? (
-        <p className="np-admin-integrations-empty">Chargement…</p>
-      ) : (
-        <div className="np-admin-integrations-grid">
-          {providers.map((p) => {
-            const configured = p.fields.some((f) => f.isSet);
-            return (
-              <section key={p.id} className="np-panel np-admin-integration-card">
-                <header>
-                  <div>
-                    <h3><KeyRound size={16} /> {p.name}</h3>
-                    <p>{p.description}</p>
-                  </div>
-                  <span className={`np-admin-integration-badge${configured ? " is-on" : ""}`}>
-                    {configured ? "Configuré" : "Non configuré"}
-                  </span>
-                </header>
-
-                <div className="np-admin-integration-fields">
-                  {p.fields.map((f) => {
-                    const id = `integ-${p.id}-${f.key}`;
-                    const draft = drafts[p.id]?.[f.key] ?? "";
-                    return (
-                      <div key={f.key} className="np-admin-integration-field">
-                        <label htmlFor={id} className="np-form-label">
-                          {f.label}
-                          {f.secret && <span className="np-admin-integration-tag">secret</span>}
-                          {f.public && <span className="np-admin-integration-tag is-public">public</span>}
-                        </label>
-                        <div className="np-admin-integration-input">
-                          {f.options ? (
-                            <select id={id} className="np-text-input" value={draft || f.defaultValue} onChange={(e) => setDraft(p.id, f.key, e.target.value)}>
-                              {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                          ) : (
-                            <input
-                              id={id}
-                              className="np-text-input"
-                              type={f.secret ? "password" : "text"}
-                              autoComplete="off"
-                              spellCheck={false}
-                              value={draft}
-                              placeholder={f.secret ? (f.isSet ? `Défini (${f.masked}) — vide = conserver` : "Non défini") : f.placeholder}
-                              onChange={(e) => setDraft(p.id, f.key, e.target.value)}
-                            />
-                          )}
-                          {f.secret && f.isSet && (
-                            <button type="button" className="np-icon-button" title="Effacer ce secret" aria-label={`Effacer ${f.label}`}
-                              disabled={saving === p.id}
-                              onClick={() => { if (confirm(`Effacer « ${f.label} » pour ${p.name} ?`)) save(p, [f.key]); }}>
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                        {f.help && <small className="np-admin-integration-help">{f.help}</small>}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <footer>
-                  <button type="button" className="np-primary-button" disabled={saving === p.id} onClick={() => save(p)}>
-                    <Check size={14} /> {saving === p.id ? "Enregistrement…" : "Enregistrer"}
-                  </button>
-                </footer>
-              </section>
-            );
-          })}
-        </div>
-      )}
+      <button type="button" className="np-primary-button" onClick={save} disabled={saving} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Enregistrer
+      </button>
     </div>
   );
 }

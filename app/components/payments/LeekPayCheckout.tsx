@@ -8,7 +8,6 @@ import {
 } from "@/app/lib/payments/payment-contract";
 import { rememberPendingPayment } from "@/app/lib/payments/payment-history";
 import { getAssetPath } from "@/app/lib/asset-path";
-import { getPublicConfig } from "@/app/lib/public-config";
 import type { PaymentLanguage } from "@/app/lib/payments/payment-contract";
 import { formatFullPhoneNumber } from "@/app/lib/countries";
 
@@ -26,8 +25,8 @@ type LeekPayCheckoutProps = {
   onRequireEmail?: () => void;
 };
 
-// URL par défaut ; la valeur réelle est lue en base (admin → Intégrations → Proxys).
-const LEEKPAY_PROXY_URL_DEFAULT =
+const LEEKPAY_PROXY_URL =
+  process.env.NEXT_PUBLIC_LEEKPAY_PROXY_URL ||
   "https://nova-pay-leekpay.sebpay-proxy.workers.dev/api/leekpay";
 
 export class LeekPayClientError extends Error {
@@ -105,7 +104,6 @@ export function LeekPayCheckout({
       // Enregistrer le pending checkout et les données d'email immédiatement
       rememberPendingCheckout();
 
-      const LEEKPAY_PROXY_URL = (await getPublicConfig()).proxies?.leekpay_url || LEEKPAY_PROXY_URL_DEFAULT;
       const response = await fetch(`${LEEKPAY_PROXY_URL}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -7,7 +7,6 @@
 // The digest is base64 and compared (constant-time) against each `v1,<base64>`
 // entry in svix-signature. Configure MAPLERAD_WEBHOOK_SECRET before production.
 
-import { getIntegrationValue } from "../../../app/lib/integrations.ts";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { handleMapleradWebhook } from "../../../app/lib/payments/maplerad/service.ts";
 import { getMapleradConfig } from "../../../app/lib/payments/maplerad/config.ts";
@@ -28,7 +27,7 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 function verifySvixSignature(request: Request, rawBody: string): boolean {
-  const secret = getIntegrationValue("maplerad", "webhook_secret");
+  const secret = (process.env.MAPLERAD_WEBHOOK_SECRET || "").trim();
   if (!secret) {
     // No secret configured: only tolerate this in sandbox so local/dev testing works.
     return getMapleradConfig()?.environment !== "production";

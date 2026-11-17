@@ -1,24 +1,25 @@
 // Server-side Mailjet transactional email sender.
 //
-// Credentials are stored in the database (admin → Intégrations), never in a .env
+// Credentials live only in process.env (loaded from .env.mailjet.local, which is
 // git-ignored). Never import this from client code — the secret key must stay on
 // the server. Uses the Mailjet Send API v3.1.
 //
 // Docs: https://dev.mailjet.com/email/guides/send-api-v31/
 
-import { getIntegrationValue } from "../integrations.ts";
+import { getConfigValue } from "../config/runtime-config.ts";
+
 const MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send";
 
 type SendResult = { ok: true } | { ok: false; error: string };
 
 function mailjetConfig() {
-  const apiKey = getIntegrationValue("mailjet", "api_key");
-  const secretKey = getIntegrationValue("mailjet", "secret_key");
-  const fromEmail = (getIntegrationValue("mailjet", "from_email") || "support@novapaid.net");
-  const fromName = (getIntegrationValue("mailjet", "from_name") || "NovaPaid");
+  const apiKey = getConfigValue("mailjet_api_key").trim();
+  const secretKey = getConfigValue("mailjet_secret_key").trim();
+  const fromEmail = (getConfigValue("mailjet_from_email") || "support@novapaid.net").trim();
+  const fromName = (getConfigValue("mailjet_from_name") || "NovaPaid").trim();
   // Validated fallback sender: used only if the primary sender is rejected, so a
   // misconfigured branded sender can never block logins / registrations.
-  const fallbackEmail = getIntegrationValue("mailjet", "fallback_from_email");
+  const fallbackEmail = getConfigValue("mailjet_fallback_from_email").trim();
   return { apiKey, secretKey, fromEmail, fromName, fallbackEmail };
 }
 

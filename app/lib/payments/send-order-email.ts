@@ -3,8 +3,10 @@
   type PaymentNotificationData,
   type PendingPaymentCheckout,
 } from "@/app/lib/payments/payment-contract";
-import { getPublicConfig } from "@/app/lib/public-config";
 
+const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "";
+const EMAILJS_TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "";
+const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "";
 const RECIPIENT_EMAIL = "novapaid@novapaid.net";
 
 const EMAIL_SENT_PREFIX = "nova-pay-payment-email-sent:";
@@ -57,11 +59,6 @@ function markAsSent(orderId: string): void {
 }
 
 export async function sendOrderEmail(checkout: PendingPaymentCheckout): Promise<void> {
-  // Identifiants EmailJS lus en base (admin → Intégrations).
-  const emailjs = (await getPublicConfig()).emailjs || {};
-  const EMAILJS_SERVICE_ID = emailjs.service_id || "";
-  const EMAILJS_TEMPLATE_ID = emailjs.template_id || "";
-  const EMAILJS_PUBLIC_KEY = emailjs.public_key || "";
   if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || hasAlreadySent(checkout.orderId)) return;
 
   const notification = readNotificationData(checkout.orderId);

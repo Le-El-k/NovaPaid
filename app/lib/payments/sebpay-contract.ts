@@ -1,5 +1,3 @@
-import { getPublicConfig } from "@/app/lib/public-config";
-
 export type SebPayPaymentStatus = "pending" | "success" | "failed" | "cancelled";
 
 export type SebPayCollectionRequest = {
@@ -50,8 +48,8 @@ type SebPayApiEnvelope = {
   errors?: Record<string, string[] | string>;
 };
 
-// URL par défaut ; la valeur réelle est lue en base (admin → Intégrations → Proxys).
-const SEBPAY_PROXY_URL_DEFAULT =
+const SEBPAY_PROXY_URL =
+  process.env.NEXT_PUBLIC_SEBPAY_PROXY_URL ||
   "https://nova-pay-sebpay.sebpay-proxy.workers.dev/api/sebpay";
 
 export class SebPayClientError extends Error {
@@ -188,7 +186,6 @@ async function requestSebPay(
     if (init.body && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
-    const SEBPAY_PROXY_URL = (await getPublicConfig()).proxies?.sebpay_url || SEBPAY_PROXY_URL_DEFAULT;
     const response = await fetch(`${SEBPAY_PROXY_URL}${path}`, {
       ...init,
       headers,

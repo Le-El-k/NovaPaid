@@ -2,7 +2,8 @@ import { getAuthenticatedUser, isSameOriginRequest } from "../../../app/lib/auth
 import { NovaDbService } from "../../../app/lib/db/service.ts";
 import { createSoleaspayOrder, USD_XAF_RATE } from "../../../app/lib/payments/soleaspay/orders.ts";
 
-const CARD_CREATION_FEE_USD = 9;
+// Frais de création = marge NovaPaid (9 USD) + frais d'émission Maplerad (2 USD, VIRTUAL CARD USD / Schedule 2) = 11 USD.
+const CARD_CREATION_FEE_USD = 11;
 
 // Initialise a SoleasPay payment: creates a pending order server-side and
 // returns the reference the hosted checkout form must POST, so the webhook can

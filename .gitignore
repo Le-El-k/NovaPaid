@@ -29,9 +29,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Aucun fichier .env n'est utilisé : la configuration est en base (admin → Intégrations).
-# On ignore quand même tout .env* pour qu'aucun secret ne soit jamais commité.
+# env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!.env.local
+.env.admin.local
+.env.geny.local
+.env.maplerad.local
 worker/.dev.vars*
 !worker/.dev.vars.example
 
@@ -57,6 +61,3 @@ skills-lock.json
 *.db-shm
 *.db-wal
 *.sqlite
-
-# Généré à chaque build (vinext) : ne pas suivre, sinon git pull est bloqué sur le serveur.
-next-env.d.ts

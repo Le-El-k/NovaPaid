@@ -1,9 +1,8 @@
 // Maplerad configuration — SERVER-SIDE ONLY.
-// Secrets are read from the database (admin → Intégrations), never from a .env file
+// Secrets are read from process.env (loaded by server.js from .env.maplerad.local,
 // a git-ignored file). Never import this module into client/browser code and never
 // expose the secret key to the frontend.
 
-import { getIntegrationValue } from "../../integrations.ts";
 export type MapleradEnvironment = "sandbox" | "production";
 
 export interface MapleradConfig {
@@ -23,7 +22,7 @@ export interface MapleradConfig {
 const DEFAULT_BASE_URL = "https://api.maplerad.com/v1";
 
 function readEnvironment(): MapleradEnvironment {
-  const raw = (getIntegrationValue("maplerad", "environment") || "sandbox").toLowerCase();
+  const raw = (process.env.MAPLERAD_ENVIRONMENT || "sandbox").trim().toLowerCase();
   return raw === "production" || raw === "live" ? "production" : "sandbox";
 }
 
@@ -33,15 +32,15 @@ function readEnvironment(): MapleradEnvironment {
  * error instead of attempting a request.
  */
 export function getMapleradConfig(): MapleradConfig | null {
-  const secretKey = getIntegrationValue("maplerad", "secret_key");
+  const secretKey = (process.env.MAPLERAD_SECRET_KEY || "").trim();
   if (!secretKey) return null;
 
-  const baseUrl = (getIntegrationValue("maplerad", "base_url") || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  const timeoutMs = Number(getIntegrationValue("maplerad", "timeout_ms") || 20000) || 20000;
+  const baseUrl = (process.env.MAPLERAD_BASE_URL || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
+  const timeoutMs = Number(process.env.MAPLERAD_TIMEOUT_MS || 20000) || 20000;
 
   return {
     secretKey,
-    publicKey: getIntegrationValue("maplerad", "public_key"),
+    publicKey: (process.env.MAPLERAD_PUBLIC_KEY || "").trim(),
     baseUrl,
     environment: readEnvironment(),
     timeoutMs,
@@ -49,5 +48,5 @@ export function getMapleradConfig(): MapleradConfig | null {
 }
 
 export function isMapleradConfigured(): boolean {
-  return Boolean(getIntegrationValue("maplerad", "secret_key"));
+  return Boolean((process.env.MAPLERAD_SECRET_KEY || "").trim());
 }

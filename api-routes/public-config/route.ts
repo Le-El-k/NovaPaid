@@ -1,14 +1,18 @@
-// Configuration publique lue en base (champs « public » de integration_settings).
-// Aucun secret n'est renvoyé ici : voir app/lib/integrations.ts.
-import { getPublicIntegrationConfig } from "../../app/lib/integrations.ts";
+// Public runtime configuration for the browser.
+//
+// Only non-secret, client-safe values (contact email, WhatsApp number, public
+// checkout keys, site URL) — sourced from the database so they can be managed
+// from the admin panel instead of being baked into the bundle at build time.
+
+import { NovaDbService } from "../../app/lib/db/service.ts";
 
 export async function GET() {
   try {
     return Response.json(
-      { success: true, config: getPublicIntegrationConfig() },
-      { headers: { "Cache-Control": "no-store" } }
+      { success: true, config: NovaDbService.getPublicConfig() },
+      { headers: { "Cache-Control": "public, max-age=60" } },
     );
-  } catch {
-    return Response.json({ success: false, config: {} }, { status: 500 });
+  } catch (error: any) {
+    return Response.json({ success: false, error: error?.message || "Erreur" }, { status: 500 });
   }
 }
