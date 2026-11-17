@@ -18451,7 +18451,7 @@ button.np-storefront-progress-step:hover {
   .np-balance-wrap { grid-column: 1 / -1; }
   .np-funding-grid { grid-template-columns: minmax(0, 1fr) minmax(245px, .8fr); }
 
-  .np-admin-app { --np-admin-rail: 74px; display: block; width: 100%; min-width: 0; overflow-x: clip; }
+  .np-admin-app { --np-admin-rail: 74px; display: block; width: 100%; min-width: 0; }
   .np-admin-sidebar {
     position: fixed !important;
     inset: 0 auto 0 0;
@@ -21522,7 +21522,7 @@ button.np-storefront-progress-step:hover {
 }
 
 @media (max-width: 768px) {
-  .np-admin-app { --adm-sidebar-w: 0px; --np-admin-rail: 0px; display: block; width: 100%; min-width: 0; overflow-x: clip; }
+  .np-admin-app { --adm-sidebar-w: 0px; --np-admin-rail: 0px; display: block; width: 100%; min-width: 0; }
   .np-admin-main { width: 100% !important; min-width: 0; margin-left: 0 !important; }
   .np-admin-sidebar {
     position: fixed !important;
@@ -24434,7 +24434,12 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
   min-width: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: clip;
+  /* App-shell: the shell is a fixed-height, non-scrolling frame and .np-admin-main
+     scrolls inside it, so the sticky topbar pins to the viewport. Otherwise both
+     html and body are scroll containers, which captured the sticky and let the
+     header scroll away. */
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* Menu latéral : toujours libellés complets, jamais en « rail » d'icônes. */
@@ -24495,14 +24500,17 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
 .np-admin-app .np-admin-session-info > div { display: block; }
 .np-admin-app .np-admin-session-info { justify-content: flex-start; }
 
-/* Zone principale : toujours décalée exactement de la largeur du menu. */
+/* Zone principale : toujours décalée exactement de la largeur du menu.
+   C'est elle qui défile (app-shell) pour que le header colle en haut. */
 .np-admin-app .np-admin-main {
   display: flex;
   flex-direction: column;
   width: auto !important;
   min-width: 0;
-  min-height: 100vh;
   margin-left: var(--np-admin-side) !important;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: clip;
 }
 .np-admin-app .np-admin-topbar {
   position: sticky;
@@ -24527,6 +24535,7 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
   max-width: 1600px;
   min-width: 0;
   box-sizing: border-box;
+  overflow-x: clip;
   padding: 24px 28px 40px !important;
 }
 .np-admin-app .np-admin-content > * { min-width: 0; max-width: 100%; }
@@ -24605,8 +24614,10 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
 .np-admin-integrations-msg.is-ok { color: #4ade80; background: rgba(74, 222, 128, .1); border: 1px solid rgba(74, 222, 128, .25); }
 .np-admin-integrations-msg.is-error { color: #f87171; background: rgba(239, 68, 68, .1); border: 1px solid rgba(239, 68, 68, .25); }
 .np-admin-integrations-empty { color: var(--prism-text-muted, #8b949e); }
-.np-admin-integrations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
-.np-admin-integration-card { display: grid; gap: 16px; padding: 20px !important; }
+/* Masonry-style columns: cards pack tightly top-to-bottom instead of leaving
+   large gaps under shorter cards in a fixed-height row grid. */
+.np-admin-integrations-grid { columns: 430px; column-gap: 16px; }
+.np-admin-integration-card { display: grid; gap: 16px; padding: 20px !important; break-inside: avoid; width: 100%; margin: 0 0 16px; }
 .np-admin-integration-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .np-admin-integration-card h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; color: var(--prism-text-bright, #f0f6fc); font-size: 16px; }
 .np-admin-integration-card header p { margin: 0; color: var(--prism-text-muted, #8b949e); font-size: 12px; line-height: 1.5; }
