@@ -49,6 +49,24 @@ function normalizeCameroonMobile(value: string) {
   return digits.startsWith("237") ? digits.slice(3) : digits;
 }
 
+// Fallback prefixes (Cameroun) used if the live operator list isn't loaded yet.
+const FALLBACK_OPERATOR_PREFIXES: { id: "mtn" | "orange"; prefixes: string[] }[] = [
+  { id: "mtn", prefixes: ["650", "651", "652", "653", "654", "67", "680", "681", "682", "683", "684"] },
+  { id: "orange", prefixes: ["640", "655", "656", "657", "658", "659", "685", "686", "687", "688", "689", "69"] },
+];
+
+// Detect MTN vs Orange from a normalized 6XXXXXXXX number by its prefix.
+function detectCameroonOperator(phone: string, operators: { id: string; prefixes?: string[] }[]): "mtn" | "orange" | null {
+  if (!/^6\d{8}$/.test(phone)) return null;
+  const list = operators.length ? operators : FALLBACK_OPERATOR_PREFIXES;
+  for (const op of list) {
+    if ((op.prefixes || []).some((p) => phone.startsWith(p)) && (op.id === "mtn" || op.id === "orange")) {
+      return op.id;
+    }
+  }
+  return null;
+}
+
 // Clé localStorage pour l'acquittement des conditions internet : une fois par
 // mois et par utilisateur. "YYYY-MM" borne l'acquittement au mois courant.
 function internetGateStorageKey() {
@@ -92,6 +110,7 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
   const [orderId, setOrderId] = useState("");
   const [customTikTokCoins, setCustomTikTokCoins] = useState(0);
   const [genyPlans, setGenyPlans] = useState<GenyPlanView[]>([]);
+  const [genyOperators, setGenyOperators] = useState<{ id: string; prefixes?: string[] }[]>([]);
   const [genyPlansLoading, setGenyPlansLoading] = useState(false);
   const [genyPlansError, setGenyPlansError] = useState("");
   const [genyCheckoutStep, setGenyCheckoutStep] = useState<1 | 2 | 3>(1);
@@ -207,6 +226,7 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
         if (!active) return;
         if (data?.ok && Array.isArray(data.plans)) {
           setGenyPlans(data.plans as GenyPlanView[]);
+          setGenyOperators(Array.isArray(data.operators) ? data.operators : []);
         } else {
           setGenyPlans([]);
           setGenyPlansError(data?.error || t("sfront_offers_coming_soon"));
@@ -246,8 +266,11 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
       : "game";
   const normalizedInternetPhone = normalizeCameroonMobile(internetPhone);
   const validInternetPhone = /^6\d{8}$/.test(normalizedInternetPhone);
+  const detectedInternetOperator = detectCameroonOperator(normalizedInternetPhone, genyOperators);
+  // Free "test" plan (0 FCFA): no payment, so we don't ask for a Mobile Money number.
+  const isTestOffer = purchaseKind === "internet" && Boolean(selectedOffer) && (selectedOffer?.priceXaf ?? 1) === 0;
   const validContact = Boolean(selectedOffer) && (purchaseKind === "internet"
-    ? validInternetPhone
+    ? (isTestOffer || (validInternetPhone && detectedInternetOperator !== null))
     : accountId.trim().length >= 2
       && whatsapp.replace(/\D/g, "").length >= 6
       && (!selectedProduct?.requiresPassword || (password.trim().length >= 4 && credentialsConfirmed && secondFactorConfirmed)));
@@ -560,35 +583,33 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
                 <span><small>{t("sfront_chosen_plan_upper")}</small><strong>{selectedOffer.name}</strong><i>{selectedProduct.name}</i><em><span>{selectedOffer.name.split("·")[0].trim()}</span><span>{selectedOffer.name.includes("·") ? selectedOffer.name.split("·").slice(1).join("·").trim() : t("sfront_internet_plan")}</span></em></span>
                 <strong>{formatPrice(selectedOffer.priceXaf).replace(" FCFA", "")}<small>FCFA</small></strong>
               </div>
-              {genyCheckoutStep === 1 && <>
-                <fieldset className="np-internet-operator-fieldset">
-                  <legend>{t("sfront_momo_operator")}</legend>
-                  <div className="np-internet-operator-options">
-                    <button type="button" className={`np-internet-operator${mobileMoneyOperator === "mtn" ? " selected" : ""}`} aria-pressed={mobileMoneyOperator === "mtn"} onClick={() => setMobileMoneyOperator("mtn")}>
-                      <img className="np-internet-operator-logo" src={getAssetPath("/operators/mtn-momo.svg")} alt="" width={36} height={36} /><span><strong>MTN MoMo</strong><small>Mobile Money</small></span><i aria-hidden="true" />
-                    </button>
-                    <button type="button" className={`np-internet-operator${mobileMoneyOperator === "orange" ? " selected" : ""}`} aria-pressed={mobileMoneyOperator === "orange"} onClick={() => setMobileMoneyOperator("orange")}>
-                      <img className="np-internet-operator-logo" src={getAssetPath("/operators/orange-money.svg")} alt="" width={36} height={36} /><span><strong>Orange Money</strong><small>Mobile Money</small></span><i aria-hidden="true" />
-                    </button>
-                  </div>
-                </fieldset>
+              {genyCheckoutStep === 1 && !isTestOffer && <>
+                <div className="np-internet-operators-row" aria-label={t("sfront_momo_operator")}>
+                  <span className={`np-internet-op${detectedInternetOperator === "mtn" ? " is-active" : ""}`}>
+                    <img className="np-internet-operator-logo" src={getAssetPath("/operators/mtn-momo.svg")} alt="MTN MoMo" width={34} height={34} /><strong>MTN MoMo</strong>
+                  </span>
+                  <span className={`np-internet-op${detectedInternetOperator === "orange" ? " is-active" : ""}`}>
+                    <img className="np-internet-operator-logo" src={getAssetPath("/operators/orange-money.svg")} alt="Orange Money" width={34} height={34} /><strong>Orange Money</strong>
+                  </span>
+                </div>
                 <div className="np-internet-phone-field">
                   <label htmlFor="np-internet-mobile-number">{t("sfront_momo_number")}</label>
-                  <div className={`np-internet-phone-input${internetPhone ? validInternetPhone ? " is-valid" : " is-invalid" : ""}`}>
+                  <div className={`np-internet-phone-input${internetPhone ? (validInternetPhone && detectedInternetOperator ? " is-valid" : " is-invalid") : ""}`}>
                     <span><b aria-hidden="true">🇨🇲</b> +237</span>
-                    <input id="np-internet-mobile-number" type="tel" inputMode="numeric" autoComplete="tel-national" value={internetPhone} onChange={(event) => setInternetPhone(event.target.value.replace(/[^\d\s]/g, ""))} placeholder="6XX XX XX XX" aria-invalid={Boolean(internetPhone) && !validInternetPhone} aria-describedby="np-internet-mobile-help" />
+                    <input id="np-internet-mobile-number" type="tel" inputMode="numeric" autoComplete="tel-national" value={internetPhone} onChange={(event) => setInternetPhone(event.target.value.replace(/[^\d\s]/g, ""))} placeholder="6XX XX XX XX" aria-invalid={Boolean(internetPhone) && !(validInternetPhone && Boolean(detectedInternetOperator))} aria-describedby="np-internet-mobile-help" />
                   </div>
-                  <small id="np-internet-mobile-help">{internetPhone && !validInternetPhone ? t("sfront_valid_cm_number") : t("sfront_number_receives_request")}</small>
+                  <small id="np-internet-mobile-help">{internetPhone && validInternetPhone && !detectedInternetOperator ? t("sfront_unknown_operator") : internetPhone && !validInternetPhone ? t("sfront_valid_cm_number") : detectedInternetOperator ? `${detectedInternetOperator === "mtn" ? "MTN MoMo" : "Orange Money"} · ${t("sfront_number_receives_request")}` : t("sfront_number_receives_request")}</small>
                 </div>
               </>}
+              {genyCheckoutStep === 1 && isTestOffer && <p className="np-internet-test-note">{t("sfront_test_plan_note")}</p>}
               {validContact ? <div className="np-internet-submit-wrap">
                 <GenyInternetCheckout
                   key={`${selectedOffer.id}-${orderId}`}
                   planId={selectedOffer.id}
                   orderRef={orderId || makeOrderId()}
-                  operator={mobileMoneyOperator}
-                  phone={normalizedInternetPhone}
-                  buttonLabel={t("sfront_pay").replace("{price}", formatPrice(selectedOffer.priceXaf))}
+                  operator={isTestOffer ? "mtn" : (detectedInternetOperator || "mtn")}
+                  phone={isTestOffer ? "670000000" : normalizedInternetPhone}
+                  buttonLabel={isTestOffer ? t("sfront_get_test_code") : t("sfront_pay").replace("{price}", formatPrice(selectedOffer.priceXaf))}
                   onNewOrderRef={() => { const id = makeOrderId(); setOrderId(id); return id; }}
                   onStepChange={setGenyCheckoutStep}
                 />

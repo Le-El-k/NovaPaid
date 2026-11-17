@@ -17,6 +17,7 @@ import { AdminSecurity } from "./AdminSecurity";
 import { AdminCommunication } from "./AdminCommunication";
 import { AdminExtras } from "./AdminExtras";
 import AdminAnalytics from "./AdminAnalytics";
+import AdminIntegrations from "./AdminIntegrations";
 import { ThemeToggleButton } from "@/app/lib/theme";
 import { MoneyValue, useCurrency } from "@/app/lib/currency";
 import { LanguageSelector, useLanguage } from "@/app/lib/i18n";
@@ -63,11 +64,12 @@ import {
   ShoppingBag,
   Send,
   Tag,
+  KeyRound,
 } from "lucide-react";
 
-type AdminTab = "overview" | "analytics" | "transactions" | "support" | "reviews" | "users" | "admins" | "approvals" | "kyc" | "cards" | "audit" | "settings" | "shop" | "resellers" | "announcements" | "ads" | "fees" | "revenue" | "advanced" | "activities" | "marketplace" | "user_shops" | "security" | "communication" | "extras";
+type AdminTab = "overview" | "analytics" | "transactions" | "support" | "reviews" | "users" | "admins" | "approvals" | "kyc" | "cards" | "audit" | "settings" | "shop" | "resellers" | "announcements" | "ads" | "fees" | "revenue" | "advanced" | "activities" | "marketplace" | "user_shops" | "security" | "communication" | "extras" | "integrations";
 
-const ADMIN_TABS: AdminTab[] = ["overview", "analytics", "transactions", "support", "reviews", "users", "admins", "approvals", "kyc", "cards", "audit", "settings", "shop", "resellers", "announcements", "ads", "fees", "revenue", "advanced", "activities", "marketplace", "user_shops", "security", "communication", "extras"];
+const ADMIN_TABS: AdminTab[] = ["overview", "analytics", "transactions", "support", "reviews", "users", "admins", "approvals", "kyc", "cards", "audit", "settings", "shop", "resellers", "announcements", "ads", "fees", "revenue", "advanced", "activities", "marketplace", "user_shops", "security", "communication", "extras", "integrations"];
 
 function readAdminTab(search: string): AdminTab {
   const requested = new URLSearchParams(search).get("section");
@@ -1040,6 +1042,10 @@ export default function AdminDashboard() {
             <DollarSign size={18} />
             <span>{t("admin_analytics")}</span>
           </button>
+          <button type="button" aria-label="Intégrations / API" title="Intégrations / API" className={activeTab === "integrations" ? "active" : ""} onClick={() => selectTab("integrations")}>
+            <KeyRound size={18} />
+            <span>Intégrations / API</span>
+          </button>
 
           <div className="np-admin-nav-section-label">{t("admin_section_management")}</div>
 
@@ -1351,6 +1357,7 @@ export default function AdminDashboard() {
               {activeTab === "communication" && t("admin_title_communication")}
               {activeTab === "extras" && t("admin_title_extras")}
               {activeTab === "analytics" && t("admin_title_analytics")}
+              {activeTab === "integrations" && "Intégrations / API"}
             </h1>
           </div>
           {/* VUE D'ENSEMBLE */}
@@ -2948,6 +2955,10 @@ export default function AdminDashboard() {
 
           {activeTab === "analytics" && (
             <AdminAnalytics />
+          )}
+
+          {activeTab === "integrations" && (
+            <AdminIntegrations />
           )}
 
           {activeTab === "advanced" && (

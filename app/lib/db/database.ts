@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { initialShopProducts, initialShopSections } from "../shop-catalog.ts";
+import { INTEGRATION_CONFIG, CONFIG_PREFIX } from "../config/config-registry.ts";
 
 let dbInstance: DatabaseSync | null = null;
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../");
@@ -1869,9 +1870,26 @@ function initSchemaAndSeeds(db: DatabaseSync) {
     setStmt.run('daily_transfer_limit_level2', JSON.stringify({ limitXaf: 500000 }), bootstrapAdminId);
     setStmt.run('mobile_money_fee_percent', JSON.stringify({ orange: 1.0, mtn: 1.0, wave: 1.0, card: 1.0, bank: 1.0 }), bootstrapAdminId);
     setStmt.run('platform_maintenance_mode', JSON.stringify({ enabled: false, message: '' }), bootstrapAdminId);
-    setStmt.run('card_creation_fee_usd', JSON.stringify({ fee: 9.0, label: 'Frais de création de carte' }), bootstrapAdminId);
+    setStmt.run('card_creation_fee_usd', JSON.stringify({ fee: 11.0, label: 'Frais de création de carte' }), bootstrapAdminId);
     setStmt.run('platform_name', JSON.stringify({ name: 'NovaPaid' }), bootstrapAdminId);
   }
+
+  // One-time migration of runtime config (API keys, emails, numbers) from the
+  // .env files into the database, so hosting only needs the DB. Runs every boot
+  // but only fills a key that is not already stored, so admin edits are never
+  // overwritten. Env stays as a fallback (see runtime-config.ts).
+  try {
+    const cfgAdminId = Number((db.prepare("SELECT id FROM admins WHERE role = 'super_admin' ORDER BY id LIMIT 1").get() as any)?.id || 1);
+    const existsStmt = db.prepare("SELECT 1 FROM app_settings WHERE setting_key = ? LIMIT 1");
+    const insertCfg = db.prepare("INSERT OR IGNORE INTO app_settings (setting_key, setting_value, version, updated_by) VALUES (?, ?, 1, ?)");
+    for (const field of INTEGRATION_CONFIG) {
+      const settingKey = CONFIG_PREFIX + field.key;
+      if (existsStmt.get(settingKey)) continue;
+      const envVal = field.env ? (process.env[field.env] || "").trim() : "";
+      if (!envVal) continue; // nothing to migrate for this key
+      insertCfg.run(settingKey, JSON.stringify(envVal), cfgAdminId);
+    }
+  } catch { /* config seed is best-effort */ }
 
   // Seed default exchange rates
   const rateCount = (db.prepare("SELECT count(*) as count FROM exchange_rates").get() as any)?.count || 0;
@@ -1907,7 +1925,7 @@ function initSchemaAndSeeds(db: DatabaseSync) {
   }
   const transferFeeCount = (db.prepare("SELECT count(*) as count FROM transfer_fees").get() as any)?.count || 0;
   if (transferFeeCount === 0) {
-    db.prepare("INSERT INTO transfer_fees (fixed_amount, percentage_rate, min_amount, max_amount) VALUES (0, 2.0, 500, NULL)").run();
+    db.prepare("INSERT INTO transfer_fees (fixed_amount, percentage_rate, min_amount, max_amount) VALUES (0, 4.0, 500, NULL)").run();
   }
 
   const bootstrapApplied = db.prepare("SELECT setting_key FROM app_settings WHERE setting_key = 'admin_bootstrap_applied'").get();

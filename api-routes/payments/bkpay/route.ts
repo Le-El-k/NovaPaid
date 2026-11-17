@@ -1,9 +1,11 @@
 import { getAuthenticatedUser, isSameOriginRequest } from "../../../app/lib/auth/session.ts";
+import { getConfigValue } from "../../../app/lib/config/runtime-config.ts";
 import { NovaDbService } from "../../../app/lib/db/service.ts";
 import { createSoleaspayOrder, attachProviderSession, markSoleaspayOrderFailed, USD_XAF_RATE } from "../../../app/lib/payments/soleaspay/orders.ts";
 import { createPaymentSession, isBkpayConfigured } from "../../../app/lib/payments/bkpay/client.ts";
 
-const CARD_CREATION_FEE_USD = 9;
+// Frais de création = marge NovaPaid (9 USD) + frais d'émission Maplerad (2 USD, VIRTUAL CARD USD / Schedule 2) = 11 USD.
+const CARD_CREATION_FEE_USD = 11;
 
 // Initialise a BKApay payment: create a pending order, then a BKApay hosted
 // "secured session" (amount locked server-side). Returns payment_url to redirect to.
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
 
     const order = createSoleaspayOrder({ userId: user.id, type: type as any, amountXaf, amountUsd, cardId, meta });
 
-    const base = (process.env.PUBLIC_BASE_URL || new URL(request.url).origin).replace(/\/$/, "");
+    const base = (getConfigValue("public_base_url") || new URL(request.url).origin).replace(/\/$/, "");
     const session = await createPaymentSession({
       amount: order.amountXaf,
       currency: "XAF",

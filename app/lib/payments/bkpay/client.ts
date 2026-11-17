@@ -4,10 +4,12 @@
 // webhook + an authoritative status re-check. Authenticated with the secret
 // pay-in key (sk_payin_live_...); never expose it to the browser.
 
+import { getConfigValue } from "../../config/runtime-config.ts";
+
 const BASE_URL = "https://bkapay.com/api/v1";
 
 function secretKey(): string {
-  return (process.env.BKPAY_SECRET_KEY || "").trim();
+  return getConfigValue("bkpay_secret_key").trim();
 }
 
 export function isBkpayConfigured(): boolean {

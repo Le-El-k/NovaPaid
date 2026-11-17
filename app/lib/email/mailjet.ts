@@ -6,18 +6,20 @@
 //
 // Docs: https://dev.mailjet.com/email/guides/send-api-v31/
 
+import { getConfigValue } from "../config/runtime-config.ts";
+
 const MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send";
 
 type SendResult = { ok: true } | { ok: false; error: string };
 
 function mailjetConfig() {
-  const apiKey = (process.env.MAILJET_API_KEY || "").trim();
-  const secretKey = (process.env.MAILJET_SECRET_KEY || "").trim();
-  const fromEmail = (process.env.MAILJET_FROM_EMAIL || "support@novapaid.net").trim();
-  const fromName = (process.env.MAILJET_FROM_NAME || "NovaPaid").trim();
+  const apiKey = getConfigValue("mailjet_api_key").trim();
+  const secretKey = getConfigValue("mailjet_secret_key").trim();
+  const fromEmail = (getConfigValue("mailjet_from_email") || "support@novapaid.net").trim();
+  const fromName = (getConfigValue("mailjet_from_name") || "NovaPaid").trim();
   // Validated fallback sender: used only if the primary sender is rejected, so a
   // misconfigured branded sender can never block logins / registrations.
-  const fallbackEmail = (process.env.MAILJET_FALLBACK_FROM_EMAIL || "").trim();
+  const fallbackEmail = getConfigValue("mailjet_fallback_from_email").trim();
   return { apiKey, secretKey, fromEmail, fromName, fallbackEmail };
 }
 

@@ -15,6 +15,7 @@
 // production, mirroring the Maplerad webhook's sandbox tolerance.
 
 import { createHash, timingSafeEqual } from "node:crypto";
+import { getConfigValue } from "../../../app/lib/config/runtime-config.ts";
 import {
   completeSoleaspayOrder,
   getSoleaspayOrder,
@@ -34,7 +35,7 @@ function constantTimeEquals(a: string, b: string): boolean {
 
 /** Verify the x-private-key header against sha256(webhook token). */
 function verifyPrivateKey(request: Request): boolean {
-  const token = (process.env.SOLEASPAY_WEBHOOK_TOKEN || "").trim();
+  const token = getConfigValue("soleaspay_webhook_token").trim();
   if (!token) return process.env.NODE_ENV !== "production"; // sandbox tolerance
   const header = (request.headers.get("x-private-key") || "").trim();
   if (!header) return false;
@@ -45,7 +46,7 @@ function verifyPrivateKey(request: Request): boolean {
 
 /** Optional authoritative re-check via the Collection Status API. */
 async function statusApiConfirms(transactionReference: string, expectedXaf: number): Promise<boolean | null> {
-  const gatewayToken = (process.env.SOLEASPAY_GATEWAY_TOKEN || "").trim();
+  const gatewayToken = getConfigValue("soleaspay_gateway_token").trim();
   if (!gatewayToken || !transactionReference) return null; // not configured → skip
   try {
     const res = await fetch(STATUS_API_URL, {

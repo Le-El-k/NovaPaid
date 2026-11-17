@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [returnTo, setReturnTo] = useState("/boutique");
+  const [returnTo, setReturnTo] = useState("/dashboard");
   const [step, setStep] = useState<"form" | "code">("form");
   const [emailMasked, setEmailMasked] = useState("");
 

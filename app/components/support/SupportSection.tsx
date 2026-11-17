@@ -27,12 +27,35 @@ interface SupportSectionProps {
   initialTxRef?: string;
 }
 
-const OFFICIAL_EMAIL = "novapaid@novapaid.net";
-const OFFICIAL_WHATSAPP_NUMBER = "+237 657887403";
-const OFFICIAL_WHATSAPP_URL = "https://wa.me/237657887403";
+const DEFAULT_EMAIL = "novapaid@novapaid.net";
+const DEFAULT_WHATSAPP = "237657887403";
+
+function formatWhatsapp(num: string) {
+  const d = String(num).replace(/\D/g, "");
+  return "+" + d.replace(/(\d{3})(\d+)/, "$1 $2");
+}
 
 export function SupportSection({ initialTxRef = "" }: SupportSectionProps) {
   const { t, language } = useLanguage();
+
+  // Contact channels are driven from the DB (admin > Intégrations), with the
+  // hard-coded values as a safe fallback.
+  const [contact, setContact] = useState({ email: DEFAULT_EMAIL, whatsapp: DEFAULT_WHATSAPP });
+  useEffect(() => {
+    fetch("/api/public-config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j?.success || !j.config) return;
+        setContact({
+          email: j.config.contact_email || DEFAULT_EMAIL,
+          whatsapp: (j.config.whatsapp_number || DEFAULT_WHATSAPP).replace(/\D/g, ""),
+        });
+      })
+      .catch(() => { /* keep defaults */ });
+  }, []);
+  const OFFICIAL_EMAIL = contact.email;
+  const OFFICIAL_WHATSAPP_NUMBER = formatWhatsapp(contact.whatsapp);
+  const OFFICIAL_WHATSAPP_URL = `https://wa.me/${contact.whatsapp}`;
 
   // User Profile prefill
   const [userProfile, setUserProfile] = useState<{ name: string; email: string } | null>(null);

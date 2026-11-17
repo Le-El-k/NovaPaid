@@ -15230,6 +15230,8 @@ body.is-pwa {
   --np-dark-border: #1e293b;
   --np-light-bg: #f8fafc;
   --np-text-main: #0f172a;
+  --np-text: var(--np-text-main);
+  --np-text-secondary: #475569;
   --np-text-muted: #64748b;
   --np-border-color: #e2e8f0;
   --np-radius-sm: 8px;
@@ -18478,6 +18480,7 @@ button.np-storefront-progress-step:hover {
     border-radius: 13px;
   }
   .np-admin-nav button > span:not(.np-admin-nav-count):not(.np-admin-nav-badge) { display: none; }
+  .np-admin-nav-section-label { display: none; }
   .np-admin-nav button > svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .np-admin-nav button:hover { transform: none; }
   .np-admin-nav button.active { box-shadow: 0 6px 16px rgba(72, 103, 221, .19); }
@@ -24388,3 +24391,29 @@ html[data-theme="dark"] .np-svc-unavailable-card p, html[data-theme="mixed"] .np
   .np-auth-page .np-text-input { font-size: 16px; min-height: 50px; }
   .np-auth-page .np-otp-input { font-size: 22px; letter-spacing: 8px; }
 }
+
+/* ===== Opérateurs côte à côte (détection auto) ===== */
+.np-internet-operators-row { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.np-internet-op { display:flex; align-items:center; gap:9px; min-width:0; padding:10px 12px; border:1px solid #342b45; border-radius:14px; background:#1b1726; color:#f7f3ff; }
+.np-internet-op img { flex:0 0 auto; border-radius:9px; }
+.np-internet-op strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:800; }
+.np-internet-op.is-active { border-color:#b28aff; box-shadow:0 0 0 1px #b28aff; background:#2a203b; }
+html[data-theme="light"] .np-internet-op { border-color:#e1e7f1; background:#fff; color:#18233a; }
+html[data-theme="light"] .np-internet-op.is-active { border-color:#8162ef; box-shadow:0 0 0 1px #8162ef; background:#f3efff; }
+.np-internet-test-note { margin:0; padding:12px 14px; border-radius:12px; background:rgba(83,230,169,.1); border:1px dashed rgba(83,230,169,.4); color:#9fe9c9; font-size:12px; text-align:center; }
+html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-color:#8bdcb6; color:#12935a; }
+
+/* ===== Boîte code : ne jamais déborder l'écran (mobile) ===== */
+.geny-checkout, .np-internet-checkout, .geny-code-box { max-width:100%; }
+.geny-code-box { overflow:hidden; }
+@media (max-width:560px) {
+  .geny-code-value { flex-wrap:wrap; }
+  .geny-code-value code { width:100%; white-space:normal; word-break:break-all; overflow-wrap:anywhere; overflow:visible; text-overflow:clip; font-size:13px; line-height:1.35; }
+  .geny-code-value button { width:100%; justify-content:center; }
+}
+
+/* Fix: le scrim mobile generique (.np-mobile-scrim { z-index:98 }) recouvrait la
+   sidebar du dashboard utilisateur et interceptait les clics sur les liens de nav.
+   On remet la sidebar au-dessus du voile dans l'espace utilisateur. */
+.np-app .np-sidebar { z-index: 120; }
+.np-app .np-mobile-scrim { z-index: 110; inset: 0; }

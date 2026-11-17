@@ -6,16 +6,17 @@
 // require ("Call the API from your server only: never put a key in a web page").
 
 import type { GenyOrder, GenyOperator, GenyPlan } from "./types.ts";
+import { getConfigValue } from "../config/runtime-config.ts";
 
 const DEFAULT_BASE = "https://geny.payool.net/api/v1/partner/";
 
 function getBaseUrl(): string {
-  const base = (process.env.GENY_API_BASE || DEFAULT_BASE).trim();
+  const base = (getConfigValue("geny_api_base") || DEFAULT_BASE).trim();
   return base.endsWith("/") ? base : `${base}/`;
 }
 
 function getApiKey(): string {
-  return (process.env.GENY_API_KEY || "").trim();
+  return getConfigValue("geny_api_key").trim();
 }
 
 export function isGenyConfigured(): boolean {

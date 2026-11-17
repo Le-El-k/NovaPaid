@@ -109,6 +109,34 @@ const MIME_TYPES = {
   ".woff2": "font/woff2",
 };
 
+// Confine un chemin de requête à un dossier de base et REFUSE toute traversée
+// (../, séquences encodées %2e%2e%2f / ..%2f, etc. une fois décodées). Retourne
+// un chemin absolu garanti à l'intérieur de baseDir, ou null si la requête tente
+// d'en sortir. Sans ce verrou, `/..%2f..%2f.env.soleaspay.local` ou
+// `/..%2f..%2fnovapaid_app.db` permettraient de lire secrets et base de données.
+function safeResolve(baseDir, requestPath) {
+  const resolvedBase = path.resolve(baseDir);
+  const target = path.resolve(resolvedBase, "." + path.sep + requestPath);
+  const rel = path.relative(resolvedBase, target);
+  if (rel && (rel.startsWith("..") || path.isAbsolute(rel))) return null;
+  return target;
+}
+
+// En-têtes de durcissement appliqués à CHAQUE réponse. Le serveur Node de
+// production (npm start) ne lit pas public/_headers (ce fichier n'est honoré que
+// par Cloudflare Pages), ces en-têtes doivent donc être posés ici.
+function applySecurityHeaders(res) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
+  }
+}
+
 // Import dynamique des routes API
 async function loadApiHandler(endpoint) {
   switch (endpoint) {
@@ -144,6 +172,8 @@ async function loadApiHandler(endpoint) {
       return await import("./api-routes/notifications/route.ts");
     case "platform-status":
       return await import("./api-routes/platform-status/route.ts");
+    case "public-config":
+      return await import("./api-routes/public-config/route.ts");
     case "shops":
       return await import("./api-routes/shops/route.ts");
     case "security":
@@ -178,6 +208,7 @@ async function loadApiHandler(endpoint) {
 const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = decodeURIComponent(urlObj.pathname);
+  applySecurityHeaders(res);
 
   if (
     pathname === "/portal-prive-gestion" ||
@@ -267,7 +298,14 @@ const server = http.createServer(async (req, res) => {
 
   // 2. FICHIERS DU DOSSIER APP OU MODULES LOCAUX
   if (pathname.startsWith("/app/")) {
-    let candidatePath = path.join(__dirname, pathname);
+    // Confiné strictement au dossier ./app : empêche /app/../server.js ou
+    // /app/..%2f..%2f.env.* de remonter hors de l'arborescence des sources UI.
+    const candidatePath = safeResolve(path.join(__dirname, "app"), pathname.slice("/app".length));
+    if (!candidatePath) {
+      res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("403 Forbidden");
+      return;
+    }
     let resolved = null;
     const extensionsToTry = ["", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".css"];
     for (const ext of extensionsToTry) {
@@ -302,12 +340,12 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  let filePath = path.join(CLIENT_DIST, pathname);
-  let fileFound = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+  let filePath = safeResolve(CLIENT_DIST, pathname);
+  let fileFound = Boolean(filePath) && fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   if (!fileFound) {
-    filePath = path.join(PUBLIC_DIR, pathname);
-    fileFound = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+    filePath = safeResolve(PUBLIC_DIR, pathname);
+    fileFound = Boolean(filePath) && fs.existsSync(filePath) && fs.statSync(filePath).isFile();
   }
 
   // Next.js App Router static RSC segment payloads are REQUESTED with dotted
@@ -322,8 +360,8 @@ const server = http.createServer(async (req, res) => {
       const inner = rscMatch[1].split(".");
       if (inner.length > 1) {
         const nested = `__next.${inner[0]}/${inner.slice(1).join("/")}.txt`;
-        const candidate = path.join(CLIENT_DIST, path.dirname(pathname), nested);
-        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        const candidate = safeResolve(CLIENT_DIST, path.join(path.dirname(pathname), nested));
+        if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
           filePath = candidate;
           fileFound = true;
         }

@@ -45,7 +45,12 @@ export function isSameOriginRequest(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (origin) {
     try {
-      return new URL(origin).origin === new URL(request.url).origin;
+      // Compare host names only, not the full origin. Behind a TLS-terminating
+      // reverse proxy (nginx in production) the server receives the request over
+      // plain HTTP, so request.url is "http://host" while the browser's Origin is
+      // "https://host". Comparing full origins would wrongly reject every
+      // same-origin POST (403). The hostname identifies the site for CSRF.
+      return new URL(origin).hostname === new URL(request.url).hostname;
     } catch {
       return false;
     }

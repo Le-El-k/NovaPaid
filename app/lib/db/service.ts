@@ -1,4 +1,6 @@
 import { getDatabase } from "./database.ts";
+import { getIntegrationConfigForAdmin, getPublicConfig as readPublicConfig } from "../config/runtime-config.ts";
+import { INTEGRATION_CONFIG, CONFIG_PREFIX } from "../config/config-registry.ts";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 const USER_SESSION_HOURS = 24 * 14;
@@ -2704,6 +2706,41 @@ export const NovaDbService = {
     writeAdminAudit(db, adminId, "super_admin", "update_setting", `setting:${key}`, `Mise à jour paramètre ${key}`);
 
     return { success: true };
+  },
+
+  // ---- Runtime integration config (API keys, emails, numbers) stored in the DB ----
+
+  // Admin view: non-secret values in clear, secret values masked.
+  getIntegrationConfig() {
+    return getIntegrationConfigForAdmin();
+  },
+
+  // Persist edited config into app_settings (key "cfg.<key>"). Secret fields left
+  // blank are kept as-is so the admin never has to re-enter them.
+  setIntegrationConfig(updates: Record<string, unknown>, adminId: number) {
+    const db = getDatabase();
+    const upsert = db.prepare(`
+      INSERT INTO app_settings (setting_key, setting_value, version, updated_by)
+      VALUES (?, ?, 1, ?)
+      ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, version = version + 1, updated_by = excluded.updated_by
+    `);
+    let changed = 0;
+    for (const field of INTEGRATION_CONFIG) {
+      if (!(field.key in updates)) continue;
+      const raw = updates[field.key];
+      const val = raw == null ? "" : String(raw).trim();
+      // Keep an existing secret when the admin leaves the field blank.
+      if (field.secret && val === "") continue;
+      upsert.run(CONFIG_PREFIX + field.key, JSON.stringify(val), adminId);
+      changed += 1;
+    }
+    writeAdminAudit(db, adminId, "super_admin", "update_integration_config", "config:integrations", `Mise à jour de ${changed} paramètre(s) d'intégration`);
+    return { success: true, changed };
+  },
+
+  // Non-secret config exposed to the browser (contact email/number, public keys).
+  getPublicConfig() {
+    return readPublicConfig();
   },
 
   // ==========================================

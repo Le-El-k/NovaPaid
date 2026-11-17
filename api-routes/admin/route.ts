@@ -6,6 +6,7 @@ const SECTION_PERMISSION: Record<string, string> = {
   session: "overview",
   revenue: "overview",
   boutique_analytics: "overview",
+  integrations: "settings",
   transactions: "transactions",
   support: "support",
   users: "users",
@@ -57,6 +58,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   delete_review: "reviews",
   add_review: "reviews",
   update_setting: "settings",
+  update_integration_config: "settings",
   review_transaction: "transactions",
   update_ticket: "support",
   reply_ticket: "support",
@@ -179,6 +181,7 @@ export async function GET(request: Request) {
         const days = Number(url.searchParams.get("days") || 30);
         return Response.json({ success: true, internet: NovaDbService.getGenyAnalytics(days) });
       }
+      case "integrations": return Response.json({ success: true, config: NovaDbService.getIntegrationConfig() });
       case "landing_cms": return Response.json({ success: true, sections: NovaDbService.getLandingPageSettings() });
       case "email_settings": return Response.json({ success: true, settings: NovaDbService.getEmailSettings() });
       case "email_campaigns": return Response.json({ success: true, campaigns: NovaDbService.getEmailCampaigns() });
@@ -370,6 +373,11 @@ export async function POST(request: Request) {
     }
     if (action === "update_setting") {
       const result = NovaDbService.updateAdminSetting(String(body.key || ""), body.value, admin.id);
+      return Response.json(result);
+    }
+
+    if (action === "update_integration_config") {
+      const result = NovaDbService.setIntegrationConfig(body.config || {}, admin.id);
       return Response.json(result);
     }
     if (action === "save_shop_section") {
