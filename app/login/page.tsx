@@ -207,15 +207,14 @@ export default function LoginPage() {
             )}
           </button>
 
-          <div className="text-center mt-3">
-            <Link href="/forgot-password" className="text-sm opacity-70 hover:opacity-100 transition-opacity" style={{ color: "var(--cyan, #00d4aa)" }}>
-              Mot de passe oublié ?
-            </Link>
-          </div>
         </form>
 
         <div className="np-auth-pwa">
           <PwaInstallButton className="np-pwa-install-btn--auth" />
+        </div>
+
+        <div className="np-auth-forgot">
+          <Link href="/forgot-password">Mot de passe oublié ?</Link>
         </div>
 
         <div className="np-auth-card-switch">

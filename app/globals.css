@@ -24680,3 +24680,13 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
   border: 1px solid rgba(239, 68, 68, .32);
 }
 .np-auth-error svg { flex: 0 0 auto; width: 14px; height: 14px; color: #dc2626; }
+
+.np-auth-forgot { margin-top: 12px; text-align: center; }
+.np-auth-forgot a {
+  color: #4567d5;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: color .15s;
+}
+.np-auth-forgot a:hover { color: #2f4bb8; text-decoration: underline; }
