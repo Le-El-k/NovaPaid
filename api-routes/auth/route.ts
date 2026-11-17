@@ -1,5 +1,5 @@
 import { NovaDbService } from "../../app/lib/db/service.ts";
-import { clientContext, expiredSessionCookie, getAuthenticatedUser, isSameOriginRequest, readCookie, sessionCookie, USER_SESSION_COOKIE } from "../../app/lib/auth/session.ts";
+import { clientContext, expiredSessionCookie, getAuthenticatedUser, isSameOriginRequest, readCookie, refreshUserSession, sessionCookie, USER_SESSION_COOKIE, USER_SESSION_MAX_AGE_SECONDS } from "../../app/lib/auth/session.ts";
 import { sendVerificationCodeEmail } from "../../app/lib/email/mailjet.ts";
 
 // Masks an email for display, e.g. "jo****@gmail.com".
@@ -18,7 +18,11 @@ export async function GET(request: Request) {
   const user = getAuthenticatedUser(request);
   if (!user) return Response.json({ success: false, error: "Session invalide ou expirée." }, { status: 401 });
   try {
-    return Response.json({ success: true, user, wallet: NovaDbService.getWallet(user.id) });
+    // Slide the session a month forward on every check so an active user is
+    // never logged out while they keep opening the app.
+    const refreshed = refreshUserSession(request);
+    const init = refreshed ? { headers: { "Set-Cookie": refreshed } } : undefined;
+    return Response.json({ success: true, user, wallet: NovaDbService.getWallet(user.id) }, init);
   } catch (error: any) {
     return Response.json({ success: false, error: error?.message || "Session invalide" }, { status: 401 });
   }
@@ -67,7 +71,7 @@ export async function POST(request: Request) {
       const { sessionToken, ...payload } = result;
       return Response.json(
         { ...payload, requiresEmailVerification: true, emailMasked: maskEmail(result.user.email) },
-        { status: 201, headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, 30 * 24 * 60 * 60) } }
+        { status: 201, headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, USER_SESSION_MAX_AGE_SECONDS) } }
       );
     }
 
@@ -107,7 +111,7 @@ export async function POST(request: Request) {
       const result = NovaDbService.completeLogin(userId, code, context);
       NovaDbService.clearAuthRateLimit(rateKey);
       const { sessionToken, ...payload } = result;
-      return Response.json(payload, { headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, 30 * 24 * 60 * 60) } });
+      return Response.json(payload, { headers: { "Set-Cookie": sessionCookie(USER_SESSION_COOKIE, sessionToken, USER_SESSION_MAX_AGE_SECONDS) } });
     }
 
     return Response.json({ success: false, error: "Action non reconnue (register, login, login_verify ou logout attendu)." }, { status: 400 });

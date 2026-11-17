@@ -4,6 +4,10 @@ import { getDatabase } from "../db/database.ts";
 export const USER_SESSION_COOKIE = "np_user_session";
 export const ADMIN_SESSION_COOKIE = "np_admin_session";
 
+// User sessions last one month. Kept here so the cookie Max-Age and the rolling
+// refresh below always agree with the DB expiry written on login/registration.
+export const USER_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
 export interface AuthenticatedUser {
   id: number;
   name: string;
@@ -102,6 +106,23 @@ export function getAuthenticatedAdmin(request: Request): AuthenticatedAdmin | nu
     role: row.role,
     permissions: row.permissions,
   };
+}
+
+// Rolling session: every authenticated check slides the expiry a full month
+// into the future (both the DB row and the browser cookie). An active user who
+// opens the app at least once a month therefore never gets logged out. Returns
+// the refreshed Set-Cookie value, or null when there is no session cookie.
+export function refreshUserSession(request: Request): string | null {
+  const token = readCookie(request, USER_SESSION_COOKIE);
+  if (!token) return null;
+  try {
+    getDatabase()
+      .prepare(`UPDATE user_sessions SET expires_at = datetime('now', '+30 days') WHERE session_token = ?`)
+      .run(hashSessionToken(token));
+  } catch {
+    // Best effort: a failed refresh must not break the auth response.
+  }
+  return sessionCookie(USER_SESSION_COOKIE, token, USER_SESSION_MAX_AGE_SECONDS);
 }
 
 export function sessionCookie(name: string, token: string, maxAgeSeconds: number): string {

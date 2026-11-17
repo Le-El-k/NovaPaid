@@ -18,6 +18,7 @@ import { SettingsSection } from "../settings/SettingsSection";
 import { ServiceUnavailable } from "../common/ServiceUnavailable";
 import { SERVICES_LIVE } from "@/app/lib/feature-flags";
 import { useLanguage } from "@/app/lib/i18n";
+import { checkSession } from "@/app/lib/auth/check-session";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronDown,
   ChevronRight, CheckCircle2, CircleHelp, Coins, CreditCard, Eye, Gamepad2, Info,
@@ -103,6 +104,9 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [authState, setAuthState] = useState<"checking" | "authed">("checking");
+  // Mirror of authState for use inside event listeners registered once on mount.
+  const authStateRef = useRef<"checking" | "authed">("checking");
+  authStateRef.current = authState;
   const { t, language } = useLanguage();
   const modalCloseRef = useRef<HTMLButtonElement>(null);
   const current = navItems.find((item) => item.id === active) ?? (active === "settings" ? profileNavItem : navItems[0]);
@@ -218,32 +222,45 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
 
   useEffect(() => {
     let active = true;
-    fetch("/api/auth")
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok || !data?.success || !data.user) {
-          const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-          window.location.replace(`/login?redirect=${encodeURIComponent(currentPath)}`);
-          return;
-        }
+
+    const goToLogin = () => {
+      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.replace(`/login?redirect=${encodeURIComponent(currentPath)}`);
+    };
+
+    const verifySession = () => {
+      checkSession().then((result) => {
         if (!active) return;
-        setUserProfile({
-          name: data.user.name,
-          email: data.user.email,
-          phone: data.user.phone || null,
-          role: data.user.role === "super_admin" ? "Administrateur" : "Compte client",
-          kycStatus: data.user.kycStatus || "not_started",
-        });
-        localStorage.removeItem("novapaid_current_user");
-        setAuthState("authed");
-        fetchDashboardData();
-      })
-      .catch(() => {
-        if (active) {
-          const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-          window.location.replace(`/login?redirect=${encodeURIComponent(currentPath)}`);
+        if (result.authed && result.user) {
+          const u = result.user as any;
+          setUserProfile({
+            name: u.name,
+            email: u.email,
+            phone: u.phone || null,
+            role: u.role === "super_admin" ? "Administrateur" : "Compte client",
+            kycStatus: u.kycStatus || "not_started",
+          });
+          localStorage.removeItem("novapaid_current_user");
+          setAuthState("authed");
+          fetchDashboardData();
+        } else if (result.networkError) {
+          // Keep the session; do not log out on a transient network failure.
+          // The online / visibility listeners below retry on their own.
+        } else {
+          goToLogin();
         }
       });
+    };
+
+    verifySession();
+
+    // Recover a session check that failed while offline, without logging out.
+    const onOnline = () => { if (authStateRef.current !== "authed") verifySession(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && authStateRef.current !== "authed") verifySession();
+    };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
 
     const onBalanceChange = (e: Event) => {
       const custom = e as CustomEvent<{ balance: number }>;
@@ -256,6 +273,8 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
     window.addEventListener("novapay:transfers-updated", fetchDashboardData);
     return () => {
       active = false;
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("novapay:balance-changed", onBalanceChange);
       window.removeEventListener("novapay:transfers-updated", fetchDashboardData);
     };

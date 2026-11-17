@@ -4,32 +4,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import LandingPage from "@/app/components/landing/LandingPage";
+import { checkSession } from "@/app/lib/auth/check-session";
 
 export default function Home() {
   const router = useRouter();
   // When the PWA reopens, its start_url is "/", which renders the landing page.
   // An already-authenticated user would see the landing and feel logged out, so
   // check the server session first and send them straight to the dashboard. The
-  // session cookie persists for a month, so returning users stay signed in.
+  // session cookie persists (and is renewed) for a month, so returning users stay
+  // signed in. A transient network failure falls back to the public landing.
   const [status, setStatus] = useState<"checking" | "guest">("checking");
 
   useEffect(() => {
     let active = true;
-
-    fetch("/api/auth")
-      .then(async (res) => {
-        const data = await res.json().catch(() => null);
-        if (!active) return;
-        if (res.ok && data?.success && data.user) {
-          window.location.replace("/dashboard");
-          return;
-        }
-        setStatus("guest");
-      })
-      .catch(() => {
-        if (active) setStatus("guest");
-      });
-
+    checkSession().then((result) => {
+      if (!active) return;
+      if (result.authed) {
+        window.location.replace("/dashboard");
+        return;
+      }
+      setStatus("guest");
+    });
     return () => {
       active = false;
     };
