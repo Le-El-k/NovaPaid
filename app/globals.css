@@ -24614,10 +24614,11 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
 .np-admin-integrations-msg.is-ok { color: #4ade80; background: rgba(74, 222, 128, .1); border: 1px solid rgba(74, 222, 128, .25); }
 .np-admin-integrations-msg.is-error { color: #f87171; background: rgba(239, 68, 68, .1); border: 1px solid rgba(239, 68, 68, .25); }
 .np-admin-integrations-empty { color: var(--prism-text-muted, #8b949e); }
-/* Masonry-style columns: cards pack tightly top-to-bottom instead of leaving
-   large gaps under shorter cards in a fixed-height row grid. */
-.np-admin-integrations-grid { columns: 430px; column-gap: 16px; }
-.np-admin-integration-card { display: grid; gap: 16px; padding: 20px !important; break-inside: avoid; width: 100%; margin: 0 0 16px; }
+/* Disposition en lignes : les cartes se placent de gauche à droite (ordre de
+   lecture naturel), avec des gouttières régulières et une collecte responsive.
+   align-items:start conserve la hauteur propre de chaque carte (pas d'étirement). */
+.np-admin-integrations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-items: start; }
+.np-admin-integration-card { display: grid; gap: 16px; padding: 20px !important; width: 100%; margin: 0; }
 .np-admin-integration-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .np-admin-integration-card h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; color: var(--prism-text-bright, #f0f6fc); font-size: 16px; }
 .np-admin-integration-card header p { margin: 0; color: var(--prism-text-muted, #8b949e); font-size: 12px; line-height: 1.5; }

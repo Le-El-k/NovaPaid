@@ -244,6 +244,8 @@ export default function AdminAnalytics() {
   const { t } = useLanguage();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [orders, setOrders] = useState<GenyOrderRow[]>([]);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const ORDERS_PER_PAGE = 10;
   const [activeFilter, setActiveFilter] = useState("last_30_days");
   const [chartLoaded, setChartLoaded] = useState(false);
   const revenueChartRef = useRef<HTMLCanvasElement>(null);
@@ -269,8 +271,9 @@ export default function AdminAnalytics() {
         const internet: BoutiqueInternet = (j?.success && j.internet) ? j.internet : emptyInternet;
         setData(buildAnalytics(internet, t));
         setOrders(internet.orders || []);
+        setOrdersPage(1);
       })
-      .catch(() => { if (active) { setData(buildAnalytics(emptyInternet, t)); setOrders([]); } });
+      .catch(() => { if (active) { setData(buildAnalytics(emptyInternet, t)); setOrders([]); setOrdersPage(1); } });
     if (typeof window !== "undefined" && !(window as any).Chart) {
       const script = document.createElement("script");
       script.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js";
@@ -434,6 +437,11 @@ export default function AdminAnalytics() {
       </div>
     );
   }
+
+  // Pagination des commandes internet : 10 lignes maximum par page.
+  const ordersTotalPages = Math.max(1, Math.ceil(orders.length / ORDERS_PER_PAGE));
+  const ordersCurrentPage = Math.min(Math.max(1, ordersPage), ordersTotalPages);
+  const pagedOrders = orders.slice((ordersCurrentPage - 1) * ORDERS_PER_PAGE, ordersCurrentPage * ORDERS_PER_PAGE);
 
   return (
     <div className="np-page-enter np-admin-analytics" style={{ padding: "0 0 40px" }}>
@@ -612,7 +620,7 @@ export default function AdminAnalytics() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => {
+                {pagedOrders.map((o) => {
                   const ok = o.status === "succeeded";
                   const bad = o.status === "failed" || o.status === "expired";
                   const color = ok ? "#10b981" : bad ? "#ef4444" : "#f59e0b";
@@ -636,6 +644,34 @@ export default function AdminAnalytics() {
                 })}
               </tbody>
             </table>
+            {ordersTotalPages > 1 && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "14px 12px 4px", borderTop: "1px solid var(--np-border-light)", marginTop: 4 }}>
+                <span style={{ fontSize: 12, color: "var(--np-text-muted)" }}>
+                  {`${(ordersCurrentPage - 1) * ORDERS_PER_PAGE + 1}–${Math.min(ordersCurrentPage * ORDERS_PER_PAGE, orders.length)} / ${orders.length}`}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setOrdersPage((p) => Math.max(1, p - 1))}
+                    disabled={ordersCurrentPage <= 1}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--np-border)", background: "transparent", color: "var(--np-text-secondary)", fontSize: 12, fontWeight: 600, cursor: ordersCurrentPage <= 1 ? "not-allowed" : "pointer", opacity: ordersCurrentPage <= 1 ? 0.5 : 1 }}
+                  >
+                    <span aria-hidden="true">‹</span> {t("previous")}
+                  </button>
+                  <span style={{ fontSize: 12, color: "var(--np-text-secondary)", fontWeight: 600, minWidth: 60, textAlign: "center" }}>
+                    {`${ordersCurrentPage} / ${ordersTotalPages}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOrdersPage((p) => Math.min(ordersTotalPages, p + 1))}
+                    disabled={ordersCurrentPage >= ordersTotalPages}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--np-border)", background: "transparent", color: "var(--np-text-secondary)", fontSize: 12, fontWeight: 600, cursor: ordersCurrentPage >= ordersTotalPages ? "not-allowed" : "pointer", opacity: ordersCurrentPage >= ordersTotalPages ? 0.5 : 1 }}
+                  >
+                    {t("next")} <span aria-hidden="true">›</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
