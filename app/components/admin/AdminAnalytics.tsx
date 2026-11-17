@@ -285,7 +285,10 @@ export default function AdminAnalytics() {
     chartInstances.current.forEach(c => c?.destroy());
     chartInstances.current = [];
 
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    // L'espace admin est toujours rendu en thème sombre : on force les couleurs
+    // de graphiques (axes, légendes, tooltip) en version sombre pour rester
+    // lisibles et cohérentes avec le reste de la plateforme.
+    const isDark = true;
     const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
     const textColor = isDark ? "#94a3b8" : "#64748b";
 
@@ -431,7 +434,7 @@ export default function AdminAnalytics() {
   }
 
   return (
-    <div className="np-page-enter" style={{ padding: "0 0 40px" }}>
+    <div className="np-page-enter np-admin-analytics" style={{ padding: "0 0 40px" }}>
       <div style={{
         display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "11px 14px",
         borderRadius: 12, background: "rgba(59,130,246,.10)", border: "1px solid rgba(59,130,246,.25)",

@@ -24632,3 +24632,33 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
 .np-admin-integration-input > :first-child { flex: 1 1 auto; min-width: 0; width: 100%; }
 .np-admin-integration-help { color: var(--prism-text-muted, #8b949e); font-size: 11px; line-height: 1.45; }
 .np-admin-integration-card > footer { display: flex; justify-content: flex-end; }
+
+/* ============================================================
+   ADMIN · Analytics — cohérence couleurs avec le thème sombre
+   L'écran Analytics utilise les tokens génériques --np-* (valeurs claires) et
+   des cartes blanches, illisibles sur le fond sombre de l'admin. On redéfinit
+   ces tokens et les surfaces en version sombre, UNIQUEMENT dans cet écran.
+   (Aucun changement de disposition : seulement couleurs et contraste.)
+   ============================================================ */
+.np-admin-analytics {
+  --np-text: #e6edf3;
+  --np-text-secondary: #aab4c0;
+  --np-text-muted: #8b949e;
+  --np-border: #2a313c;
+  --np-border-light: rgba(255, 255, 255, .07);
+  --np-surface-hover: rgba(255, 255, 255, .04);
+  --np-bg-alt: rgba(255, 255, 255, .06);
+  --np-accent: #6366f1;
+}
+.np-admin-analytics .np-stat-card {
+  background: #161b22;
+  border: 1px solid #2a313c;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+}
+.np-admin-analytics .np-chart-container {
+  background: #161b22;
+  border: 1px solid #2a313c;
+}
+.np-admin-analytics .np-chart-title { color: #e6edf3; }
+.np-admin-analytics .np-chart-filter-btn { color: #aab4c0; }
+.np-admin-analytics .np-chart-filter-btn.active { color: #ffffff; }
