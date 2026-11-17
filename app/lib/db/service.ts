@@ -3124,6 +3124,18 @@ export const NovaDbService = {
 
   createVerificationCode(userId: number, type: "registration" | "login" | "card_verification" | "email_change" | "password_reset" = "login", channel: "email" | "sms" = "email") {
     const db = getDatabase();
+    // Plafond anti-abus : au plus 3 codes envoyés par email pour un même type sur
+    // une fenêtre glissante de 15 min (1 envoi initial + 2 renvois). Au-delà, on
+    // refuse pour éviter le "bombardement" d'emails ; la limite se réinitialise
+    // d'elle-même une fois la fenêtre écoulée.
+    const MAX_CODES_PER_WINDOW = 3;
+    const WINDOW_MINUTES = 15;
+    const recent = db.prepare(
+      "SELECT COUNT(*) AS n FROM verification_codes WHERE user_id = ? AND type = ? AND created_at > datetime('now', ?)",
+    ).get(userId, type, `-${WINDOW_MINUTES} minutes`) as any;
+    if (Number(recent?.n || 0) >= MAX_CODES_PER_WINDOW) {
+      throw new Error("Limite de 3 codes par email atteinte. Patientez quelques minutes avant d’en demander un nouveau.");
+    }
     // Invalider les anciens codes non utilisés du même type
     db.prepare("UPDATE verification_codes SET used = 1 WHERE user_id = ? AND type = ? AND used = 0").run(userId, type);
     const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 digits
