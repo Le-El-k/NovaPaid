@@ -24611,3 +24611,9 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
   .geny-code-value code { width:100%; white-space:normal; word-break:break-all; overflow-wrap:anywhere; overflow:visible; text-overflow:clip; font-size:13px; line-height:1.35; }
   .geny-code-value button { width:100%; justify-content:center; }
 }
+
+/* Fix: le scrim mobile generique (.np-mobile-scrim { z-index:98 }) recouvrait la
+   sidebar du dashboard utilisateur et interceptait les clics sur les liens de nav.
+   On remet la sidebar au-dessus du voile dans l'espace utilisateur. */
+.np-app .np-sidebar { z-index: 120; }
+.np-app .np-mobile-scrim { z-index: 110; inset: 0; }
