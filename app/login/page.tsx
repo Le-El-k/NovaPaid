@@ -161,13 +161,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {(errorMsg || lockRemaining > 0) && (
-            <div className="np-auth-error" role="alert">
-              <Info size={16} />
-              <span>{lockRemaining > 0 ? `Trop de tentatives. Réessayez dans ${formatMmSs(lockRemaining)}.` : errorMsg}</span>
-            </div>
-          )}
-
           <div className="np-form-group">
             <label className="np-form-label" htmlFor="login-pass">Mot de passe</label>
             <div className="np-input-wrapper">
@@ -191,6 +184,13 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          {(errorMsg || lockRemaining > 0) && (
+            <div className="np-auth-error" role="alert">
+              <Info size={16} />
+              <span>{lockRemaining > 0 ? `Trop de tentatives. Réessayez dans ${formatMmSs(lockRemaining)}.` : errorMsg}</span>
+            </div>
+          )}
 
           <button type="submit" className="np-primary-button np-submit-btn np-auth-submit" disabled={loading || lockRemaining > 0}>
             {loading ? (
