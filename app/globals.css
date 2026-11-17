@@ -18480,6 +18480,7 @@ button.np-storefront-progress-step:hover {
     border-radius: 13px;
   }
   .np-admin-nav button > span:not(.np-admin-nav-count):not(.np-admin-nav-badge) { display: none; }
+  .np-admin-nav-section-label { display: none; }
   .np-admin-nav button > svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .np-admin-nav button:hover { transform: none; }
   .np-admin-nav button.active { box-shadow: 0 6px 16px rgba(72, 103, 221, .19); }
