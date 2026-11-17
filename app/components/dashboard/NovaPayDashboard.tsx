@@ -21,7 +21,7 @@ import { useLanguage } from "@/app/lib/i18n";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronDown,
   ChevronRight, CheckCircle2, CircleHelp, Coins, CreditCard, Eye, Gamepad2, Info,
-  History, Home, LockKeyhole, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingBag,
+  History, Home, LoaderCircle, LockKeyhole, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingBag,
   ShieldAlert, Smartphone, Sparkles, Star, Wallet, Wifi, X,
 } from "lucide-react";
 
@@ -102,6 +102,7 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
   const [userProfile, setUserProfile] = useState<DashboardProfile>({ name: "", email: "", phone: null, role: "Compte client", kycStatus: "not_started" });
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [authState, setAuthState] = useState<"checking" | "authed">("checking");
   const { t, language } = useLanguage();
   const modalCloseRef = useRef<HTMLButtonElement>(null);
   const current = navItems.find((item) => item.id === active) ?? (active === "settings" ? profileNavItem : navItems[0]);
@@ -234,6 +235,7 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
           kycStatus: data.user.kycStatus || "not_started",
         });
         localStorage.removeItem("novapaid_current_user");
+        setAuthState("authed");
         fetchDashboardData();
       })
       .catch(() => {
@@ -281,6 +283,16 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [action]);
+
+  // Hard auth gate: block all dashboard content until the server session is
+  // confirmed, so no protected page ever renders for an unauthenticated visitor.
+  if (authState !== "authed") {
+    return (
+      <div className="np-auth-gate-loading" role="status" aria-live="polite">
+        <LoaderCircle size={26} className="np-auth-gate-spin" />
+      </div>
+    );
+  }
 
   return (
     <main className="np-app">
