@@ -88,6 +88,10 @@ export async function POST(request: Request) {
 
     return Response.json({ success: false, error: "Action non reconnue." }, { status: 400 });
   } catch (error: any) {
-    return Response.json({ success: false, error: error?.message || "Erreur de vérification." }, { status: 400 });
+    const retryAfter = error?.retryAfter;
+    return Response.json(
+      { success: false, error: error?.message || "Erreur de vérification.", ...(retryAfter ? { retryAfter } : {}) },
+      retryAfter ? { status: 429, headers: { "Retry-After": String(retryAfter) } } : { status: 400 },
+    );
   }
 }

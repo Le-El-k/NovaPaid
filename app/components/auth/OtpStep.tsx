@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Info, Loader2, ShieldCheck } from "lucide-react";
 
 type OtpStepProps = {
@@ -13,12 +13,30 @@ type OtpStepProps = {
   onBack?: () => void;
 };
 
+function formatMmSs(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 // Shared 6-digit code entry used by the login and registration flows.
 export function OtpStep({ title, description, emailMasked, submitLabel, onVerify, onResend, onBack }: OtpStepProps) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  // Lock countdown: when the server caps resends (max 3 codes → 30 min), it
+  // returns `retryAfter` (seconds); we count it down live and disable resending.
+  const [lockUntil, setLockUntil] = useState(0);
+  const [nowTs, setNowTs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (lockUntil <= Date.now()) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [lockUntil]);
+
+  const lockRemaining = Math.max(0, Math.ceil((lockUntil - nowTs) / 1000));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +53,7 @@ export function OtpStep({ title, description, emailMasked, submitLabel, onVerify
   };
 
   const handleResend = async () => {
+    if (lockRemaining > 0 || resendState !== "idle") return;
     setError(null);
     setResendState("sending");
     try {
@@ -42,6 +61,10 @@ export function OtpStep({ title, description, emailMasked, submitLabel, onVerify
       setResendState("sent");
       setTimeout(() => setResendState("idle"), 4000);
     } catch (err: any) {
+      if (err?.retryAfter) {
+        setLockUntil(Date.now() + Number(err.retryAfter) * 1000);
+        setNowTs(Date.now());
+      }
       setError(err?.message || "Impossible de renvoyer le code.");
       setResendState("idle");
     }
@@ -55,10 +78,14 @@ export function OtpStep({ title, description, emailMasked, submitLabel, onVerify
         <p>{description}{emailMasked ? <> <strong>{emailMasked}</strong></> : null}</p>
       </div>
 
-      {error && (
+      {(error || lockRemaining > 0) && (
         <div className="np-alert-banner danger np-auth-error">
           <Info size={16} />
-          <span>{error}</span>
+          <span>
+            {lockRemaining > 0
+              ? `Limite de 3 codes atteinte. Réessayez dans ${formatMmSs(lockRemaining)}.`
+              : error}
+          </span>
         </div>
       )}
 
@@ -85,8 +112,10 @@ export function OtpStep({ title, description, emailMasked, submitLabel, onVerify
       </form>
 
       <div className="np-auth-otp-actions">
-        <button type="button" className="np-auth-otp-resend" onClick={handleResend} disabled={resendState !== "idle"}>
-          {resendState === "sending" ? "Envoi…" : resendState === "sent" ? "Code renvoyé ✓" : "Renvoyer le code"}
+        <button type="button" className="np-auth-otp-resend" onClick={handleResend} disabled={resendState !== "idle" || lockRemaining > 0}>
+          {lockRemaining > 0
+            ? `Renvoi possible dans ${formatMmSs(lockRemaining)}`
+            : resendState === "sending" ? "Envoi…" : resendState === "sent" ? "Code renvoyé ✓" : "Renvoyer le code"}
         </button>
         {onBack && (
           <button type="button" className="np-auth-otp-back" onClick={onBack}>

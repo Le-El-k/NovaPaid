@@ -82,7 +82,11 @@ export default function RegisterPage() {
       body: JSON.stringify({ action: "send_email_code" }),
     });
     const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || "Impossible de renvoyer le code.");
+    if (!res.ok || !data.success) {
+      const e: any = new Error(data.error || "Impossible de renvoyer le code.");
+      if (data.retryAfter) e.retryAfter = Number(data.retryAfter);
+      throw e;
+    }
   };
 
   return (

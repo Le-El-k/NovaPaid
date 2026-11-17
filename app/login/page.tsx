@@ -9,6 +9,12 @@ import { resolveAuthRedirect } from "@/app/lib/auth/redirect";
 import { PwaInstallButton } from "@/app/components/pwa/PwaInstallButton";
 import { OtpStep } from "@/app/components/auth/OtpStep";
 
+function formatMmSs(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function LoginPage() {
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -19,10 +25,21 @@ export default function LoginPage() {
   const [step, setStep] = useState<"credentials" | "code">("credentials");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [emailMasked, setEmailMasked] = useState("");
+  // Lock countdown after too many failed passwords (server returns retryAfter, 5 min).
+  const [lockUntil, setLockUntil] = useState(0);
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   useEffect(() => {
     setReturnTo(resolveAuthRedirect(window.location.search));
   }, []);
+
+  useEffect(() => {
+    if (lockUntil <= Date.now()) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [lockUntil]);
+
+  const lockRemaining = Math.max(0, Math.ceil((lockUntil - nowTs) / 1000));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +59,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
+        if (data.retryAfter) { setLockUntil(Date.now() + Number(data.retryAfter) * 1000); setNowTs(Date.now()); }
         throw new Error(data.error || "Identifiant ou mot de passe incorrect.");
       }
 
@@ -81,7 +99,11 @@ export default function LoginPage() {
       body: JSON.stringify({ action: "send_login_code", userId: pendingUserId }),
     });
     const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || "Impossible de renvoyer le code.");
+    if (!res.ok || !data.success) {
+      const e: any = new Error(data.error || "Impossible de renvoyer le code.");
+      if (data.retryAfter) e.retryAfter = Number(data.retryAfter);
+      throw e;
+    }
   };
 
   return (
@@ -121,10 +143,10 @@ export default function LoginPage() {
               <p>Accédez à votre compte NovaPaid.</p>
             </div>
 
-        {errorMsg && (
+        {(errorMsg || lockRemaining > 0) && (
           <div className="np-alert-banner danger np-auth-error">
             <Info size={16} />
-            <span>{errorMsg}</span>
+            <span>{lockRemaining > 0 ? `Trop de tentatives. Réessayez dans ${formatMmSs(lockRemaining)}.` : errorMsg}</span>
           </div>
         )}
 
@@ -170,12 +192,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button type="submit" className="np-primary-button np-submit-btn np-auth-submit" disabled={loading}>
+          <button type="submit" className="np-primary-button np-submit-btn np-auth-submit" disabled={loading || lockRemaining > 0}>
             {loading ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
                 <span>Connexion en cours...</span>
               </>
+            ) : lockRemaining > 0 ? (
+              <span>Réessayez dans {formatMmSs(lockRemaining)}</span>
             ) : (
               <>
                 <span>Se connecter</span>

@@ -79,8 +79,9 @@ export async function POST(request: Request) {
         return Response.json({ success: false, error: "Identifiant (email ou téléphone) et mot de passe requis." }, { status: 400 });
       }
       const rateKey = `login:${ipKey(request)}:${identifier.toLowerCase()}`;
-      const retryAfter = NovaDbService.checkAuthRateLimit(rateKey);
-      if (retryAfter) return Response.json({ success: false, error: "Trop de tentatives. Réessayez dans quelques minutes." }, { status: 429, headers: { "Retry-After": String(retryAfter) } });
+      // Mot de passe raté plus de 5 fois → verrou de 5 min (avec décompte côté client).
+      const retryAfter = NovaDbService.checkAuthRateLimit(rateKey, 6, 15 * 60 * 1000, 5 * 60 * 1000);
+      if (retryAfter) return Response.json({ success: false, error: "Trop de tentatives de connexion. Réessayez plus tard.", retryAfter }, { status: 429, headers: { "Retry-After": String(retryAfter) } });
 
       const begun = NovaDbService.beginLogin(identifier, password);
       NovaDbService.clearAuthRateLimit(rateKey);
@@ -111,6 +112,10 @@ export async function POST(request: Request) {
 
     return Response.json({ success: false, error: "Action non reconnue (register, login, login_verify ou logout attendu)." }, { status: 400 });
   } catch (error: any) {
-    return Response.json({ success: false, error: error?.message || "Erreur d'authentification" }, { status: 400 });
+    const retryAfter = error?.retryAfter;
+    return Response.json(
+      { success: false, error: error?.message || "Erreur d'authentification", ...(retryAfter ? { retryAfter } : {}) },
+      retryAfter ? { status: 429, headers: { "Retry-After": String(retryAfter) } } : { status: 400 },
+    );
   }
 }
