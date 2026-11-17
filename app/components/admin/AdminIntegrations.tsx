@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { KeyRound, Loader2, Save, ShieldCheck } from "lucide-react";
+import { KeyRound, Loader2, Save, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 type Field =
   | { key: string; group: string; label: string; secret: true; isSet: boolean; preview: string }
   | { key: string; group: string; label: string; secret: false; value: string };
 
 // Admin editor for all runtime config (API keys, emails, numbers) stored in the DB.
+// Visual style mirrors the former provider cards (.np-admin-integrations*), while the
+// data/save logic uses the current flat runtime-config backend.
 export default function AdminIntegrations() {
   const [fields, setFields] = useState<Field[]>([]);
   const [form, setForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const load = async () => {
@@ -39,13 +41,13 @@ export default function AdminIntegrations() {
     return [...map.entries()];
   }, [fields]);
 
-  const save = async () => {
-    setSaving(true);
+  const save = async (group: string, list: Field[]) => {
+    setSaving(group);
     setMsg(null);
     try {
-      // Send all non-secret fields, and only secret fields the admin actually typed.
+      // Send this group's non-secret fields, and only the secret fields actually typed.
       const config: Record<string, string> = {};
-      for (const f of fields) {
+      for (const f of list) {
         if (f.secret) { if (form[f.key] && form[f.key].trim()) config[f.key] = form[f.key].trim(); }
         else config[f.key] = form[f.key] ?? "";
       }
@@ -55,61 +57,93 @@ export default function AdminIntegrations() {
         body: JSON.stringify({ action: "update_integration_config", config }),
       }).then((r) => r.json());
       if (!j?.success) throw new Error(j?.error || "Échec de l'enregistrement.");
-      setMsg({ kind: "ok", text: `Enregistré (${j.changed} paramètre(s)).` });
+      setMsg({ kind: "ok", text: `${group} : réglages enregistrés.` });
       await load();
     } catch (e: any) {
       setMsg({ kind: "err", text: e?.message || "Erreur." });
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
-  if (loading) {
-    return <div style={{ padding: 24, color: "var(--np-text-muted)", display: "flex", gap: 8, alignItems: "center" }}><Loader2 size={16} className="animate-spin" /> Chargement…</div>;
+  if (loading && fields.length === 0) {
+    return <p className="np-admin-integrations-empty" style={{ display: "flex", gap: 8, alignItems: "center", padding: 24 }}><Loader2 size={16} className="animate-spin" /> Chargement…</p>;
   }
 
   return (
-    <div style={{ padding: "0 0 40px", maxWidth: 820 }}>
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 20, padding: "11px 14px", borderRadius: 12, background: "rgba(245,158,11,.1)", border: "1px solid rgba(245,158,11,.3)", color: "var(--np-text-secondary)", fontSize: 12.5, lineHeight: 1.5 }}>
-        <ShieldCheck size={18} style={{ flex: "0 0 auto", marginTop: 1 }} />
-        <span>Ces valeurs sont lues depuis la base de données (repli sur les fichiers .env). Les clés secrètes sont masquées : laissez un champ secret <strong>vide</strong> pour conserver la valeur actuelle. Garde ce panneau réservé aux administrateurs.</span>
+    <div className="np-admin-integrations">
+      <div className="np-admin-integrations-head">
+        <p>
+          Toutes les valeurs (clés API, e-mails, numéros) sont lues depuis la base de données, avec repli sur les
+          fichiers <code>.env</code>. Un secret déjà défini n’est jamais réaffiché : laissez le champ <strong>vide</strong> pour le conserver.
+        </p>
+        <button type="button" className="np-secondary-button" onClick={load} disabled={loading}>
+          <RefreshCw size={14} /> Actualiser
+        </button>
       </div>
 
-      {groups.map(([group, list]) => (
-        <div key={group} className="np-stat-card" style={{ marginBottom: 18, padding: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontWeight: 700, color: "var(--np-text)", fontSize: 15 }}>
-            <KeyRound size={16} /> {group}
-          </div>
-          <div style={{ display: "grid", gap: 14 }}>
-            {list.map((f) => (
-              <div key={f.key}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--np-text-secondary)", marginBottom: 5 }}>
-                  {f.label}{f.secret && <span style={{ color: "var(--np-text-muted)", fontWeight: 400 }}> — secret{(f as any).isSet ? ` (actuel : ${(f as any).preview})` : " (non défini)"}</span>}
-                </label>
-                <input
-                  className="np-text-input"
-                  style={{ width: "100%" }}
-                  type={f.secret ? "password" : "text"}
-                  value={form[f.key] ?? ""}
-                  placeholder={f.secret ? "Laisser vide pour conserver" : ""}
-                  autoComplete="off"
-                  onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-
       {msg && (
-        <div style={{ marginBottom: 14, padding: "10px 13px", borderRadius: 10, fontSize: 13, background: msg.kind === "ok" ? "rgba(16,185,129,.12)" : "rgba(239,68,68,.12)", color: msg.kind === "ok" ? "#10b981" : "#ef4444" }}>
-          {msg.text}
+        <div className={`np-admin-integrations-msg is-${msg.kind === "ok" ? "ok" : "error"}`} role="status">
+          {msg.kind === "ok" ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {msg.text}
         </div>
       )}
 
-      <button type="button" className="np-primary-button" onClick={save} disabled={saving} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Enregistrer
-      </button>
+      <div className="np-admin-integrations-grid">
+        {groups.map(([group, list]) => {
+          const configured = list.some((f) => (f.secret ? f.isSet : Boolean((f as any).value)));
+          return (
+            <section key={group} className="np-panel np-admin-integration-card">
+              <header>
+                <div>
+                  <h3><KeyRound size={16} /> {group}</h3>
+                  <p>{list.length} paramètre{list.length > 1 ? "s" : ""}</p>
+                </div>
+                <span className={`np-admin-integration-badge${configured ? " is-on" : ""}`}>
+                  {configured ? "Configuré" : "Non configuré"}
+                </span>
+              </header>
+
+              <div className="np-admin-integration-fields">
+                {list.map((f) => {
+                  const id = `integ-${f.key}`;
+                  return (
+                    <div key={f.key} className="np-admin-integration-field">
+                      <label htmlFor={id} className="np-form-label">
+                        {f.label}
+                        {f.secret && <span className="np-admin-integration-tag">secret</span>}
+                      </label>
+                      <div className="np-admin-integration-input">
+                        <input
+                          id={id}
+                          className="np-text-input"
+                          style={{ width: "100%" }}
+                          type={f.secret ? "password" : "text"}
+                          value={form[f.key] ?? ""}
+                          placeholder={f.secret ? "Laisser vide pour conserver" : ""}
+                          autoComplete="off"
+                          spellCheck={false}
+                          onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                        />
+                      </div>
+                      {f.secret && (
+                        <span className="np-admin-integration-help">
+                          {f.isSet ? `Actuel : ${f.preview}` : "Non défini"}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <footer>
+                <button type="button" className="np-primary-button" onClick={() => save(group, list)} disabled={saving === group} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  {saving === group ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Enregistrer
+                </button>
+              </footer>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
