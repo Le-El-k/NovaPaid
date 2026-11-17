@@ -24668,15 +24668,15 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
 .np-auth-error {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin: 2px 0 8px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  font-size: 12.5px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  font-size: 11px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.35;
   color: #dc2626;
   background: rgba(239, 68, 68, .09);
   border: 1px solid rgba(239, 68, 68, .32);
 }
-.np-auth-error svg { flex: 0 0 auto; color: #dc2626; }
+.np-auth-error svg { flex: 0 0 auto; width: 14px; height: 14px; color: #dc2626; }
