@@ -44,11 +44,11 @@ interface AnalyticsData {
 
 interface GenyOrderRow {
   orderRef: string; userName: string; userEmail: string; planName: string;
-  amountXaf: number; phone: string; operator: string; status: string; code: string;
+  amountXaf: number; marginXaf?: number; phone: string; operator: string; status: string; code: string;
   livemode: boolean; createdAt: string;
 }
 interface BoutiqueInternet {
-  stats: { total: number; succeeded: number; failed: number; pending: number; revenue: number; revenueToday: number; revenueMonth: number };
+  stats: { total: number; succeeded: number; failed: number; pending: number; revenue: number; revenueToday: number; revenueMonth: number; profit?: number; profitToday?: number; profitMonth?: number };
   orders: GenyOrderRow[];
   dailyRevenue: { date: string; amount: number }[];
 }
@@ -58,11 +58,13 @@ interface BoutiqueInternet {
 // recorded too (no more fabricated numbers).
 function buildAnalytics(internet: BoutiqueInternet, t: (key: string) => string): AnalyticsData {
   const st = internet.stats;
+  // Le bénéfice internet = la somme des marges (prix client − prix revendeur).
+  const internetProfit = Number(st.profit) || 0;
   const activities: ActivityData[] = [
     {
       name: t("aana_act_internet"), key: "internet", icon: "📡", color: "#3b82f6",
       revenue: st.revenue, orders: st.succeeded, transactions: st.total,
-      costs: 0, profit: null, growth: 0, topItems: [],
+      costs: Math.max(0, st.revenue - internetProfit), profit: internetProfit, growth: 0, topItems: [],
     },
     { name: t("aana_act_tiktok"), key: "tiktok", icon: "🎵", color: "#ec4899", revenue: 0, orders: 0, transactions: 0, costs: 0, profit: null, growth: 0, topItems: [] },
     { name: t("aana_act_gaming"), key: "gaming", icon: "🎮", color: "#8b5cf6", revenue: 0, orders: 0, transactions: 0, costs: 0, profit: null, growth: 0, topItems: [] },
@@ -80,7 +82,7 @@ function buildAnalytics(internet: BoutiqueInternet, t: (key: string) => string):
 
   return {
     totalRevenue: st.revenue,
-    netProfit: null,
+    netProfit: internetProfit,
     totalTransactions: st.total,
     successfulTx: st.succeeded,
     pendingTx: st.pending,
@@ -604,8 +606,8 @@ export default function AdminAnalytics() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--np-border)" }}>
-                  {[t("aana_th_date"), t("aana_th_buyer"), t("aana_th_plan"), t("aana_th_amount"), t("aana_th_number"), t("aana_th_status"), t("aana_th_code")].map((h, i) => (
-                    <th key={i} style={{ textAlign: i >= 3 && i <= 3 ? "right" : "left", padding: "10px 12px", color: "var(--np-text-secondary)", fontWeight: 600, fontSize: 11, textTransform: "uppercase" as const, letterSpacing: ".5px", whiteSpace: "nowrap" }}>{h}</th>
+                  {[t("aana_th_date"), t("aana_th_buyer"), t("aana_th_plan"), t("aana_th_amount"), t("aana_th_profit"), t("aana_th_number"), t("aana_th_status"), t("aana_th_code")].map((h, i) => (
+                    <th key={i} style={{ textAlign: i >= 3 && i <= 4 ? "right" : "left", padding: "10px 12px", color: "var(--np-text-secondary)", fontWeight: 600, fontSize: 11, textTransform: "uppercase" as const, letterSpacing: ".5px", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -623,6 +625,7 @@ export default function AdminAnalytics() {
                       </td>
                       <td style={{ padding: "10px 12px", color: "var(--np-text-secondary)" }}>{o.planName || "—"}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, color: "var(--np-text)", whiteSpace: "nowrap" }}>{formatAmount(o.amountXaf)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, color: ok && (o.marginXaf || 0) > 0 ? "#10b981" : "var(--np-text-muted)", whiteSpace: "nowrap" }}>{ok ? `+${formatAmount(o.marginXaf || 0)}` : "—"}</td>
                       <td style={{ padding: "10px 12px", color: "var(--np-text-secondary)", whiteSpace: "nowrap" }}>{o.phone}{o.operator ? ` · ${o.operator}` : ""}</td>
                       <td style={{ padding: "10px 12px" }}>
                         <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: `${color}1a`, color }}>{o.status}</span>

@@ -223,6 +223,8 @@ function initSchemaAndSeeds(db: DatabaseSync) {
       plan_id TEXT NOT NULL DEFAULT '',
       plan_name TEXT NOT NULL DEFAULT '',
       amount_xaf INTEGER NOT NULL DEFAULT 0,
+      wholesale_xaf INTEGER NOT NULL DEFAULT 0,
+      margin_xaf INTEGER NOT NULL DEFAULT 0,
       phone TEXT NOT NULL DEFAULT '',
       operator TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'pending',
@@ -1546,6 +1548,10 @@ function initSchemaAndSeeds(db: DatabaseSync) {
   ensureColumn(db, "users", "privacy_version", "TEXT");
   ensureColumn(db, "users", "deleted_at", "TEXT");
   ensureColumn(db, "users", "last_deposit_help_popup_shown_at", "TEXT");
+
+  // Geny internet orders – prix de gros (revendeur) et marge (bénéfice NovaPaid).
+  ensureColumn(db, "geny_orders", "wholesale_xaf", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "geny_orders", "margin_xaf", "INTEGER NOT NULL DEFAULT 0");
 
   // Cards – colonnes enrichies PrismCard parity
   ensureColumn(db, "cards", "maplerad_id", "TEXT");

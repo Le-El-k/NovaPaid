@@ -211,6 +211,13 @@ export async function POST(request: Request) {
     // Record the internet order server-side, attributed to the signed-in buyer.
     const buyer = getAuthenticatedUser(request);
     try {
+      // Prix revendeur (gros) et marge = bénéfice NovaPaid. On privilégie les
+      // valeurs faisant foi renvoyées par Geny, sinon on les dérive du forfait.
+      const wholesaleXaf = Math.round(Number(order.wholesale_price) || Number(plan.wholesale_price) || 0);
+      const amountXaf = Number(order.customer_price) || customerPrice;
+      const marginXaf = Number.isFinite(Number(order.margin))
+        ? Math.round(Number(order.margin))
+        : Math.max(0, Math.round(amountXaf) - wholesaleXaf);
       NovaDbService.recordGenyOrderCreated({
         orderRef: order.order_ref,
         userId: buyer?.id ?? null,
@@ -218,7 +225,9 @@ export async function POST(request: Request) {
         userEmail: buyer?.email ?? "",
         planId,
         planName: order.plan?.name || plan.name || "",
-        amountXaf: Number(order.customer_price) || customerPrice,
+        amountXaf,
+        wholesaleXaf,
+        marginXaf,
         phone: phone || "",
         operator,
         status: order.status,

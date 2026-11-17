@@ -295,18 +295,25 @@ export const NovaDbService = {
   // order_ref so re-sends don't duplicate; never overwrites a delivered code.
   recordGenyOrderCreated(data: {
     orderRef: string; userId?: number | null; userName?: string; userEmail?: string;
-    planId?: string; planName?: string; amountXaf?: number; phone?: string; operator?: string;
-    status?: string; livemode?: boolean;
+    planId?: string; planName?: string; amountXaf?: number; wholesaleXaf?: number; marginXaf?: number;
+    phone?: string; operator?: string; status?: string; livemode?: boolean;
   }) {
     const db = getDatabase();
+    const amountXaf = Number.isFinite(data.amountXaf) ? Math.round(Number(data.amountXaf)) : 0;
+    const wholesaleXaf = Number.isFinite(data.wholesaleXaf) ? Math.round(Number(data.wholesaleXaf)) : 0;
+    // La marge (bénéfice NovaPaid) = prix client − prix revendeur (gros).
+    const marginXaf = Number.isFinite(data.marginXaf)
+      ? Math.round(Number(data.marginXaf))
+      : Math.max(0, amountXaf - wholesaleXaf);
     db.prepare(`
-      INSERT INTO geny_orders (order_ref, user_id, user_name, user_email, plan_id, plan_name, amount_xaf, phone, operator, status, livemode)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO geny_orders (order_ref, user_id, user_name, user_email, plan_id, plan_name, amount_xaf, wholesale_xaf, margin_xaf, phone, operator, status, livemode)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(order_ref) DO UPDATE SET
         user_id = COALESCE(excluded.user_id, geny_orders.user_id),
         user_name = CASE WHEN excluded.user_name <> '' THEN excluded.user_name ELSE geny_orders.user_name END,
         user_email = CASE WHEN excluded.user_email <> '' THEN excluded.user_email ELSE geny_orders.user_email END,
         plan_id = excluded.plan_id, plan_name = excluded.plan_name, amount_xaf = excluded.amount_xaf,
+        wholesale_xaf = excluded.wholesale_xaf, margin_xaf = excluded.margin_xaf,
         phone = excluded.phone, operator = excluded.operator, livemode = excluded.livemode,
         updated_at = CURRENT_TIMESTAMP
     `).run(
@@ -316,7 +323,9 @@ export const NovaDbService = {
       String(data.userEmail || "").slice(0, 254),
       String(data.planId || "").slice(0, 64),
       String(data.planName || "").slice(0, 100),
-      Number.isFinite(data.amountXaf) ? Math.round(Number(data.amountXaf)) : 0,
+      amountXaf,
+      wholesaleXaf,
+      marginXaf,
       String(data.phone || "").slice(0, 20),
       String(data.operator || "").slice(0, 16),
       String(data.status || "pending").slice(0, 24),
@@ -354,13 +363,14 @@ export const NovaDbService = {
         SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) AS succeeded,
         SUM(CASE WHEN status IN ('failed','expired') THEN 1 ELSE 0 END) AS failed,
         SUM(CASE WHEN status NOT IN ('succeeded','failed','expired') THEN 1 ELSE 0 END) AS pending,
-        COALESCE(SUM(CASE WHEN status = 'succeeded' THEN amount_xaf ELSE 0 END), 0) AS revenue
+        COALESCE(SUM(CASE WHEN status = 'succeeded' THEN amount_xaf ELSE 0 END), 0) AS revenue,
+        COALESCE(SUM(CASE WHEN status = 'succeeded' THEN margin_xaf ELSE 0 END), 0) AS profit
       FROM geny_orders
     `).get() as any;
-    const today = db.prepare("SELECT COALESCE(SUM(amount_xaf),0) AS r FROM geny_orders WHERE status='succeeded' AND date(created_at)=date('now')").get() as any;
-    const month = db.prepare("SELECT COALESCE(SUM(amount_xaf),0) AS r FROM geny_orders WHERE status='succeeded' AND created_at >= datetime('now','-30 days')").get() as any;
+    const today = db.prepare("SELECT COALESCE(SUM(amount_xaf),0) AS r, COALESCE(SUM(margin_xaf),0) AS p FROM geny_orders WHERE status='succeeded' AND date(created_at)=date('now')").get() as any;
+    const month = db.prepare("SELECT COALESCE(SUM(amount_xaf),0) AS r, COALESCE(SUM(margin_xaf),0) AS p FROM geny_orders WHERE status='succeeded' AND created_at >= datetime('now','-30 days')").get() as any;
     const orders = db.prepare(`
-      SELECT order_ref, user_name, user_email, plan_name, amount_xaf, phone, operator, status, code, livemode, created_at
+      SELECT order_ref, user_name, user_email, plan_name, amount_xaf, margin_xaf, phone, operator, status, code, livemode, created_at
       FROM geny_orders ORDER BY id DESC LIMIT 100
     `).all() as any[];
     const daily = db.prepare(`
@@ -376,10 +386,14 @@ export const NovaDbService = {
         revenue: Number(s?.revenue) || 0,
         revenueToday: Number(today?.r) || 0,
         revenueMonth: Number(month?.r) || 0,
+        profit: Number(s?.profit) || 0,
+        profitToday: Number(today?.p) || 0,
+        profitMonth: Number(month?.p) || 0,
       },
       orders: orders.map((r) => ({
         orderRef: String(r.order_ref), userName: String(r.user_name || ""), userEmail: String(r.user_email || ""),
-        planName: String(r.plan_name || ""), amountXaf: Number(r.amount_xaf) || 0, phone: String(r.phone || ""),
+        planName: String(r.plan_name || ""), amountXaf: Number(r.amount_xaf) || 0, marginXaf: Number(r.margin_xaf) || 0,
+        phone: String(r.phone || ""),
         operator: String(r.operator || ""), status: String(r.status || ""), code: String(r.code || ""),
         livemode: Boolean(r.livemode), createdAt: String(r.created_at || ""),
       })),
