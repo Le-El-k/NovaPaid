@@ -400,6 +400,18 @@ const server = http.createServer(async (req, res) => {
 
     // Si URL racine "/" -> Servir la LANDING PAGE OFFICIELLE !
     if (pathname === "/" || pathname === "" || pathname === "/landing") {
+      // Une session utilisateur valide ne doit pas retomber sur la landing :
+      // on l'envoie directement au tableau de bord (pas de "faux déconnexion"
+      // quand on tape le nom de domaine). Non connecté -> landing publique.
+      const sessionUser = await getUserFromRequest(req, urlObj);
+      if (sessionUser) {
+        res.writeHead(302, {
+          Location: "/dashboard",
+          "Cache-Control": "no-store",
+        });
+        res.end();
+        return;
+      }
       const landingPath = path.join(CLIENT_DIST, "landing.html");
       if (fs.existsSync(landingPath)) {
         res.writeHead(200, {
