@@ -15230,6 +15230,8 @@ body.is-pwa {
   --np-dark-border: #1e293b;
   --np-light-bg: #f8fafc;
   --np-text-main: #0f172a;
+  --np-text: var(--np-text-main);
+  --np-text-secondary: #475569;
   --np-text-muted: #64748b;
   --np-border-color: #e2e8f0;
   --np-radius-sm: 8px;
