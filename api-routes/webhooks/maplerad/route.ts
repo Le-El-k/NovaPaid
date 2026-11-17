@@ -27,10 +27,11 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 function verifySvixSignature(request: Request, rawBody: string): boolean {
-  const secret = (process.env.MAPLERAD_WEBHOOK_SECRET || "").trim();
+  const cfg = getMapleradConfig();
+  const secret = (cfg?.webhookSecret || "").trim();
   if (!secret) {
     // No secret configured: only tolerate this in sandbox so local/dev testing works.
-    return getMapleradConfig()?.environment !== "production";
+    return cfg?.environment !== "production";
   }
 
   const svixId = request.headers.get("svix-id");

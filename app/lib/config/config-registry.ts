@@ -42,6 +42,13 @@ export const INTEGRATION_CONFIG: IntegrationField[] = [
   { key: "bkpay_secret_key", env: "BKPAY_SECRET_KEY", secret: true, group: "BkPay", label: "Secret Key" },
   { key: "bkpay_public_key", env: "BKPAY_PUBLIC_KEY", secret: false, group: "BkPay", label: "Public Key" },
 
+  // Maplerad (cartes virtuelles / comptes bancaires)
+  { key: "maplerad_secret_key", env: "MAPLERAD_SECRET_KEY", secret: true, group: "Maplerad", label: "Secret Key (sk_live_… ou sk_test_…)" },
+  { key: "maplerad_public_key", env: "MAPLERAD_PUBLIC_KEY", secret: false, group: "Maplerad", label: "Public Key" },
+  { key: "maplerad_webhook_secret", env: "MAPLERAD_WEBHOOK_SECRET", secret: true, group: "Maplerad", label: "Webhook Signing Secret (whsec_…)" },
+  { key: "maplerad_environment", env: "MAPLERAD_ENVIRONMENT", default: "sandbox", secret: false, group: "Maplerad", label: "Environnement (sandbox ou production)" },
+  { key: "maplerad_base_url", env: "MAPLERAD_BASE_URL", default: "https://api.maplerad.com/v1", secret: false, group: "Maplerad", label: "URL de l'API" },
+
   // Contact (exposé au client)
   { key: "contact_email", default: "novapaid@novapaid.net", secret: false, public: true, group: "Contact", label: "Email de contact / support" },
   { key: "whatsapp_number", default: "237657887403", secret: false, public: true, group: "Contact", label: "Numéro WhatsApp (sans +, ex. 237…)" },

@@ -1,13 +1,17 @@
 // Maplerad configuration — SERVER-SIDE ONLY.
-// Secrets are read from process.env (loaded by server.js from .env.maplerad.local,
-// a git-ignored file). Never import this module into client/browser code and never
-// expose the secret key to the frontend.
+// Values resolve via getConfigValue: database (admin panel) first, then the legacy
+// env var (loaded by server.js from .env.maplerad.local), then the registry default.
+// Never import this module into client/browser code and never expose the secret key
+// to the frontend.
+
+import { getConfigValue } from "../../config/runtime-config.ts";
 
 export type MapleradEnvironment = "sandbox" | "production";
 
 export interface MapleradConfig {
   secretKey: string;
   publicKey: string;
+  webhookSecret: string;
   baseUrl: string;
   environment: MapleradEnvironment;
   timeoutMs: number;
@@ -22,7 +26,7 @@ export interface MapleradConfig {
 const DEFAULT_BASE_URL = "https://api.maplerad.com/v1";
 
 function readEnvironment(): MapleradEnvironment {
-  const raw = (process.env.MAPLERAD_ENVIRONMENT || "sandbox").trim().toLowerCase();
+  const raw = (getConfigValue("maplerad_environment") || "sandbox").trim().toLowerCase();
   return raw === "production" || raw === "live" ? "production" : "sandbox";
 }
 
@@ -32,15 +36,16 @@ function readEnvironment(): MapleradEnvironment {
  * error instead of attempting a request.
  */
 export function getMapleradConfig(): MapleradConfig | null {
-  const secretKey = (process.env.MAPLERAD_SECRET_KEY || "").trim();
+  const secretKey = getConfigValue("maplerad_secret_key").trim();
   if (!secretKey) return null;
 
-  const baseUrl = (process.env.MAPLERAD_BASE_URL || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
+  const baseUrl = (getConfigValue("maplerad_base_url") || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
   const timeoutMs = Number(process.env.MAPLERAD_TIMEOUT_MS || 20000) || 20000;
 
   return {
     secretKey,
-    publicKey: (process.env.MAPLERAD_PUBLIC_KEY || "").trim(),
+    publicKey: getConfigValue("maplerad_public_key").trim(),
+    webhookSecret: getConfigValue("maplerad_webhook_secret").trim(),
     baseUrl,
     environment: readEnvironment(),
     timeoutMs,
@@ -48,5 +53,5 @@ export function getMapleradConfig(): MapleradConfig | null {
 }
 
 export function isMapleradConfigured(): boolean {
-  return Boolean((process.env.MAPLERAD_SECRET_KEY || "").trim());
+  return Boolean(getConfigValue("maplerad_secret_key").trim());
 }
