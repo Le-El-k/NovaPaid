@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import { AlertTriangle, ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Check, Coins, Download, Eye, EyeOff, FileText, Gamepad2, Gauge, Laptop, LoaderCircle, Lock, Mail, MapPin, PackageOpen, Phone, Search, ShieldCheck, ShoppingBag, Smartphone, Sparkles, User, Wifi, X } from "lucide-react";
 import { SoleasPayCheckoutV3 } from "@/app/components/payments/SoleasPayCheckoutV3";
 import { GenyInternetCheckout } from "@/app/components/boutique/GenyInternetCheckout";
-import { LanguageSelector, useLanguage } from "@/app/lib/i18n";
+import { useLanguage } from "@/app/lib/i18n";
 import { getAssetPath } from "@/app/lib/asset-path";
 import type { ShopOffer, ShopProduct, ShopSection } from "@/app/lib/shop-catalog";
 import type { GenyPlanView } from "@/app/lib/geny/types.ts";
@@ -387,7 +387,6 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
           <span>Nova<span>Paid</span></span>
         </a>
         <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
-          <LanguageSelector />
           <a className="np-storefront-account" href="/dashboard">{t("my_account")} <ArrowRight size={15} /></a>
         </div>
       </header>}
