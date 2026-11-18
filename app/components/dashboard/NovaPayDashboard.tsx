@@ -79,6 +79,15 @@ const sectionPaths: Record<Section, string> = {
   settings: "/settings",
 };
 
+// Sections atteignables via le hash de /dashboard (ex. /dashboard#codes). Permet
+// de rester sur la bonne section après un rafraîchissement de la page.
+const HASH_SECTIONS: Section[] = ["home", "codes", "reseller", "shop"];
+function sectionFromHash(): Section | null {
+  if (typeof window === "undefined") return null;
+  const h = window.location.hash.replace(/^#/, "");
+  return (HASH_SECTIONS as string[]).includes(h) ? (h as Section) : null;
+}
+
 const formatAmount = (value: string) => value;
 const EMPTY_MONTHLY_SUMMARY = { incomingXaf: 0, outgoingXaf: 0, incomingCount: 0, outgoingCount: 0 };
 
@@ -88,6 +97,8 @@ function SectionHeading({ eyebrow, title, detail }: { eyebrow: string; title: st
 
 export default function NovaPayDashboard({ initialSection }: { initialSection?: Section } = {}) {
   const router = useRouter();
+  // État initial SSR-safe (pas de lecture du hash ici pour éviter un décalage
+  // d'hydratation) ; le hash est appliqué juste après le montage par l'effet.
   const [active, setActive] = useState<Section>(initialSection || "home");
   const [action, setAction] = useState<Action>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -125,8 +136,18 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
   };
 
   useEffect(() => {
-    setActive(initialSection || "home");
+    setActive(initialSection || sectionFromHash() || "home");
     setMenuOpen(false);
+  }, [initialSection]);
+
+  // Sur /dashboard, garder la section en phase avec le hash (rafraîchissement,
+  // boutons précédent/suivant) pour rester là où on se trouve.
+  useEffect(() => {
+    if (initialSection) return;
+    const applyHash = () => { const s = sectionFromHash(); if (s) setActive(s); };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
   }, [initialSection]);
 
   const openAction = (value: Action) => setAction(value);

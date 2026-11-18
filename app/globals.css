@@ -24728,7 +24728,8 @@ html[data-theme="light"] .np-internet-test-note { background:#eef7f1; border-col
 .np-codes-page-indicator { font-size: 12.5px; font-weight: 700; color: #475569; min-width: 110px; text-align: center; }
 @media (max-width: 560px) {
   .np-code-row { flex-wrap: wrap; gap: 10px; }
-  .np-code-row-amount { order: 3; margin-left: 55px; }
+  .np-code-row-main { flex-basis: 100%; }
+  .np-code-copy { order: 3; margin-left: auto; }
 }
 html[data-theme="dark"] .np-code-row, html[data-theme="mixed"] .np-code-row { border-color: #2a3350; background: #161c2e; }
 html[data-theme="dark"] .np-code-row:hover, html[data-theme="mixed"] .np-code-row:hover { border-color: #38436a; }

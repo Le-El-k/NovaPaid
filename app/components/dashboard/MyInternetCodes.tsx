@@ -104,15 +104,6 @@ export function MyInternetCodes({ onGoToShop }: { onGoToShop?: () => void }) {
               const copied = copiedRef === item.orderRef;
               return (
                 <li className="np-code-row" key={item.orderRef}>
-                  <button
-                    type="button"
-                    className={`np-code-copy${copied ? " is-copied" : ""}`}
-                    onClick={() => void copy(item.code, item.orderRef)}
-                    aria-label={copied ? t("geny_copied") : t("geny_copy")}
-                    title={copied ? t("geny_copied") : t("geny_copy")}
-                  >
-                    {copied ? <CheckCircle2 size={17} /> : <Copy size={16} />}
-                  </button>
                   <div className="np-code-row-main">
                     <code className="np-code-row-value">{item.code}</code>
                     <div className="np-code-row-meta">
@@ -123,6 +114,15 @@ export function MyInternetCodes({ onGoToShop }: { onGoToShop?: () => void }) {
                     </div>
                   </div>
                   <span className="np-code-row-amount">{new Intl.NumberFormat("fr-FR").format(item.amountXaf)} FCFA</span>
+                  <button
+                    type="button"
+                    className={`np-code-copy${copied ? " is-copied" : ""}`}
+                    onClick={() => void copy(item.code, item.orderRef)}
+                    aria-label={copied ? t("geny_copied") : t("geny_copy")}
+                    title={copied ? t("geny_copied") : t("geny_copy")}
+                  >
+                    {copied ? <CheckCircle2 size={17} /> : <Copy size={16} />}
+                  </button>
                 </li>
               );
             })}
