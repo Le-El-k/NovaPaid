@@ -367,7 +367,7 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
         </header>
 
         <div className="np-content">
-          {(!SERVICES_LIVE && active !== "shop") ? (
+          {(!SERVICES_LIVE && active !== "shop" && active !== "codes") ? (
             <ServiceUnavailable embedded />
           ) : active === "home" ? (
             <>
