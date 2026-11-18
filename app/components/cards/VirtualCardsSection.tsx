@@ -40,9 +40,12 @@ interface CardData {
 const MAX_CARDS = 3;
 const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 100;
-const CREATION_FEE = 9;
-// Taux de conversion utilisé par le portefeuille pour créditer les cartes (cf. fundCard côté serveur).
+// Frais de création en FCFA par réseau (couvre l'émission Maplerad 2 USD ≈ 1 220 FCFA ; le reste = revenu NovaPaid).
+const CREATION_FEE_XAF: Record<CardBrand, number> = { visa: 4500, mastercard: 6000 };
+// Taux de conversion unique : 610 FCFA/$. Alimenter une carte depuis le solde principal est GRATUIT
+// (les frais sont pris à la recharge du solde principal, pas à l'alimentation de la carte).
 const USD_XAF_RATE = 610;
+const RECHARGE_USD_XAF_RATE = 610;
 
 function fmt(n: number) {
   return "$" + n.toFixed(2);
@@ -176,7 +179,10 @@ function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount, p
 
   useEffect(() => { if (profile.phone) setPhone((p) => p || profile.phone); }, [profile.phone]);
 
-  const total = CREATION_FEE + amount;
+  // Frais de création (FCFA, par réseau) + montant initial converti en FCFA. Le client paie ce total par Mobile Money.
+  const creationFeeXaf = CREATION_FEE_XAF[brand];
+  const creditedXaf = Math.ceil(amount * USD_XAF_RATE);
+  const totalXaf = creationFeeXaf + creditedXaf;
   const isLimitReached = currentCount >= MAX_CARDS;
 
   const previewCard: CardData = {
@@ -331,9 +337,9 @@ function CreateDrawer({ open, onClose, onCreated, walletBalance, currentCount, p
                 <div className="npvc-drawer-range-labels"><small>$1</small><small>$100</small></div>
               </div>
               <div className="npvc-drawer-summary">
-                <div className="npvc-drawer-summary-row"><span>Frais d'émission</span><span>$9.00</span></div>
-                <div className="npvc-drawer-summary-row"><span>Montant crédité</span><span>{fmt(amount)}</span></div>
-                <div className="npvc-drawer-summary-total"><span>Total à payer</span><span>{fmt(total)}</span></div>
+                <div className="npvc-drawer-summary-row"><span>Frais de création ({brand === "visa" ? "Visa" : "Mastercard"})</span><span>{creationFeeXaf.toLocaleString("fr-FR")} FCFA</span></div>
+                <div className="npvc-drawer-summary-row"><span>Montant crédité</span><span>{fmt(amount)} · {creditedXaf.toLocaleString("fr-FR")} FCFA</span></div>
+                <div className="npvc-drawer-summary-total"><span>Total à payer</span><span>{totalXaf.toLocaleString("fr-FR")} FCFA</span></div>
               </div>
               {error && <p className="npvc-drawer-error">{error}</p>}
               <div className="npvc-drawer-footer">
@@ -453,7 +459,7 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
       setToggleFeedback({ type: "error", text: "Montant de recharge invalide (1 - 1 000 USD)." });
       return;
     }
-    const costXaf = Math.ceil(amount * USD_XAF_RATE);
+    const costXaf = Math.ceil(amount * RECHARGE_USD_XAF_RATE);
     if (walletBalance < costXaf) {
       setToggleFeedback({
         type: "error",
@@ -770,7 +776,7 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
       {/* Recharge Modal — débité directement du portefeuille principal (Solde disponible) */}
       {fundModal.open && fundModal.card && (() => {
         const rechargeAmount = Number(fundAmount) || 0;
-        const rechargeCostXaf = Math.ceil(rechargeAmount * USD_XAF_RATE);
+        const rechargeCostXaf = Math.ceil(rechargeAmount * RECHARGE_USD_XAF_RATE);
         const insufficient = rechargeAmount >= 1 && walletBalance < rechargeCostXaf;
         return (
           <div className="npvc-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(e) => { if (e.target === e.currentTarget && !funding) closeFund(); }}>
@@ -780,7 +786,7 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
               </div>
               <h3>Recharger {fundModal.card.label}</h3>
               <form className="npvc-freeze-form" onSubmit={handleConfirmRecharge} style={{ width: "100%" }}>
-                <p>Transférez des fonds de votre <strong>portefeuille principal</strong> vers cette carte. Taux : 1 USD = {USD_XAF_RATE} FCFA.</p>
+                <p>Transférez des fonds de votre <strong>portefeuille principal</strong> vers cette carte. Taux : 1 USD = {RECHARGE_USD_XAF_RATE} FCFA.</p>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f1f5f9", borderRadius: "10px", marginBottom: "12px", fontSize: "13px" }}>
                   <span style={{ color: "#64748b", fontWeight: 600 }}>Solde disponible</span>
                   <strong style={{ color: "#0f172a" }}>{walletBalance.toLocaleString("fr-FR")} FCFA</strong>
@@ -796,10 +802,13 @@ export function VirtualCardsSection({ language: _language }: { language?: any } 
                     <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 700 }}>$</span>
                   </div>
                 </label>
-                <small style={{ display: "block", margin: "-6px 0 10px", color: insufficient ? "#dc2626" : "#64748b", fontSize: "11px" }}>
-                  Débité du portefeuille : <strong>{rechargeCostXaf.toLocaleString("fr-FR")} FCFA</strong>
-                  {insufficient && " — solde insuffisant"}
-                </small>
+                <div style={{ margin: "2px 0 12px", background: "#f1f5f9", borderRadius: "10px", padding: "10px 12px", fontSize: "12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#475569" }}><span>Débité du portefeuille</span><strong style={{ color: insufficient ? "#dc2626" : "#0f172a" }}>{rechargeCostXaf.toLocaleString("fr-FR")} FCFA</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#475569" }}><span>Crédité sur la carte (sans frais)</span><strong style={{ color: "#059669" }}>+ {fmt(rechargeAmount)}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0 2px", borderTop: "1px solid #e2e8f0", marginTop: 4 }}><span style={{ color: "#64748b" }}>Nouveau solde carte</span><strong>{fmt((fundModal.card.balanceUsd || 0) + rechargeAmount)}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#64748b" }}><span>Portefeuille après</span><span>{Math.max(0, walletBalance - rechargeCostXaf).toLocaleString("fr-FR")} FCFA</span></div>
+                  {insufficient && <div style={{ color: "#dc2626", marginTop: 4, fontWeight: 600 }}>Solde portefeuille insuffisant</div>}
+                </div>
                 <div className="npvc-confirm-actions">
                   <button type="button" className="npvc-confirm-cancel" onClick={closeFund} disabled={funding}>{t("cancel")}</button>
                   <button type="submit" className="npvc-confirm-btn is-unfreeze-action npvc-action-fund-btn" disabled={funding || rechargeAmount < 1 || insufficient}>

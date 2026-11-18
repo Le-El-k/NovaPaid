@@ -143,8 +143,8 @@ export function TransferExperience({
   const [verifying, setVerifying] = useState(false);
   const [sendResult, setSendResult] = useState<null | { ok: boolean; message: string; amount?: number; fee?: number; total?: number; breakdown?: { label: string; last4: string; amount: number }[] }>(null);
 
-  // Frais appliqués aux transferts entre utilisateurs de la plateforme (4%).
-  const TRANSFER_FEE_PCT = 4;
+  // Frais appliqués aux transferts entre utilisateurs de la plateforme (3,5%).
+  const TRANSFER_FEE_PCT = 3.5;
 
   // Card balance expressed in FCFA (cards hold USD). One helper for the whole flow.
   const cardBalanceXaf = (c: UserCard) => Math.max(0, Math.round(convertAmount(Number(c.balanceUsd || 0), "USD", "XAF")));
@@ -220,7 +220,7 @@ export function TransferExperience({
     }
     setVerifying(false);
 
-    // Frais de transfert (4%) : l'émetteur règle le montant + les frais.
+    // Frais de transfert (3,5%) : l'émetteur règle le montant + les frais.
     const feeXaf = Math.round(amountXaf * TRANSFER_FEE_PCT / 100);
     const totalXaf = amountXaf + feeXaf;
     const breakdown = buildCascade(totalXaf);

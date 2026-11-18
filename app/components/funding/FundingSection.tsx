@@ -88,7 +88,10 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
   const providerName = (p: ProviderOption | null) => (p ? (p.nameKey ? t(p.nameKey) : p.name) : "—");
 
   const parsedAmount = Math.max(0, parseInt(amount.replace(/[^0-9]/g, ""), 10) || 0);
-  const feePercent = provider?.feePercent ?? 0;
+  // Recharge du solde principal : 3,5 % de frais déduits (aligné sur le serveur, WALLET_RECHARGE_FEE_PCT).
+  // Le retrait garde le taux du prestataire de paiement.
+  const DEPOSIT_FEE_PCT = 3.5;
+  const feePercent = mode === "deposit" ? DEPOSIT_FEE_PCT : (provider?.feePercent ?? 0);
   const feeAmount = Math.round((parsedAmount * feePercent) / 100);
   const netAmount = mode === "deposit" ? parsedAmount - feeAmount : parsedAmount + feeAmount;
 
@@ -222,7 +225,20 @@ export function FundingSection({ currentBalance = 250000, onBalanceUpdated }: Fu
           <div className="npvc-confirm-dialog" style={{ maxWidth: "420px" }}>
             <div className="npvc-confirm-icon is-info"><Smartphone size={26} /></div>
             <h3>Dépôt via SoleasPay</h3>
-            <p>Payez <strong>{spOrder.amountXaf.toLocaleString("fr-FR")} FCFA</strong> par Mobile Money. Votre portefeuille sera crédité automatiquement après confirmation du paiement.</p>
+            {(() => {
+              const paidXaf = spOrder.amountXaf;
+              const feeXaf = Math.round(paidXaf * DEPOSIT_FEE_PCT / 100);
+              const creditedXaf = Math.max(0, paidXaf - feeXaf);
+              return (
+                <div style={{ width: "100%", background: "rgba(148,163,184,.1)", borderRadius: 12, padding: "12px 14px", margin: "4px 0 10px", fontSize: 13.5 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}><span>Vous payez</span><strong>{paidXaf.toLocaleString("fr-FR")} FCFA</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#b45309" }}><span>Frais de recharge ({DEPOSIT_FEE_PCT}%)</span><span>− {feeXaf.toLocaleString("fr-FR")} FCFA</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0 2px", borderTop: "1px solid rgba(148,163,184,.3)", marginTop: 4, fontWeight: 700 }}><span>Crédité sur votre solde</span><strong style={{ color: "#059669" }}>{creditedXaf.toLocaleString("fr-FR")} FCFA</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#64748b", fontSize: 12.5 }}><span>Nouveau solde estimé</span><span>{(currentBalance + creditedXaf).toLocaleString("fr-FR")} FCFA</span></div>
+                </div>
+              );
+            })()}
+            <p style={{ fontSize: 13 }}>Payez par Mobile Money ci-dessous. Votre portefeuille sera crédité automatiquement après confirmation.</p>
             <p className="npvc-pay-choice-label">Choisissez votre moyen de paiement</p>
             <div className="npvc-soleaspay-wrap">
               <SoleasPayCheckoutV3

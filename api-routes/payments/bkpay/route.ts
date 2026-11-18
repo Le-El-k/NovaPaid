@@ -4,8 +4,9 @@ import { NovaDbService } from "../../../app/lib/db/service.ts";
 import { createSoleaspayOrder, attachProviderSession, markSoleaspayOrderFailed, USD_XAF_RATE } from "../../../app/lib/payments/soleaspay/orders.ts";
 import { createPaymentSession, isBkpayConfigured } from "../../../app/lib/payments/bkpay/client.ts";
 
-// Frais de création = marge NovaPaid (9 USD) + frais d'émission Maplerad (2 USD, VIRTUAL CARD USD / Schedule 2) = 11 USD.
-const CARD_CREATION_FEE_USD = 11;
+// Frais de création, en FCFA par réseau. Maplerad facture l'émission 2 USD (≈ 1 220 FCFA à 610) ;
+// le reste est le revenu NovaPaid. Visa 4 500 (revenu 3 280), Mastercard 6 000 (revenu 4 780).
+const CARD_CREATION_FEE_XAF: Record<string, number> = { visa: 4500, mastercard: 6000 };
 
 // Initialise a BKApay payment: create a pending order, then a BKApay hosted
 // "secured session" (amount locked server-side). Returns payment_url to redirect to.
@@ -26,15 +27,11 @@ export async function POST(request: Request) {
     let description = "";
 
     if (type === "card_recharge") {
-      cardId = Number(body.cardId);
-      amountUsd = Number(body.amountUsd);
-      if (!Number.isSafeInteger(cardId) || cardId < 1) return Response.json({ success: false, error: "Identifiant de carte invalide." }, { status: 400 });
-      if (!Number.isFinite(amountUsd) || amountUsd < 1 || amountUsd > 1000) return Response.json({ success: false, error: "Montant de recharge invalide (1 - 1 000 USD)." }, { status: 400 });
-      const info = NovaDbService.getCardProviderInfo(user.id, cardId);
-      if (!info) return Response.json({ success: false, error: "Carte introuvable." }, { status: 404 });
-      if (info.status !== "active") return Response.json({ success: false, error: "Réactivez la carte avant de la recharger." }, { status: 409 });
-      amountXaf = Math.ceil(amountUsd * USD_XAF_RATE);
-      description = `Recharge carte (+${amountUsd.toFixed(2)} USD)`;
+      // Recharge directe de carte désactivée : on passe par le solde principal.
+      return Response.json({
+        success: false,
+        error: "Rechargez d'abord votre solde principal, puis alimentez la carte depuis ce solde.",
+      }, { status: 400 });
     } else if (type === "wallet_deposit") {
       amountXaf = Math.round(Number(body.amountXaf));
       if (!Number.isFinite(amountXaf) || amountXaf < 100 || amountXaf > 5_000_000) return Response.json({ success: false, error: "Montant de dépôt invalide (100 - 5 000 000 FCFA)." }, { status: 400 });
@@ -44,7 +41,7 @@ export async function POST(request: Request) {
       amountUsd = Number(body.amountUsd ?? 10);
       if (!["visa", "mastercard"].includes(brand)) return Response.json({ success: false, error: "Marque invalide (visa ou mastercard)." }, { status: 400 });
       if (!Number.isFinite(amountUsd) || amountUsd < 1 || amountUsd > 100) return Response.json({ success: false, error: "Montant initial invalide (1 - 100 USD)." }, { status: 400 });
-      amountXaf = Math.ceil((CARD_CREATION_FEE_USD + amountUsd) * USD_XAF_RATE);
+      amountXaf = CARD_CREATION_FEE_XAF[brand] + Math.ceil(amountUsd * USD_XAF_RATE);
       meta = { brand, amountUsd, label: typeof body.label === "string" ? body.label.slice(0, 60) : undefined };
       description = "Création carte virtuelle NovaPaid";
     } else {

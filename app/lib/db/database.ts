@@ -1931,7 +1931,7 @@ function initSchemaAndSeeds(db: DatabaseSync) {
   }
   const transferFeeCount = (db.prepare("SELECT count(*) as count FROM transfer_fees").get() as any)?.count || 0;
   if (transferFeeCount === 0) {
-    db.prepare("INSERT INTO transfer_fees (fixed_amount, percentage_rate, min_amount, max_amount) VALUES (0, 4.0, 500, NULL)").run();
+    db.prepare("INSERT INTO transfer_fees (fixed_amount, percentage_rate, min_amount, max_amount) VALUES (0, 3.5, 500, NULL)").run();
   }
 
   const bootstrapApplied = db.prepare("SELECT setting_key FROM app_settings WHERE setting_key = 'admin_bootstrap_applied'").get();

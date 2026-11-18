@@ -24,7 +24,12 @@ export interface SoleaspayOrderRow {
   completed_at: string | null;
 }
 
+// Taux de conversion unique (création de carte, préchargement, alimentation depuis le solde).
 export const USD_XAF_RATE = 610;
+// Frais prélevés à la RECHARGE du solde principal (dépôt portefeuille) : 3,5 %, déduits du montant
+// (le client paie X, reçoit X − 3,5 %). C'est l'unique point de facturation à l'entrée de l'argent ;
+// alimenter ensuite une carte depuis le solde est gratuit.
+export const WALLET_RECHARGE_FEE_PCT = 3.5;
 
 function newOrderRef(type: SoleaspayOrderType): string {
   const prefix = type === "card_recharge" ? "RCG" : type === "wallet_deposit" ? "DEP" : "CRD";
@@ -158,12 +163,15 @@ function fulfilOrder(db: ReturnType<typeof getDatabase>, order: SoleaspayOrderRo
   if (order.type === "wallet_deposit") {
     const wallet = db.prepare("SELECT id, status FROM wallets WHERE user_id = ? AND currency = 'XAF' ORDER BY id LIMIT 1").get(order.user_id) as any;
     if (!wallet || wallet.status !== "active") throw new Error("Portefeuille indisponible.");
-    const creditMinor = order.amount_xaf * 100;
+    // Frais de recharge 3,5 % déduits : le client paie order.amount_xaf, on crédite le net.
+    const feeXaf = Math.round(order.amount_xaf * WALLET_RECHARGE_FEE_PCT / 100);
+    const netXaf = Math.max(0, order.amount_xaf - feeXaf);
+    const creditMinor = netXaf * 100;
     db.prepare("UPDATE wallets SET available_minor = available_minor + ? WHERE id = ? AND status = 'active'").run(creditMinor, wallet.id);
     const ref = "TX-SP-DEP-" + Date.now();
     const insTx = db.prepare(
       "INSERT INTO ledger_transactions (public_ref, idempotency_key, type, status, currency, amount_minor, description, created_by) VALUES (?, ?, 'deposit', 'succeeded', 'XAF', ?, ?, ?)",
-    ).run(ref, ref, creditMinor, "Dépôt via SoleasPay", order.user_id);
+    ).run(ref, ref, creditMinor, `Dépôt via SoleasPay (${order.amount_xaf.toLocaleString("fr-FR")} F − ${WALLET_RECHARGE_FEE_PCT}% frais)`, order.user_id);
     db.prepare("INSERT INTO ledger_entries (transaction_id, wallet_id, direction, amount_minor) VALUES (?, ?, 'credit', ?)")
       .run(Number(insTx.lastInsertRowid), wallet.id, creditMinor);
     return;

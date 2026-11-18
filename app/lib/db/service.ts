@@ -634,6 +634,8 @@ export const NovaDbService = {
       const wallet = db.prepare("SELECT id, available_minor, status FROM wallets WHERE user_id = ? AND currency = 'XAF' ORDER BY id LIMIT 1").get(userId) as any;
       if (!wallet || wallet.status !== "active") throw new Error("Portefeuille indisponible ou gelé.");
 
+      // Alimenter la carte depuis le solde principal = GRATUIT, au taux normal 610 (pas de frais
+      // supplémentaire : les frais ont déjà été prélevés à la recharge du solde principal).
       const rate = 610.0;
       const costXaf = Math.ceil(amountUsd * rate);
       const costMinor = costXaf * 100;

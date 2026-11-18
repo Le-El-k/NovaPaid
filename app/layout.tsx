@@ -2,6 +2,7 @@
 import { PwaInstallPrompt } from "@/app/components/pwa/PwaInstallPrompt";
 import { PwaServiceWorker } from "@/app/components/pwa/PwaServiceWorker";
 import { PlatformMaintenanceGate } from "@/app/components/platform/PlatformMaintenanceGate";
+import { SupportWidget } from "@/app/components/support/SupportWidget";
 import { AppProviders } from "@/app/components/providers/AppProviders";
 import {
   buildSupportWhatsAppHref,
@@ -397,6 +398,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <PwaInstallPrompt />
           <PlatformMaintenanceGate />
           {children}
+          <SupportWidget />
         </AppProviders>
       </body>
     </html>
