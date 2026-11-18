@@ -411,7 +411,7 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
           {selectedSection?.slug !== "connexion-internet" && <div className="np-storefront-catalogue-top np-storefront-detail-heading">
             <div>
               {embedded && <button type="button" className="np-internet-back np-storefront-category-back" onClick={returnToCategories}><ArrowLeft size={14} /> {t("sfront_all_categories")}</button>}
-              {!embedded && <a className="np-storefront-back-link" href="/boutique"><ArrowLeft size={15} /> {t("sfront_back_to_categories")}</a>}
+              {!embedded && <a className="np-storefront-back-link" href="/dashboard/boutique"><ArrowLeft size={15} /> {t("sfront_back_to_categories")}</a>}
               <h2 id="np-storefront-section-title">{selectedSection?.name || t("sfront_the_shop")}</h2>
               {selectedSection && <p>{selectedSection.description}</p>}
             </div>
@@ -449,7 +449,7 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
                 <div className="np-internet-gate-actions">
                   {embedded
                     ? <button type="button" className="np-internet-gate-cancel" onClick={returnToCategories}>{t("sfront_gate_back")}</button>
-                    : <a className="np-internet-gate-cancel" href="/boutique">{t("sfront_gate_back")}</a>}
+                    : <a className="np-internet-gate-cancel" href="/dashboard/boutique">{t("sfront_gate_back")}</a>}
                   <button type="button" className="np-internet-gate-continue" disabled={!internetGateChecked} onClick={() => { markInternetGateAcked(); setInternetGateAck(true); }}>
                     <Check size={16} /> {t("sfront_gate_continue")}
                   </button>
@@ -459,7 +459,7 @@ export function Shopfront({ embedded = false, sectionSlug }: { embedded?: boolea
             <aside className="np-internet-intro">
               {embedded
                 ? <button type="button" className="np-internet-back" onClick={returnToCategories}><ArrowLeft size={14} /> {t("sfront_all_categories")}</button>
-                : <a className="np-internet-back" href="/boutique"><ArrowLeft size={14} /> {t("sfront_all_categories")}</a>}
+                : <a className="np-internet-back" href="/dashboard/boutique"><ArrowLeft size={14} /> {t("sfront_all_categories")}</a>}
               <h1>{t("sfront_internet_title")}<br />{t("sfront_internet_without")} <em>BullShit.</em></h1>
               <p>{t("sfront_internet_subtitle")}</p>
               <div className="np-internet-install-list">

@@ -121,7 +121,7 @@ export default function LoginPage() {
           />
             <span>Nova<span>Paid</span></span>
           </Link>
-          <Link href="/boutique" className="np-auth-page-back"><ArrowLeft size={15} /> Retour à la boutique</Link>
+          <Link href="/dashboard/boutique" className="np-auth-page-back"><ArrowLeft size={15} /> Retour à la boutique</Link>
         </header>
 
         <div className="np-auth-layout">

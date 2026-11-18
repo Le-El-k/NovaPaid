@@ -15,7 +15,7 @@ export function ServiceUnavailable({ embedded = false }: { embedded?: boolean })
         <span className="np-svc-unavailable-overline"><Clock size={13} /> {t("svc_unavailable_overline")}</span>
         <h1>{t("svc_unavailable_title")}</h1>
         <p>{t("svc_unavailable_desc")}</p>
-        <Link href="/boutique" className="np-svc-unavailable-cta">
+        <Link href="/dashboard/boutique" className="np-svc-unavailable-cta">
           <ShoppingBag size={16} /> {t("svc_unavailable_cta")}
         </Link>
       </div>

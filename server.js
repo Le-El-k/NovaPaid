@@ -41,7 +41,7 @@ const PORT = process.env.PORT || 3000;
 const CLIENT_DIST = path.join(__dirname, "dist", "client");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const CLIENT_PAGE_ROUTES = new Set([
-  "admin", "bloodstrike", "boutique", "boutique/connexion-internet", "boutique/jeux-video", "boutique/pieces-tiktok", "cards", "cod", "dashboard", "dashboard/boutique", "fcmobile",
+  "admin", "bloodstrike", "cards", "cod", "dashboard", "dashboard/boutique", "fcmobile",
   "forgot-password", "fortnite", "freefire", "funding", "games", "help", "history", "login", "marketplace",
   "my-shop", "notifications", "payment", "payment/failed", "payment/failure", "payment/success",
   "privacy", "profile", "pubg", "register", "reseller", "reset-password", "security", "settings", "shop", "support",
@@ -217,6 +217,13 @@ const server = http.createServer(async (req, res) => {
     pathname === "/novapaid-control-center-2026"
   ) {
     res.writeHead(308, { Location: "/admin", "Cache-Control": "no-store" });
+    res.end();
+    return;
+  }
+
+  // La boutique autonome a été retirée : rediriger vers la boutique de l'espace connecté.
+  if (pathname === "/boutique" || pathname.startsWith("/boutique/")) {
+    res.writeHead(302, { Location: "/dashboard/boutique", "Cache-Control": "no-store" });
     res.end();
     return;
   }
