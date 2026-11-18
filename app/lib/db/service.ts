@@ -2568,12 +2568,15 @@ export const NovaDbService = {
     const db = getDatabase();
     const allowedCategories = ["transfer", "funding", "card", "shop", "security", "other", "support"];
     const category = data.category.trim();
-    const subject = data.subject.trim().replace(/\s+/g, " ");
+    let subject = data.subject.trim().replace(/\s+/g, " ");
     const message = data.message.trim();
     const transactionRef = data.transactionRef?.trim().slice(0, 100) || null;
     if (!allowedCategories.includes(category)) throw new Error("Catégorie de demande invalide.");
-    if (subject.length < 4 || subject.length > 150) throw new Error("L’objet doit contenir entre 4 et 150 caractères.");
     if (message.length < 10 || message.length > 3000) throw new Error("Le message doit contenir entre 10 et 3 000 caractères.");
+    // Subject is optional (e.g. from the floating support widget): derive one from
+    // the message when empty so the conversation is always created and reaches admin.
+    if (!subject) subject = message.slice(0, 60).trim();
+    if (subject.length > 150) subject = subject.slice(0, 150);
     if (transactionRef) {
       const ownedTransaction = db.prepare(`
         SELECT id FROM ledger_transactions

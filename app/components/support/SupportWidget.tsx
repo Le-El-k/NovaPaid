@@ -79,7 +79,7 @@ export function SupportWidget() {
   const goContact = () => { setView("contact"); setContactError(""); };
 
   const submitTicket = async () => {
-    if (message.trim().length < 3) { setContactError("Décrivez votre demande (au moins 3 caractères)."); return; }
+    if (message.trim().length < 10) { setContactError("Décrivez votre demande (au moins 10 caractères)."); return; }
     setSending(true);
     setContactError("");
     try {
@@ -244,7 +244,7 @@ export function SupportWidget() {
                 <input className="np-sw-input" type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex : Problème de rechargement…" maxLength={120} />
                 <label className="np-sw-label">Message <span className="np-sw-req">*</span></label>
                 <textarea className="np-sw-textarea" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Tapez votre message…" rows={5} maxLength={2000} />
-                <button type="button" className="np-sw-send-btn" onClick={submitTicket} disabled={sending || message.trim().length < 3}>
+                <button type="button" className="np-sw-send-btn" onClick={submitTicket} disabled={sending || message.trim().length < 10}>
                   {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Envoyer le message
                 </button>
               </div>
