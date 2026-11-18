@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ArrowLeft, Bot, CheckCircle2, ChevronRight, ExternalLink, Headset, Info,
-  LifeBuoy, Loader2, MessageCircle, Search, Send, Sparkles, X,
+  Loader2, MessageCircle, Search, Send, Sparkles, X,
 } from "lucide-react";
 import { getAssetPath } from "@/app/lib/asset-path";
 
@@ -271,7 +271,7 @@ export function SupportWidget() {
         onClick={() => { setOpen((o) => !o); if (!open) setView("home"); }}
         aria-label={open ? "Fermer le support" : "Ouvrir le support"}
       >
-        {open ? <X size={24} /> : <LifeBuoy size={24} />}
+        {open ? <X size={24} /> : <MessageCircle size={24} />}
       </button>
     </>
   );
