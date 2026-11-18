@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Copy, CheckCircle2, LoaderCircle, PackageOpen, RefreshCw, ShoppingBag, Wifi } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Copy, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle, PackageOpen, RefreshCw, ShoppingBag, Wifi } from "lucide-react";
 import { useLanguage } from "@/app/lib/i18n";
 
 type InternetCode = {
@@ -14,12 +14,15 @@ type InternetCode = {
   createdAt: string;
 };
 
+const PAGE_SIZE = 10;
+
 export function MyInternetCodes({ onGoToShop }: { onGoToShop?: () => void }) {
   const { t, language } = useLanguage();
   const [codes, setCodes] = useState<InternetCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedRef, setCopiedRef] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,6 +32,7 @@ export function MyInternetCodes({ onGoToShop }: { onGoToShop?: () => void }) {
       const data = await res.json();
       if (res.ok && data.ok) {
         setCodes(Array.isArray(data.codes) ? data.codes : []);
+        setPage(0);
       } else {
         setError(data?.error || t("mic_load_error"));
       }
@@ -62,6 +66,12 @@ export function MyInternetCodes({ onGoToShop }: { onGoToShop?: () => void }) {
     return d.toLocaleString(language === "en" ? "en-US" : "fr-FR", { dateStyle: "medium", timeStyle: "short" });
   };
 
+  const operatorLabel = (op: string) => (op === "mtn" ? "MTN MoMo" : op === "orange" ? "Orange Money" : op);
+
+  const totalPages = Math.max(1, Math.ceil(codes.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageCodes = useMemo(() => codes.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE), [codes, safePage]);
+
   return (
     <section className="np-page-section np-codes-section">
       <div className="np-codes-head">
@@ -87,28 +97,49 @@ export function MyInternetCodes({ onGoToShop }: { onGoToShop?: () => void }) {
           {onGoToShop && <button type="button" className="np-codes-shop-btn" onClick={onGoToShop}><ShoppingBag size={16} /> {t("mic_go_shop")}</button>}
         </div>
       ) : (
-        <div className="np-codes-grid">
-          {codes.map((item) => (
-            <article className="np-code-card" key={item.orderRef}>
-              <div className="np-code-card-top">
-                <span className="np-code-card-plan">{item.planName || t("sfront_internet_plan")}</span>
-                <span className="np-code-card-amount">{new Intl.NumberFormat("fr-FR").format(item.amountXaf)} FCFA</span>
-              </div>
-              <div className="np-code-card-value">
-                <code>{item.code}</code>
-                <button type="button" onClick={() => void copy(item.code, item.orderRef)} aria-label={t("geny_copy")}>
-                  {copiedRef === item.orderRef ? <CheckCircle2 size={15} /> : <Copy size={15} />}
-                  <span>{copiedRef === item.orderRef ? t("geny_copied") : t("geny_copy")}</span>
-                </button>
-              </div>
-              <div className="np-code-card-meta">
-                {item.operator && <span>{item.operator === "mtn" ? "MTN MoMo" : item.operator === "orange" ? "Orange Money" : item.operator}</span>}
-                {item.phone && <span>+{item.phone.replace(/^\+/, "")}</span>}
-                <span>{formatDate(item.createdAt)}</span>
-              </div>
-            </article>
-          ))}
-        </div>
+        <>
+          <div className="np-codes-count">{t("mic_count").replace("{n}", String(codes.length))}</div>
+          <ul className="np-codes-list" aria-label={t("mic_title")}>
+            {pageCodes.map((item) => {
+              const copied = copiedRef === item.orderRef;
+              return (
+                <li className="np-code-row" key={item.orderRef}>
+                  <button
+                    type="button"
+                    className={`np-code-copy${copied ? " is-copied" : ""}`}
+                    onClick={() => void copy(item.code, item.orderRef)}
+                    aria-label={copied ? t("geny_copied") : t("geny_copy")}
+                    title={copied ? t("geny_copied") : t("geny_copy")}
+                  >
+                    {copied ? <CheckCircle2 size={17} /> : <Copy size={16} />}
+                  </button>
+                  <div className="np-code-row-main">
+                    <code className="np-code-row-value">{item.code}</code>
+                    <div className="np-code-row-meta">
+                      <span className="np-code-row-plan">{item.planName || t("sfront_internet_plan")}</span>
+                      {item.operator && <span>{operatorLabel(item.operator)}</span>}
+                      {item.phone && <span>+{item.phone.replace(/^\+/, "")}</span>}
+                      <span>{formatDate(item.createdAt)}</span>
+                    </div>
+                  </div>
+                  <span className="np-code-row-amount">{new Intl.NumberFormat("fr-FR").format(item.amountXaf)} FCFA</span>
+                </li>
+              );
+            })}
+          </ul>
+
+          {totalPages > 1 && (
+            <nav className="np-codes-pagination" aria-label={t("mic_pagination")}>
+              <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={safePage === 0} aria-label={t("mic_prev")}>
+                <ChevronLeft size={16} /> {t("mic_prev")}
+              </button>
+              <span className="np-codes-page-indicator">{t("mic_page").replace("{x}", String(safePage + 1)).replace("{y}", String(totalPages))}</span>
+              <button type="button" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={safePage >= totalPages - 1} aria-label={t("mic_next")}>
+                {t("mic_next")} <ChevronRight size={16} />
+              </button>
+            </nav>
+          )}
+        </>
       )}
     </section>
   );
