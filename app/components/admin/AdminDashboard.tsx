@@ -95,6 +95,9 @@ export default function AdminDashboard() {
   const mobileSidebarCloseButtonRef = useRef<HTMLButtonElement>(null);
   const wasMobileSidebarOpen = useRef(false);
   const [loading, setLoading] = useState(false);
+  // Bumped by the "Actualiser" button to remount self-fetching section components
+  // (Analytics, Intégrations, Fees, Advanced, …) so they re-fetch their data.
+  const [refreshKey, setRefreshKey] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [adminIdentity, setAdminIdentity] = useState<any>(null);
   const [adminEmailInput, setAdminEmailInput] = useState("");
@@ -1313,7 +1316,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               className="np-outline-button np-admin-refresh-btn"
-              onClick={() => fetchSectionData(activeTab)}
+              onClick={() => { fetchSectionData(activeTab); setRefreshKey((k) => k + 1); }}
               disabled={loading}
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -2946,47 +2949,47 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === "fees" && (
-            <AdminFees adminId={adminIdentity?.id || 0} />
+            <AdminFees key={refreshKey} adminId={adminIdentity?.id || 0} />
           )}
 
           {activeTab === "revenue" && (
-            <AdminRevenue />
+            <AdminRevenue key={refreshKey} />
           )}
 
           {activeTab === "analytics" && (
-            <AdminAnalytics />
+            <AdminAnalytics key={refreshKey} />
           )}
 
           {activeTab === "integrations" && (
-            <AdminIntegrations />
+            <AdminIntegrations key={refreshKey} />
           )}
 
           {activeTab === "advanced" && (
-            <AdminAdvanced adminId={adminIdentity?.id || 0} />
+            <AdminAdvanced key={refreshKey} adminId={adminIdentity?.id || 0} />
           )}
 
           {activeTab === "activities" && (
-            <AdminActivities />
+            <AdminActivities key={refreshKey} />
           )}
 
           {activeTab === "marketplace" && (
-            <AdminMarketplace adminId={adminIdentity?.id || 0} />
+            <AdminMarketplace key={refreshKey} adminId={adminIdentity?.id || 0} />
           )}
 
           {activeTab === "user_shops" && (
-            <AdminShops />
+            <AdminShops key={refreshKey} />
           )}
 
           {activeTab === "security" && (
-            <AdminSecurity />
+            <AdminSecurity key={refreshKey} />
           )}
 
           {activeTab === "communication" && (
-            <AdminCommunication />
+            <AdminCommunication key={refreshKey} />
           )}
 
           {activeTab === "extras" && (
-            <AdminExtras />
+            <AdminExtras key={refreshKey} />
           )}
 
           {activeTab === "settings" && (
