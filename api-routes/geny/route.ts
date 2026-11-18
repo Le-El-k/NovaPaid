@@ -81,6 +81,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "order";
 
+  // Consulter ses propres codes déjà achetés est une simple lecture de la base
+  // locale : cela ne dépend pas de la configuration Geny, donc on la traite AVANT
+  // le garde de configuration pour que "Mes codes" reste toujours fonctionnel.
+  if (action === "my-codes") {
+    const user = getAuthenticatedUser(request);
+    if (!user) return json({ ok: false, code: "unauthorized", error: "Connexion requise." }, 401);
+    try {
+      return json({ ok: true, codes: NovaDbService.getInternetCodes(user.id) });
+    } catch {
+      return json({ ok: false, code: "service_unavailable", error: "Impossible de charger vos codes." }, 503);
+    }
+  }
+
   if (!isGenyConfigured()) {
     return json({ ok: false, code: "not_configured", error: "Le service Geny n'est pas configuré." }, 503);
   }
@@ -92,16 +105,6 @@ export async function GET(request: Request) {
       .filter((p) => Array.isArray(p.modes) && p.modes.includes("direct"))
       .map(toPlanView);
     return json({ ok: true, plans, operators: result.data?.operators ?? [] });
-  }
-
-  if (action === "my-codes") {
-    const user = getAuthenticatedUser(request);
-    if (!user) return json({ ok: false, code: "unauthorized", error: "Connexion requise." }, 401);
-    try {
-      return json({ ok: true, codes: NovaDbService.getInternetCodes(user.id) });
-    } catch {
-      return json({ ok: false, code: "service_unavailable", error: "Impossible de charger vos codes." }, 503);
-    }
   }
 
   if (action === "order") {
@@ -267,6 +270,21 @@ export async function POST(request: Request) {
         code: order.status === "succeeded" ? (order.code || "") : "",
         livemode: Boolean(order.livemode),
       });
+      // Dès que l'OTP valide la commande, rattacher le code au compte de l'acheteur
+      // connecté pour qu'il apparaisse immédiatement dans "Mes codes".
+      if (order.status === "succeeded" && order.code) {
+        const buyer = getAuthenticatedUser(request);
+        if (buyer) {
+          NovaDbService.saveInternetCode(buyer.id, {
+            orderRef: order.order_ref,
+            code: order.code,
+            planName: order.plan?.name || "",
+            amountXaf: Number(order.customer_price) || 0,
+            phone: order.customer?.phone || "",
+            operator: order.customer?.operator || "",
+          });
+        }
+      }
     } catch { /* ignore persistence errors */ }
     return json(toOrderView(order));
   }
