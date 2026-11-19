@@ -1,5 +1,6 @@
 import { NovaDbService } from "../../app/lib/db/service.ts";
 import { ADMIN_SESSION_COOKIE, clientContext, expiredSessionCookie, getAuthenticatedAdmin, readCookie, sessionCookie } from "../../app/lib/auth/session.ts";
+import { isMapleradActive, issueMapleradCard, MapleradError } from "../../app/lib/payments/maplerad/service.ts";
 
 const SECTION_PERMISSION: Record<string, string> = {
   overview: "overview",
@@ -51,6 +52,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   update_user: "users",
   update_wallet: "users",
   adjust_wallet_balance: "users",
+  issue_maplerad_card: "cards",
   update_admin: "admins",
   create_admin: "admins",
   toggle_card: "cards",
@@ -190,9 +192,15 @@ export async function GET(request: Request) {
       case "manual_payments": return Response.json({ success: true, apis: NovaDbService.getManualPaymentApis() });
       case "marketing_settings": return Response.json({ success: true, settings: NovaDbService.getMarketingSettings() });
       case "activities": {
-        const limit = Number(url.searchParams.get("limit") || 100);
-        const offset = Number(url.searchParams.get("offset") || 0);
-        return Response.json({ success: true, activities: NovaDbService.getActivities({ limit, offset }) });
+        const limit = Number(url.searchParams.get("limit") || 50);
+        const page = Math.max(1, Number(url.searchParams.get("page") || 1));
+        const explicitOffset = url.searchParams.get("offset");
+        const offset = explicitOffset !== null ? Number(explicitOffset) : (page - 1) * limit;
+        const type = url.searchParams.get("type") || undefined;
+        const userIdParam = url.searchParams.get("user_id");
+        const userId = userIdParam ? Number(userIdParam) : undefined;
+        const { items, total } = NovaDbService.getActivities({ limit, offset, type, userId });
+        return Response.json({ success: true, activities: items, total });
       }
       case "marketplace_categories": {
         const categories = NovaDbService.getAllCategories();
@@ -328,6 +336,40 @@ export async function POST(request: Request) {
     if (action === "toggle_card") {
       const result = NovaDbService.toggleCardFreeze(Number(body.cardId), admin.id);
       return Response.json(result);
+    }
+    if (action === "issue_maplerad_card") {
+      if (admin.role !== "super_admin") return Response.json({ success: false, error: "Action réservée au super administrateur." }, { status: 403 });
+      if (!isMapleradActive()) {
+        return Response.json({ success: false, error: "Maplerad n'est pas le prestataire de cartes actif ou n'est pas configuré." }, { status: 409 });
+      }
+      const userId = Number(body.userId);
+      if (!Number.isSafeInteger(userId) || userId < 1) {
+        return Response.json({ success: false, error: "Utilisateur invalide." }, { status: 400 });
+      }
+      const brand = String(body.brand || "");
+      if (!["visa", "mastercard"].includes(brand)) {
+        return Response.json({ success: false, error: "Marque invalide (visa ou mastercard requise)." }, { status: 400 });
+      }
+      const amountUsd = Number(body.amountUsd);
+      if (!Number.isFinite(amountUsd) || amountUsd < 1 || amountUsd > 1000) {
+        return Response.json({ success: false, error: "Le montant initial doit être compris entre 1 et 1 000 USD." }, { status: 400 });
+      }
+      const label = typeof body.label === "string" && body.label.trim() ? body.label.trim().slice(0, 100) : undefined;
+      // Admin-granted card: by default the user's wallet is NOT debited. Pass chargeWallet=true to bill the user.
+      const chargeWallet = body.chargeWallet === true;
+      try {
+        const result = await issueMapleradCard(userId, { brand: brand as "visa" | "mastercard", amountUsd, label, chargeWallet, adminId: admin.id });
+        return Response.json({
+          success: true,
+          pending: true,
+          cardId: result.cardId,
+          reference: result.reference,
+          message: "Carte attribuée. Elle sera active dès validation par Maplerad.",
+        });
+      } catch (err: any) {
+        const status = err instanceof MapleradError ? err.status : 400;
+        return Response.json({ success: false, error: err?.message || "Échec de l'attribution de la carte." }, { status });
+      }
     }
     if (action === "review_transaction") {
       const result = NovaDbService.reviewAdminTransaction(Number(body.transactionId), body.status, String(body.note || ""), admin.id);

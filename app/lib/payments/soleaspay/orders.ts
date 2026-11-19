@@ -24,8 +24,18 @@ export interface SoleaspayOrderRow {
   completed_at: string | null;
 }
 
-// Taux de conversion unique (création de carte, préchargement, alimentation depuis le solde).
+// Taux de conversion par défaut (fallback). La valeur effective est pilotée par l'onglet
+// admin « Taux de change » via getUsdXafRate().
 export const USD_XAF_RATE = 610;
+
+/** Taux USD→XAF effectif, piloté par l'onglet admin « Frais & Taux » (fallback 610). */
+export function getUsdXafRate(): number {
+  try {
+    return NovaDbService.getPlatformUsdXafRate();
+  } catch {
+    return USD_XAF_RATE;
+  }
+}
 // Frais prélevés à la RECHARGE du solde principal (dépôt portefeuille) : 3,5 %, déduits du montant
 // (le client paie X, reçoit X − 3,5 %). C'est l'unique point de facturation à l'entrée de l'argent ;
 // alimenter ensuite une carte depuis le solde est gratuit.
@@ -75,7 +85,7 @@ export function createSoleaspayOrder(input: {
 
 export function getSoleaspayOrder(orderRef: string): SoleaspayOrderRow | null {
   const db = getDatabase();
-  return (db.prepare("SELECT * FROM soleaspay_orders WHERE order_ref = ?").get(orderRef) as SoleaspayOrderRow) || null;
+  return (db.prepare("SELECT * FROM soleaspay_orders WHERE order_ref = ?").get(orderRef) as unknown as SoleaspayOrderRow) || null;
 }
 
 /** Record which aggregator handles this order + its provider session id. */

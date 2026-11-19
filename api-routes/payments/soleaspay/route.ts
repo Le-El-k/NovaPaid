@@ -1,6 +1,6 @@
 import { getAuthenticatedUser, isSameOriginRequest } from "../../../app/lib/auth/session.ts";
 import { NovaDbService } from "../../../app/lib/db/service.ts";
-import { createSoleaspayOrder, USD_XAF_RATE } from "../../../app/lib/payments/soleaspay/orders.ts";
+import { createSoleaspayOrder, getUsdXafRate } from "../../../app/lib/payments/soleaspay/orders.ts";
 
 // Frais de création, en FCFA par réseau. Maplerad facture l'émission 2 USD (≈ 1 220 FCFA à 610) ;
 // le reste est le revenu NovaPaid. Visa 4 500 (revenu 3 280), Mastercard 6 000 (revenu 4 780).
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       if (!Number.isFinite(amountUsd) || amountUsd < 1 || amountUsd > 100) {
         return Response.json({ success: false, error: "Montant initial invalide (1 - 100 USD)." }, { status: 400 });
       }
-      const amountXaf = CARD_CREATION_FEE_XAF[brand] + Math.ceil(amountUsd * USD_XAF_RATE);
+      const amountXaf = CARD_CREATION_FEE_XAF[brand] + Math.ceil(amountUsd * getUsdXafRate());
       const order = createSoleaspayOrder({
         userId: user.id,
         type,

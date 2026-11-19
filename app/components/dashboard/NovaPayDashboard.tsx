@@ -65,6 +65,20 @@ const navGroups: { label: string; items: { id: Section; label: string; icon: typ
   { label: "COMPTE", items: [...navItems.filter(({ id }) => id === "support"), profileNavItem] },
 ];
 
+// --- Accès limité à la boutique (phase de test) ---------------------------------
+// Tant que SHOP_ONLY_MODE est true, l'espace client n'expose QUE la boutique
+// (plus le profil et le support pour la gestion du compte). Les cartes, le
+// portefeuille, les transferts, les dépôts/retraits, les codes et le programme
+// revendeur restent masqués côté utilisateur jusqu'à la mise à jour finale
+// (repasser ce drapeau à false pour tout rouvrir). L'admin n'est pas concerné.
+const SHOP_ONLY_MODE = true;
+const SHOP_ONLY_ALLOWED: Section[] = ["shop", "support", "settings"];
+const isSectionAllowed = (id: Section): boolean => !SHOP_ONLY_MODE || SHOP_ONLY_ALLOWED.includes(id);
+const DEFAULT_SECTION: Section = SHOP_ONLY_MODE ? "shop" : "home";
+const visibleNavGroups = navGroups
+  .map((group) => ({ ...group, items: group.items.filter((item) => isSectionAllowed(item.id)) }))
+  .filter((group) => group.items.length > 0);
+
 const sectionPaths: Record<Section, string> = {
   home: "/dashboard",
   cards: "/cards",
@@ -99,7 +113,9 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
   const router = useRouter();
   // État initial SSR-safe (pas de lecture du hash ici pour éviter un décalage
   // d'hydratation) ; le hash est appliqué juste après le montage par l'effet.
-  const [active, setActive] = useState<Section>(initialSection || "home");
+  const [active, setActive] = useState<Section>(
+    initialSection && isSectionAllowed(initialSection) ? initialSection : DEFAULT_SECTION,
+  );
   const [action, setAction] = useState<Action>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
@@ -122,7 +138,9 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
   const modalCloseRef = useRef<HTMLButtonElement>(null);
   const current = navItems.find((item) => item.id === active) ?? (active === "settings" ? profileNavItem : navItems[0]);
 
-  const selectSection = (id: Section) => {
+  const selectSection = (requested: Section) => {
+    // En phase de test (SHOP_ONLY_MODE), toute section masquée retombe sur la boutique.
+    const id = isSectionAllowed(requested) ? requested : DEFAULT_SECTION;
     setActive(id);
     setMenuOpen(false);
     if (id === "shop") window.dispatchEvent(new Event("nova-paid-shop-home"));
@@ -136,7 +154,8 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
   };
 
   useEffect(() => {
-    setActive(initialSection || sectionFromHash() || "home");
+    const requested = initialSection || sectionFromHash() || DEFAULT_SECTION;
+    setActive(isSectionAllowed(requested) ? requested : DEFAULT_SECTION);
     setMenuOpen(false);
   }, [initialSection]);
 
@@ -144,7 +163,7 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
   // boutons précédent/suivant) pour rester là où on se trouve.
   useEffect(() => {
     if (initialSection) return;
-    const applyHash = () => { const s = sectionFromHash(); if (s) setActive(s); };
+    const applyHash = () => { const s = sectionFromHash(); if (s) setActive(isSectionAllowed(s) ? s : DEFAULT_SECTION); };
     applyHash();
     window.addEventListener("hashchange", applyHash);
     return () => window.removeEventListener("hashchange", applyHash);
@@ -349,7 +368,7 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
           <span>Nova<span>Paid</span></span>
         </Link>
         <nav className="np-side-nav" aria-label="Navigation principale">
-          {navGroups.map(({ label: groupLabel, items }) => (
+          {visibleNavGroups.map(({ label: groupLabel, items }) => (
             <div className="np-nav-group" key={groupLabel}>
               <span className="np-workspace-label">{groupLabel}</span>
               {items.map(({ id, label, icon: Icon }) => (
@@ -591,10 +610,10 @@ export default function NovaPayDashboard({ initialSection }: { initialSection?: 
       </div>
 
       <nav className="np-mobile-nav" aria-label="Navigation mobile">
-        <button type="button" className={active === "home" ? "active" : ""} onClick={() => selectSection("home")}><Home size={19} /><span>Accueil</span></button>
-        <button type="button" className={active === "cards" ? "active" : ""} onClick={() => selectSection("cards")}><CreditCard size={19} /><span>Cartes</span></button>
+        {isSectionAllowed("home") && <button type="button" className={active === "home" ? "active" : ""} onClick={() => selectSection("home")}><Home size={19} /><span>Accueil</span></button>}
+        {isSectionAllowed("cards") && <button type="button" className={active === "cards" ? "active" : ""} onClick={() => selectSection("cards")}><CreditCard size={19} /><span>Cartes</span></button>}
         <button type="button" className={active === "shop" ? "active" : ""} onClick={() => selectSection("shop")}><ShoppingBag size={19} /><span>Boutique</span></button>
-        <button type="button" className={active === "history" ? "active" : ""} onClick={() => selectSection("history")}><History size={19} /><span>Historique</span></button>
+        {isSectionAllowed("history") && <button type="button" className={active === "history" ? "active" : ""} onClick={() => selectSection("history")}><History size={19} /><span>Historique</span></button>}
         <button type="button" className={active === "settings" ? "active" : ""} onClick={() => selectSection("settings")}><LockKeyhole size={19} /><span>Profil</span></button>
       </nav>
 

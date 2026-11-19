@@ -1,7 +1,7 @@
 import { getAuthenticatedUser, isSameOriginRequest } from "../../../app/lib/auth/session.ts";
 import { getConfigValue } from "../../../app/lib/config/runtime-config.ts";
 import { NovaDbService } from "../../../app/lib/db/service.ts";
-import { createSoleaspayOrder, attachProviderSession, markSoleaspayOrderFailed, USD_XAF_RATE } from "../../../app/lib/payments/soleaspay/orders.ts";
+import { createSoleaspayOrder, attachProviderSession, markSoleaspayOrderFailed, getUsdXafRate } from "../../../app/lib/payments/soleaspay/orders.ts";
 import { createPaymentSession, isBkpayConfigured } from "../../../app/lib/payments/bkpay/client.ts";
 
 // Frais de création, en FCFA par réseau. Maplerad facture l'émission 2 USD (≈ 1 220 FCFA à 610) ;
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       amountUsd = Number(body.amountUsd ?? 10);
       if (!["visa", "mastercard"].includes(brand)) return Response.json({ success: false, error: "Marque invalide (visa ou mastercard)." }, { status: 400 });
       if (!Number.isFinite(amountUsd) || amountUsd < 1 || amountUsd > 100) return Response.json({ success: false, error: "Montant initial invalide (1 - 100 USD)." }, { status: 400 });
-      amountXaf = CARD_CREATION_FEE_XAF[brand] + Math.ceil(amountUsd * USD_XAF_RATE);
+      amountXaf = CARD_CREATION_FEE_XAF[brand] + Math.ceil(amountUsd * getUsdXafRate());
       meta = { brand, amountUsd, label: typeof body.label === "string" ? body.label.slice(0, 60) : undefined };
       description = "Création carte virtuelle NovaPaid";
     } else {

@@ -13,14 +13,19 @@ export function AdminRevenue() {
   const { currency, convertAmount } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchStats = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/admin?section=revenue");
       const json = await res.json();
       if (json.success) setStats(json.stats);
-    } catch (e) { console.error(e); }
+      else setError(json.error || t("arev_loading"));
+    } catch (e: any) {
+      setError(e?.message || "Erreur réseau");
+    }
     setLoading(false);
   };
 
@@ -34,11 +39,23 @@ export function AdminRevenue() {
       : `${v.toFixed(2)} $`;
   };
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="np-admin-revenue-loading">
         <Loader2 size={20} className="animate-spin" />
         <span>{t("arev_loading")}</span>
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="np-admin-revenue-loading">
+        <AlertTriangle size={20} />
+        <span>{error || t("arev_loading")}</span>
+        <button type="button" className="np-admin-fees-refresh" onClick={fetchStats}>
+          <RefreshCw size={14} />
+        </button>
       </div>
     );
   }

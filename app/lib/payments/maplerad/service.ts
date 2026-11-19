@@ -178,7 +178,7 @@ export async function ensureMapleradCustomer(userId: number): Promise<string> {
 /** Issue a virtual Visa/Mastercard card via Maplerad (asynchronous). */
 export async function issueMapleradCard(
   userId: number,
-  opts: { brand: "visa" | "mastercard"; amountUsd: number; label?: string }
+  opts: { brand: "visa" | "mastercard"; amountUsd: number; label?: string; chargeWallet?: boolean; adminId?: number | null }
 ): Promise<{ success: boolean; pending: true; cardId: number; reference: string; costXaf: number; newWalletBalanceXaf: number }> {
   const config = getMapleradConfig();
   if (!config) throw new MapleradError("Maplerad n'est pas configuré.", 503);
@@ -213,6 +213,8 @@ export async function issueMapleradCard(
     reference,
     environment: config.environment,
     mapleradCustomerId: customerId,
+    chargeWallet: opts.chargeWallet,
+    adminId: opts.adminId,
   });
 
   return { success: true, pending: true, cardId, reference, costXaf, newWalletBalanceXaf };

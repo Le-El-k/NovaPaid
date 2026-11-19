@@ -62,7 +62,7 @@ function writeAdminAudit(db: ReturnType<typeof getDatabase>, adminId: number | n
 function createUserNotification(
   db: ReturnType<typeof getDatabase>,
   userId: number,
-  type: "info" | "success" | "warning" | "security",
+  type: "info" | "success" | "warning" | "security" | "error",
   title: string,
   message: string,
   actionUrl: string | null = null
@@ -634,10 +634,13 @@ export const NovaDbService = {
       const wallet = db.prepare("SELECT id, available_minor, status FROM wallets WHERE user_id = ? AND currency = 'XAF' ORDER BY id LIMIT 1").get(userId) as any;
       if (!wallet || wallet.status !== "active") throw new Error("Portefeuille indisponible ou gelé.");
 
-      // Alimenter la carte depuis le solde principal = GRATUIT, au taux normal 610 (pas de frais
-      // supplémentaire : les frais ont déjà été prélevés à la recharge du solde principal).
-      const rate = 610.0;
-      const costXaf = Math.ceil(amountUsd * rate);
+      // Taux et frais de recharge pilotés par l'onglet admin « Frais & Taux » (exchange_rates
+      // + card_reload_fees), donc une modification côté admin s'applique partout. Mettre le
+      // frais à 0 côté admin rend la recharge gratuite.
+      const rate = this.getPlatformUsdXafRate();
+      const baseXaf = Math.ceil(amountUsd * rate);
+      const feeXaf = Math.max(0, this.calculateCardReloadFee(baseXaf));
+      const costXaf = baseXaf + feeXaf;
       const costMinor = costXaf * 100;
       if (Number(wallet.available_minor) < costMinor) {
         throw new Error("Solde insuffisant dans votre portefeuille. Montant requis : " + costXaf.toLocaleString("fr-FR") + " FCFA.");
@@ -702,8 +705,12 @@ export const NovaDbService = {
       const wallet = db.prepare("SELECT id, available_minor, status FROM wallets WHERE user_id = ? AND currency = 'XAF' ORDER BY id LIMIT 1").get(userId) as any;
       if (!wallet || wallet.status !== "active") throw new Error("Portefeuille indisponible ou gelé.");
 
-      const rate = 610.0;
-      const creditXaf = Math.floor(amountUsd * rate);
+      // Taux et frais de retrait pilotés par l'onglet admin « Frais & Taux » (exchange_rates
+      // + card_withdrawal_fees). Le frais est déduit du montant rapatrié vers le portefeuille.
+      const rate = this.getPlatformUsdXafRate();
+      const grossXaf = Math.floor(amountUsd * rate);
+      const feeXaf = Math.min(grossXaf, Math.max(0, this.calculateCardWithdrawalFee(grossXaf)));
+      const creditXaf = grossXaf - feeXaf;
       const creditMinor = creditXaf * 100;
 
       const debitCard = db.prepare("UPDATE cards SET external_balance_minor = external_balance_minor - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND external_balance_minor >= ?").run(amountUsdMinor, cardId, amountUsdMinor);
@@ -822,17 +829,31 @@ export const NovaDbService = {
    */
   createPendingMapleradCard(
     userId: number,
-    opts: { brand: "visa" | "mastercard"; label: string; amountUsd: number; reference: string; environment: string; mapleradCustomerId: string }
+    opts: {
+      brand: "visa" | "mastercard";
+      label: string;
+      amountUsd: number;
+      reference: string;
+      environment: string;
+      mapleradCustomerId: string;
+      // When false, do not debit the user's wallet (admin-granted card). Default true.
+      chargeWallet?: boolean;
+      // When set, the card is attributed by an administrator; recorded in the audit log.
+      adminId?: number | null;
+    }
   ): { cardId: number; costXaf: number; newWalletBalanceXaf: number } {
     const db = getDatabase();
-    const RATE = 610.0;
+    // Taux USD→XAF piloté par l'onglet admin « Taux de change » (fallback 610).
+    const RATE = this.getPlatformUsdXafRate();
+    const chargeWallet = opts.chargeWallet !== false;
+    const adminId = opts.adminId ?? null;
     return withImmediateTransaction(db, () => {
       this.assertWalletActive(userId);
       const activeOrFrozenCount = (db.prepare(
         "SELECT count(*) as c FROM cards WHERE user_id = ? AND status NOT IN ('cancelled','rejected')"
       ).get(userId) as any)?.c || 0;
       if (activeOrFrozenCount >= 3) {
-        throw new Error("Vous avez atteint la limite maximale de 3 cartes autorisées sur votre compte.");
+        throw new Error("La limite maximale de 3 cartes autorisées est atteinte pour cet utilisateur.");
       }
 
       const wallet = db.prepare(
@@ -842,26 +863,31 @@ export const NovaDbService = {
 
       const costXaf = Math.ceil(opts.amountUsd * RATE);
       const costMinor = costXaf * 100;
-      if (Number(wallet.available_minor) < costMinor) {
-        throw new Error("Solde insuffisant dans votre portefeuille. Montant requis : " + costXaf.toLocaleString("fr-FR") + " FCFA.");
+      let debitMinor = 0;
+
+      if (chargeWallet) {
+        if (Number(wallet.available_minor) < costMinor) {
+          throw new Error("Solde insuffisant dans le portefeuille. Montant requis : " + costXaf.toLocaleString("fr-FR") + " FCFA.");
+        }
+        const debit = db.prepare(
+          "UPDATE wallets SET available_minor = available_minor - ? WHERE id = ? AND available_minor >= ?"
+        ).run(costMinor, wallet.id, costMinor);
+        if (Number(debit.changes) !== 1) throw new Error("Solde insuffisant.");
+        debitMinor = costMinor;
+
+        const txRef = "TX-CRD-NEW-" + Date.now();
+        const desc = "Émission carte " + opts.label + " (" + opts.amountUsd.toFixed(2) + " USD)";
+        const insTx = db.prepare(
+          "INSERT INTO ledger_transactions (public_ref, idempotency_key, type, status, currency, amount_minor, description, created_by) VALUES (?, ?, 'card_creation', 'succeeded', 'XAF', ?, ?, ?)"
+        ).run(txRef, txRef, costMinor, desc, userId);
+        db.prepare(
+          "INSERT INTO ledger_entries (transaction_id, wallet_id, direction, amount_minor) VALUES (?, ?, 'debit', ?)"
+        ).run(Number(insTx.lastInsertRowid), wallet.id, costMinor);
       }
 
-      const debit = db.prepare(
-        "UPDATE wallets SET available_minor = available_minor - ? WHERE id = ? AND available_minor >= ?"
-      ).run(costMinor, wallet.id, costMinor);
-      if (Number(debit.changes) !== 1) throw new Error("Solde insuffisant.");
-
-      const txRef = "TX-CRD-NEW-" + Date.now();
-      const desc = "Émission carte " + opts.label + " (" + opts.amountUsd.toFixed(2) + " USD)";
-      const insTx = db.prepare(
-        "INSERT INTO ledger_transactions (public_ref, idempotency_key, type, status, currency, amount_minor, description, created_by) VALUES (?, ?, 'card_creation', 'succeeded', 'XAF', ?, ?, ?)"
-      ).run(txRef, txRef, costMinor, desc, userId);
-      db.prepare(
-        "INSERT INTO ledger_entries (transaction_id, wallet_id, direction, amount_minor) VALUES (?, ?, 'debit', ?)"
-      ).run(Number(insTx.lastInsertRowid), wallet.id, costMinor);
-
       const amountMinor = Math.round(opts.amountUsd * 100);
-      const metadata = JSON.stringify({ debitMinor: costMinor, walletId: wallet.id, reference: opts.reference, mapleradCustomerId: opts.mapleradCustomerId, ledgerTxRef: txRef });
+      // debitMinor stays 0 for admin-granted cards so a provider failure does not trigger a wallet refund.
+      const metadata = JSON.stringify({ debitMinor, walletId: wallet.id, reference: opts.reference, mapleradCustomerId: opts.mapleradCustomerId, grantedByAdminId: adminId });
       const result = db.prepare(
         `INSERT INTO cards (user_id, provider, provider_card_ref, label, masked_pan, card_type, network, status, external_balance_minor, maplerad_id, api_environment, metadata)
          VALUES (?, 'maplerad', ?, ?, ?, 'virtual', ?, 'pending', ?, NULL, ?, ?)`
@@ -871,15 +897,26 @@ export const NovaDbService = {
         db,
         userId,
         "info",
-        "Carte en cours d'émission",
+        adminId ? "Carte virtuelle attribuée" : "Carte en cours d'émission",
         opts.label + " est en cours de création. Elle sera active dès validation par notre prestataire.",
         "/cards"
       );
 
+      if (adminId) {
+        writeAdminAudit(
+          db,
+          adminId,
+          "super_admin",
+          "issue_maplerad_card",
+          `user:${userId}`,
+          `${opts.brand.toUpperCase()} ${opts.amountUsd.toFixed(2)} USD · ${chargeWallet ? "portefeuille débité" : "attribution gratuite"}`,
+        );
+      }
+
       return {
         cardId: Number(result.lastInsertRowid),
         costXaf,
-        newWalletBalanceXaf: Math.round((Number(wallet.available_minor) - costMinor) / 100),
+        newWalletBalanceXaf: Math.round((Number(wallet.available_minor) - debitMinor) / 100),
       };
     });
   },
@@ -3373,19 +3410,6 @@ export const NovaDbService = {
   // IDENTITY VERIFICATION (PrismCard parity)
   // ============================================================
 
-  submitIdentityVerification(userId: number, data: { documentType: string; frontImage: string; backImage?: string; selfieImage?: string }) {
-    const db = getDatabase();
-    const existing = db.prepare("SELECT id FROM identity_verifications WHERE user_id = ? AND status = 'pending'").get(userId) as any;
-    if (existing) throw new Error("Une vérification est déjà en cours.");
-    db.prepare(`
-      INSERT INTO identity_verifications (user_id, document_type, front_image, back_image, selfie_image, status, submitted_at)
-      VALUES (?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
-    `).run(userId, data.documentType, data.frontImage, data.backImage || null, data.selfieImage || null);
-    db.prepare("UPDATE users SET kyc_status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(userId);
-    createUserNotification(db, userId, "info", "Vérification soumise", "Votre demande de vérification d'identité est en cours d'examen.");
-    return { success: true };
-  },
-
   // ============================================================
   // EXCHANGE RATES (PrismCard parity)
   // ============================================================
@@ -3399,6 +3423,20 @@ export const NovaDbService = {
       "SELECT rate FROM exchange_rates WHERE from_currency = ? AND to_currency = ? AND is_active = 1"
     ).get(fromCurrency.toUpperCase(), toCurrency.toUpperCase()) as any;
     return row ? Number(row.rate) : null;
+  },
+
+  /**
+   * USD → XAF rate used for every card operation across the platform.
+   * Sourced from the admin "Taux de change" tab (exchange_rates) so a change there
+   * applies everywhere. Falls back to 610 when no active rate is configured, which
+   * keeps historical behaviour unchanged out of the box.
+   */
+  getPlatformUsdXafRate(): number {
+    try {
+      const rate = this.getExchangeRate("USD", "XAF");
+      if (rate && Number.isFinite(rate) && rate > 0) return rate;
+    } catch { /* fall through to default */ }
+    return 610.0;
   },
 
   // ============================================================
@@ -3500,14 +3538,24 @@ export const NovaDbService = {
     `).run(data.userId || null, data.action, data.details || null, data.ip || null, data.userAgent || null, data.method || null, data.url || null, data.country || null);
   },
 
-  getActivities(options: { userId?: number; limit?: number; offset?: number } = {}) {
+  getActivities(options: { userId?: number; type?: string; limit?: number; offset?: number } = {}) {
     const db = getDatabase();
     const limit = Math.min(options.limit || 50, 200);
     const offset = options.offset || 0;
-    if (options.userId) {
-      return db.prepare("SELECT * FROM activities WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?").all(options.userId, limit, offset) as any[];
-    }
-    return db.prepare("SELECT * FROM activities ORDER BY created_at DESC LIMIT ? OFFSET ?").all(limit, offset) as any[];
+    const where: string[] = [];
+    const params: any[] = [];
+    if (options.userId) { where.push("a.user_id = ?"); params.push(options.userId); }
+    if (options.type) { where.push("a.action LIKE ?"); params.push(`%${options.type}%`); }
+    const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
+    const total = (db.prepare(`SELECT count(*) as c FROM activities a ${whereSql}`).get(...params) as any)?.c || 0;
+    // Alias action/details so the admin UI columns (activity_type/description) render,
+    // and join the user name for the "Utilisateur" column instead of a raw id.
+    const items = db.prepare(`
+      SELECT a.*, a.action AS activity_type, a.details AS description, u.name AS user_name
+      FROM activities a LEFT JOIN users u ON u.id = a.user_id
+      ${whereSql} ORDER BY a.created_at DESC LIMIT ? OFFSET ?
+    `).all(...params, limit, offset) as any[];
+    return { items, total };
   },
 
   // ============================================================
@@ -3845,30 +3893,32 @@ export const NovaDbService = {
     const totalCards = (db.prepare("SELECT count(*) as c FROM cards").get() as any).c;
     const activeCards = (db.prepare("SELECT count(*) as c FROM cards WHERE status='active'").get() as any).c;
 
-    const totalTransactions = (db.prepare("SELECT count(*) as c FROM transactions").get() as any).c;
-    const todayTransactions = (db.prepare("SELECT count(*) as c FROM transactions WHERE date(created_at) = ?").get(todayStr) as any).c;
-    const weekTransactions = (db.prepare("SELECT count(*) as c FROM transactions WHERE date(created_at) >= ?").get(weekAgo) as any).c;
+    // Les mouvements d'argent de la plateforme vivent dans ledger_transactions (statut 'succeeded').
+    const SUCCESS = "status = 'succeeded'";
+    const totalTransactions = (db.prepare("SELECT count(*) as c FROM ledger_transactions").get() as any).c;
+    const todayTransactions = (db.prepare("SELECT count(*) as c FROM ledger_transactions WHERE date(created_at) = ?").get(todayStr) as any).c;
+    const weekTransactions = (db.prepare("SELECT count(*) as c FROM ledger_transactions WHERE date(created_at) >= ?").get(weekAgo) as any).c;
 
-    const totalVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM transactions WHERE status IN ('completed','approved')").get() as any).s;
-    const todayVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM transactions WHERE status IN ('completed','approved') AND date(created_at) = ?").get(todayStr) as any).s;
-    const weekVolumeXaf = (db.prepare("SELECT coalesce(sum(amount_minor), 0) as s FROM transactions WHERE status IN ('completed','approved') AND date(created_at) >= ?").get(weekAgo) as any).s;
+    const totalVolumeXaf = (db.prepare(`SELECT coalesce(sum(amount_minor), 0) as s FROM ledger_transactions WHERE ${SUCCESS}`).get() as any).s;
+    const todayVolumeXaf = (db.prepare(`SELECT coalesce(sum(amount_minor), 0) as s FROM ledger_transactions WHERE ${SUCCESS} AND date(created_at) = ?`).get(todayStr) as any).s;
+    const weekVolumeXaf = (db.prepare(`SELECT coalesce(sum(amount_minor), 0) as s FROM ledger_transactions WHERE ${SUCCESS} AND date(created_at) >= ?`).get(weekAgo) as any).s;
 
-    const totalWalletBalance = (db.prepare("SELECT coalesce(sum(balance_minor), 0) as s FROM wallets").get() as any).s;
+    const totalWalletBalance = (db.prepare("SELECT coalesce(sum(available_minor), 0) as s FROM wallets").get() as any).s;
 
-    const pendingApprovals = (db.prepare("SELECT count(*) as c FROM withdrawal_approvals WHERE status='pending'").get() as any).c;
+    const pendingApprovals = (db.prepare("SELECT count(*) as c FROM admin_approvals WHERE status='pending'").get() as any).c;
     const pendingKyc = (db.prepare("SELECT count(*) as c FROM identity_verifications WHERE status='pending'").get() as any).c;
     const openTickets = (db.prepare("SELECT count(*) as c FROM support_tickets WHERE status IN ('open','waiting_admin')").get() as any).c;
 
     // Daily volume for last 7 days
     const dailyVolume = db.prepare(`
       SELECT date(created_at) as day, count(*) as count, coalesce(sum(amount_minor), 0) as volume
-      FROM transactions WHERE date(created_at) >= ? GROUP BY date(created_at) ORDER BY day
+      FROM ledger_transactions WHERE date(created_at) >= ? GROUP BY date(created_at) ORDER BY day
     `).all(weekAgo) as any[];
 
     // Transaction type breakdown
     const typeBreakdown = db.prepare(`
       SELECT type, count(*) as count, coalesce(sum(amount_minor), 0) as volume
-      FROM transactions WHERE status IN ('completed','approved')
+      FROM ledger_transactions WHERE ${SUCCESS}
       GROUP BY type ORDER BY volume DESC
     `).all() as any[];
 
@@ -3915,15 +3965,35 @@ export const NovaDbService = {
   // ADMIN — LANDING PAGE CMS (Phase 3)
   // ============================================================
 
-  getLandingPageSettings() {
+  // Sections CMS de la landing (modèle multi-lignes), distinctes de la config mono-ligne
+  // `landing_page_settings` (hero/SEO) gérée par updateLandingPageSettings(). La table est
+  // créée à la volée pour fonctionner sur les bases déjà déployées.
+  ensureLandingCmsTable() {
     const db = getDatabase();
-    const rows = db.prepare("SELECT * FROM landing_page_settings ORDER BY section_order, id").all() as any[];
-    return rows;
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS landing_cms_sections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        section_key TEXT NOT NULL UNIQUE,
+        section_title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        is_visible INTEGER NOT NULL DEFAULT 1,
+        section_order INTEGER NOT NULL DEFAULT 0,
+        metadata TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+    return db;
+  },
+
+  getLandingPageSettings() {
+    const db = this.ensureLandingCmsTable();
+    return db.prepare("SELECT * FROM landing_cms_sections ORDER BY section_order, id").all() as any[];
   },
 
   upsertLandingPageSetting(data: { section_key: string; section_title?: string; content?: string; is_visible?: number; section_order?: number; metadata?: string }) {
-    const db = getDatabase();
-    const existing = db.prepare("SELECT id FROM landing_page_settings WHERE section_key = ?").get(data.section_key) as any;
+    const db = this.ensureLandingCmsTable();
+    const existing = db.prepare("SELECT id FROM landing_cms_sections WHERE section_key = ?").get(data.section_key) as any;
     if (existing) {
       const fields: string[] = [];
       const values: any[] = [];
@@ -3934,11 +4004,11 @@ export const NovaDbService = {
       if (data.metadata !== undefined) { fields.push("metadata = ?"); values.push(data.metadata); }
       if (fields.length > 0) {
         values.push(existing.id);
-        db.prepare(`UPDATE landing_page_settings SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...values);
+        db.prepare(`UPDATE landing_cms_sections SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...values);
       }
     } else {
       db.prepare(`
-        INSERT INTO landing_page_settings (section_key, section_title, content, is_visible, section_order, metadata)
+        INSERT INTO landing_cms_sections (section_key, section_title, content, is_visible, section_order, metadata)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(data.section_key, data.section_title || "", data.content || "", data.is_visible ?? 1, data.section_order ?? 0, data.metadata || null);
     }
@@ -3946,7 +4016,7 @@ export const NovaDbService = {
   },
 
   deleteLandingPageSetting(id: number) {
-    getDatabase().prepare("DELETE FROM landing_page_settings WHERE id = ?").run(id);
+    this.ensureLandingCmsTable().prepare("DELETE FROM landing_cms_sections WHERE id = ?").run(id);
     return { success: true };
   },
 
@@ -3975,29 +4045,13 @@ export const NovaDbService = {
     return getDatabase().prepare("SELECT * FROM email_campaigns ORDER BY created_at DESC LIMIT 100").all() as any[];
   },
 
-  createEmailCampaign(data: { name: string; subject: string; body_html: string; target_audience: string; scheduled_at?: string }, adminId: number) {
-    const db = getDatabase();
-    db.prepare(`
-      INSERT INTO email_campaigns (name, subject, body_html, target_audience, status, created_by, scheduled_at)
-      VALUES (?, ?, ?, ?, 'draft', ?, ?)
-    `).run(data.name, data.subject, data.body_html, data.target_audience || "all", adminId, data.scheduled_at || null);
-    return { success: true };
-  },
-
   updateEmailCampaignStatus(id: number, status: string) {
     const db = getDatabase();
     if (status === "sent") {
-      db.prepare("UPDATE email_campaigns SET status = 'sent', sent_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
+      db.prepare("UPDATE email_campaigns SET status = 'sent', last_sent_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
     } else {
       db.prepare("UPDATE email_campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, id);
     }
-    return { success: true };
-  },
-
-  deleteEmailCampaign(id: number) {
-    const db = getDatabase();
-    db.prepare("DELETE FROM email_campaign_recipients WHERE campaign_id = ?").run(id);
-    db.prepare("DELETE FROM email_campaigns WHERE id = ?").run(id);
     return { success: true };
   },
 
@@ -5056,10 +5110,16 @@ export const NovaDbService = {
   },
 
   // --- Email Campaigns ---
-  createEmailCampaign(data: { subject: string; message: string; scheduled_for?: string }) {
+  createEmailCampaign(
+    data: { subject: string; message?: string; body_html?: string; name?: string; target_audience?: string; scheduled_for?: string },
+    _adminId?: number,
+  ) {
+    // Admin UI sends { name, subject, body_html, target_audience }; the scheduler sends
+    // { subject, message, scheduled_for }. The live schema stores subject + message, so map body_html -> message.
+    const message = data.message ?? data.body_html ?? "";
     const result = getDatabase().prepare(`
       INSERT INTO email_campaigns (subject, message, status, scheduled_for) VALUES (?, ?, 'draft', ?)
-    `).run(data.subject, data.message, data.scheduled_for || null);
+    `).run(data.subject, message, data.scheduled_for || null);
     return { id: result.lastInsertRowid };
   },
 
@@ -5105,11 +5165,11 @@ export const NovaDbService = {
     const db = getDatabase();
     if (data.id) {
       db.prepare(`UPDATE email_settings SET mail_host=?, mail_port=?, mail_username=?, mail_password=?, mail_encryption=?, mail_from_address=?, mail_from_name=?, is_active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-        .run(data.mail_host, data.mail_port || 587, data.mail_username, data.mail_password, data.mail_encryption || "tls", data.mail_from_address, data.mail_from_name, data.is_active ? 1 : 0, data.id);
+        .run(data.mail_host ?? null, data.mail_port || 587, data.mail_username ?? null, data.mail_password ?? null, data.mail_encryption || "tls", data.mail_from_address ?? null, data.mail_from_name ?? null, data.is_active ? 1 : 0, data.id);
       return { id: data.id };
     }
     const r = db.prepare(`INSERT INTO email_settings (mail_host, mail_port, mail_username, mail_password, mail_encryption, mail_from_address, mail_from_name, is_active) VALUES (?,?,?,?,?,?,?,?)`)
-      .run(data.mail_host, data.mail_port || 587, data.mail_username, data.mail_password, data.mail_encryption || "tls", data.mail_from_address, data.mail_from_name, data.is_active ? 1 : 0);
+      .run(data.mail_host ?? null, data.mail_port || 587, data.mail_username ?? null, data.mail_password ?? null, data.mail_encryption || "tls", data.mail_from_address ?? null, data.mail_from_name ?? null, data.is_active ? 1 : 0);
     return { id: r.lastInsertRowid };
   },
 

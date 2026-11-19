@@ -22073,6 +22073,76 @@ button.np-storefront-progress-step:hover {
   background: linear-gradient(90deg, var(--prism-primary), transparent);
 }
 
+/* ------------------------------------------------------------
+   Paramètres plateforme — disposition + cohérence (thème sombre)
+   Corrige l'espacement des lignes Thème/Langue et met les boîtes
+   de réglages au diapason du thème PrismCard (plus de cartes blanches).
+   ------------------------------------------------------------ */
+.np-admin-app .np-admin-settings-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.np-admin-app .np-admin-pref-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.np-admin-app .np-admin-pref-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-top: 1px solid var(--prism-border);
+}
+.np-admin-app .np-admin-pref-row:first-child { border-top: 0; }
+
+.np-admin-app .np-admin-pref-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.np-admin-app .np-admin-pref-label strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--prism-text-bright);
+}
+.np-admin-app .np-admin-pref-label small {
+  font-size: 12px;
+  color: var(--prism-text-muted);
+  line-height: 1.4;
+}
+
+.np-admin-app .np-setting-box {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--prism-border);
+  border-radius: 12px;
+  color: var(--prism-text);
+}
+.np-admin-app .np-setting-box strong { color: var(--prism-text-bright); }
+.np-admin-app .np-setting-box p { color: var(--prism-text-muted); }
+.np-admin-app .np-setting-box small { color: var(--prism-text-muted); }
+.np-admin-app .np-setting-val { color: var(--prism-text-bright); }
+.np-admin-app .np-setting-val b { color: #10b981; }
+.np-admin-app .np-fees-table { color: var(--prism-text); }
+.np-admin-app .np-setting-val input,
+.np-admin-app .np-fees-table input {
+  background: var(--prism-bg);
+  border: 1px solid var(--prism-border);
+  color: var(--prism-text-bright);
+}
+.np-admin-app .np-setting-val input:focus,
+.np-admin-app .np-fees-table input:focus {
+  border-color: #10b981;
+  outline: none;
+}
+
 .np-panel-heading {
   display: flex;
   justify-content: space-between;
@@ -22383,8 +22453,8 @@ button.np-storefront-progress-step:hover {
   gap: 8px;
   padding: 10px 18px;
   background: var(--panel, #1a1625);
-  border: 1px solid rgba(0, 212, 170, 0.4);
-  color: #00d4aa;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
@@ -22430,8 +22500,8 @@ button.np-storefront-progress-step:hover {
 }
 
 .np-admin-fees-tab.active {
-  background: rgba(0, 212, 170, 0.15);
-  color: #00d4aa;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
 }
 
 .np-admin-fees-refresh {
@@ -22446,8 +22516,8 @@ button.np-storefront-progress-step:hover {
 }
 
 .np-admin-fees-refresh:hover {
-  color: #00d4aa;
-  background: rgba(0, 212, 170, 0.1);
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
 }
 
 .np-admin-fees-content {
@@ -22476,9 +22546,9 @@ button.np-storefront-progress-step:hover {
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border: 1px solid rgba(0, 212, 170, 0.3);
-  background: rgba(0, 212, 170, 0.1);
-  color: #00d4aa;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
   font-size: 12px;
   font-weight: 600;
   border-radius: 8px;
@@ -22487,8 +22557,8 @@ button.np-storefront-progress-step:hover {
 }
 
 .np-admin-fees-add:hover {
-  background: rgba(0, 212, 170, 0.2);
-  border-color: rgba(0, 212, 170, 0.5);
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.5);
 }
 
 .np-admin-fees-form {
@@ -22532,7 +22602,7 @@ button.np-storefront-progress-step:hover {
 }
 
 .np-admin-fees-toggles-row input[type="checkbox"] {
-  accent-color: #00d4aa;
+  accent-color: #10b981;
 }
 
 .np-admin-fees-table-wrap {
@@ -22602,7 +22672,7 @@ button.np-storefront-progress-step:hover {
 }
 
 .np-admin-fees-toggle.on {
-  color: #00d4aa;
+  color: #10b981;
 }
 
 .np-admin-fees-toggle.off {
@@ -22721,8 +22791,8 @@ button.np-storefront-progress-step:hover {
 }
 
 .np-badge.accent {
-  background: rgba(0, 212, 170, 0.15);
-  color: #00d4aa;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
 }
 
 .np-admin-fees-provider-details {
@@ -22792,6 +22862,218 @@ button.np-storefront-progress-step:hover {
   .np-admin-fees-provider-badges {
     flex-wrap: wrap;
   }
+}
+
+/* ============================================================
+   ADMIN — COMMUNICATION (annonces, campagnes, config e-mail)
+   Accent émeraude, aligné sur la page « Frais & Taux ».
+   ============================================================ */
+.np-admin-comm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.np-admin-comm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  background: var(--panel, #1a1625);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.np-admin-comm-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.np-admin-comm-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.np-admin-comm-tab.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.np-admin-comm-section {
+  background: var(--panel, #1a1625);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px;
+}
+
+.np-admin-comm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.np-admin-comm-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text, #f0eff4);
+  margin: 0;
+}
+
+/* Boutons « Nouvelle / Ajouter » harmonisés en émeraude dans cette section. */
+.np-admin-comm .np-primary-button {
+  min-height: 36px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  box-shadow: none;
+}
+
+.np-admin-comm .np-primary-button:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #10b981;
+}
+
+.np-admin-comm .np-primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.np-admin-comm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.np-admin-comm-form-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.np-admin-comm-form-row > * {
+  flex: 1 1 160px;
+}
+
+.np-admin-comm-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.np-admin-comm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.np-admin-comm-toggle input[type="checkbox"] {
+  accent-color: #10b981;
+  width: 16px;
+  height: 16px;
+}
+
+.np-admin-comm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.np-admin-comm-empty {
+  text-align: center;
+  padding: 28px 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.np-admin-comm-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.np-admin-comm-item:hover {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.np-admin-comm-item-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.np-admin-comm-item-info strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #f0eff4);
+}
+
+.np-admin-comm-item-info p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.np-admin-comm-item-info small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.np-admin-comm-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .np-admin-comm-tabs { gap: 4px; padding: 4px; }
+  .np-admin-comm-tab { padding: 6px 10px; font-size: 11px; }
+  .np-admin-comm-section { padding: 14px; }
+  .np-admin-comm-item { flex-direction: column; align-items: flex-start; }
+  .np-admin-comm-item-actions { align-self: flex-end; }
 }
 
 /* ============================================================

@@ -126,6 +126,7 @@ function KycPanel({ data, post, acting, reload }: any) {
 
 function RevenuePanel({ data }: any) {
   const { t } = useLanguage();
+  const { currency, convertAmount } = useCurrency();
   const a = data.analytics || {};
   const fmt = (v: number) => {
     const c = convertAmount((v || 0) / 100, "XAF", currency);

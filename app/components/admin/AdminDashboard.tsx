@@ -162,6 +162,13 @@ export default function AdminDashboard() {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
+  // Adjust modal mode: "balance" (wallet) or "card" (attribute a Maplerad card)
+  const [adjustMode, setAdjustMode] = useState<"balance" | "card">("balance");
+  const [cardBrand, setCardBrand] = useState<"visa" | "mastercard">("visa");
+  const [cardAmountUsd, setCardAmountUsd] = useState("10");
+  const [cardLabel, setCardLabel] = useState("");
+  const [cardChargeWallet, setCardChargeWallet] = useState(false);
+  const [issuingCard, setIssuingCard] = useState(false);
 
   // Support Management Extended States
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
@@ -625,6 +632,43 @@ export default function AdminDashboard() {
       setAdjusting(false);
     }
   };
+
+  const handleIssueMapleradCard = async () => {
+    if (!adjustModal.user) return;
+    const amount = Number(cardAmountUsd);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000) {
+      showNotification(t("adm_card_amount_invalid"));
+      return;
+    }
+    setIssuingCard(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "issue_maplerad_card",
+          userId: adjustModal.user.id,
+          brand: cardBrand,
+          amountUsd: amount,
+          label: cardLabel.trim() || undefined,
+          chargeWallet: cardChargeWallet,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || t("adm_impossible"));
+      showNotification(t("adm_card_issued"));
+      setAdjustModal({ open: false, user: null });
+      setCardLabel("");
+      setCardAmountUsd("10");
+      setCardChargeWallet(false);
+      fetchSectionData("users");
+    } catch (error: any) {
+      showNotification(error?.message || t("adm_err_generic"));
+    } finally {
+      setIssuingCard(false);
+    }
+  };
+
   const handleUpdateAdmin = async (account: any, changes: { role?: string; status?: string; password?: string }) => {
     try {
       const res = await fetch("/api/admin", {
@@ -2349,7 +2393,7 @@ export default function AdminDashboard() {
                               {u.walletStatus === "frozen" ? t("admin_unfreeze") : t("admin_freeze_balance")}
                             </button>
                             {adminIdentity?.role === "super_admin" && (
-                              <button type="button" className="np-btn-sm outline" onClick={() => { setAdjustModal({ open: true, user: u }); setAdjustDir("credit"); setAdjustAmount(""); setAdjustReason(""); }}>
+                              <button type="button" className="np-btn-sm outline" onClick={() => { setAdjustModal({ open: true, user: u }); setAdjustMode("balance"); setAdjustDir("credit"); setAdjustAmount(""); setAdjustReason(""); setCardBrand("visa"); setCardAmountUsd("10"); setCardLabel(""); setCardChargeWallet(false); }}>
                                 {t("admin_adjust")}
                               </button>
                             )}
@@ -3149,8 +3193,13 @@ export default function AdminDashboard() {
     {adjustModal.open && adjustModal.user && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setAdjustModal({ open: false, user: null })} role="dialog" aria-modal="true">
         <div className="np-panel w-full max-w-sm mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-          <h3 className="font-bold text-lg text-slate-800 mb-1">{t("adm_adjust_balance")}</h3>
-          <p className="text-xs text-slate-500 mb-4">{t("adm_user_label")} <strong>{adjustModal.user.name}</strong> {t("adm_balance_label")} <strong>{money(adjustModal.user.balanceXaf ?? 0).n} {money(adjustModal.user.balanceXaf ?? 0).u}</strong></p>
+          <h3 className="font-bold text-lg text-slate-800 mb-1">{adjustMode === "card" ? t("adm_assign_card") : t("adm_adjust_balance")}</h3>
+          <p className="text-xs text-slate-500 mb-3">{t("adm_user_label")} <strong>{adjustModal.user.name}</strong> {t("adm_balance_label")} <strong>{money(adjustModal.user.balanceXaf ?? 0).n} {money(adjustModal.user.balanceXaf ?? 0).u}</strong></p>
+          <div className="flex gap-2 mb-4">
+            <button type="button" onClick={() => setAdjustMode("balance")} className={"flex-1 np-btn-sm " + (adjustMode === "balance" ? "" : "outline")}>{t("adm_tab_balance")}</button>
+            <button type="button" onClick={() => setAdjustMode("card")} className={"flex-1 np-btn-sm " + (adjustMode === "card" ? "" : "outline")}>{t("adm_tab_card")}</button>
+          </div>
+          {adjustMode === "balance" ? (
           <div className="space-y-3">
             <div className="flex gap-2">
               <button type="button" onClick={() => setAdjustDir("credit")} className={"flex-1 np-btn-sm " + (adjustDir === "credit" ? "success" : "outline")}>{t("adm_credit_plus")}</button>
@@ -3163,6 +3212,27 @@ export default function AdminDashboard() {
               <button type="button" className={"flex-1 np-btn-sm " + (adjustDir === "credit" ? "success" : "danger")} onClick={handleAdjustWalletBalance} disabled={adjusting}>{adjusting ? t("adm_in_progress_ellipsis") : adjustDir === "credit" ? t("adm_credit") : t("adm_debit")}</button>
             </div>
           </div>
+          ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">{t("adm_assign_card_hint")}</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setCardBrand("visa")} className={"flex-1 np-btn-sm " + (cardBrand === "visa" ? "" : "outline")}>Visa</button>
+              <button type="button" onClick={() => setCardBrand("mastercard")} className={"flex-1 np-btn-sm " + (cardBrand === "mastercard" ? "" : "outline")}>Mastercard</button>
+            </div>
+            <label className="block text-xs font-semibold text-slate-600">{t("adm_card_initial_usd")}
+              <input type="number" className="np-text-input w-full mt-1" value={cardAmountUsd} onChange={(e) => setCardAmountUsd(e.target.value)} min={1} max={1000} step={1} />
+            </label>
+            <input type="text" className="np-text-input w-full" placeholder={t("adm_card_label_ph")} value={cardLabel} onChange={(e) => setCardLabel(e.target.value)} maxLength={100} />
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input type="checkbox" checked={cardChargeWallet} onChange={(e) => setCardChargeWallet(e.target.checked)} />
+              {t("adm_card_charge_wallet")}
+            </label>
+            <div className="flex gap-2 pt-2">
+              <button type="button" className="flex-1 np-btn-sm outline" onClick={() => setAdjustModal({ open: false, user: null })}>{t("adm_cancel")}</button>
+              <button type="button" className="flex-1 np-btn-sm success" onClick={handleIssueMapleradCard} disabled={issuingCard}>{issuingCard ? t("adm_in_progress_ellipsis") : t("adm_assign_card")}</button>
+            </div>
+          </div>
+          )}
         </div>
       </div>
     )}
