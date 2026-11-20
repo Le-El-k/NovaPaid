@@ -17,6 +17,9 @@
 /.next/
 /.vinext/
 /out/
+# Généré à chaque build (vinext/next) ; ne pas suivre pour ne pas salir l'arbre
+# de travail de la prod et bloquer le déploiement (`git pull`).
+next-env.d.ts
 
 # misc
 .DS_Store
