@@ -305,8 +305,9 @@ export default function AdminDashboard() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const fetchSectionData = async (tab: AdminTab) => {
-    setLoading(true);
+  const fetchSectionData = async (tab: AdminTab, opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`/api/admin?section=${tab}`);
       const data = await res.json();
@@ -340,7 +341,7 @@ export default function AdminDashboard() {
     } catch {
       // Ignorer l'erreur réseau locale
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -349,6 +350,39 @@ export default function AdminDashboard() {
       fetchSectionData(activeTab);
     }
   }, [activeTab, isUnlocked]);
+
+  // Rafraîchissement automatique toutes les 5 s : silencieux (aucun spinner, aucun
+  // remontage de composant), et suspendu quand une fenêtre/formulaire contient une
+  // saisie en cours, pour que la navigation reste fluide et sans risque de bug.
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const autoRefreshPausedRef = useRef(false);
+  autoRefreshPausedRef.current =
+    adjustModal.open ||
+    showAddReviewModal ||
+    showAddAdminForm ||
+    Boolean(passwordResetTarget) ||
+    isReplyingTicket ||
+    adminReplyMessage.trim().length > 0;
+
+  useEffect(() => {
+    if (!isUnlocked) return;
+    // Seuls les onglets dont les données sont gérées par fetchSectionData sont
+    // rafraîchis ici ; les onglets à composants auto-chargés ne sont pas remontés.
+    const LIVE_TABS: AdminTab[] = [
+      "overview", "reviews", "users", "admins", "approvals", "kyc", "cards",
+      "transactions", "support", "audit", "settings", "shop", "resellers",
+      "announcements", "ads",
+    ];
+    const id = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (autoRefreshPausedRef.current) return;
+      const tab = activeTabRef.current;
+      if (!LIVE_TABS.includes(tab)) return;
+      fetchSectionData(tab, { silent: true });
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [isUnlocked]);
 
   useEffect(() => {
     const limit = appSettings?.daily_transfer_limit_level2?.limitXaf;
@@ -490,15 +524,22 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok || !data?.success) throw new Error(data?.error || t("adm_err_send_reply"));
-      showNotification(adminReplyIsInternal ? t("adm_internal_note_saved") : t("adm_official_reply_sent"));
+      const wasInternalNote = adminReplyIsInternal;
+      showNotification(wasInternalNote ? t("adm_internal_note_saved") : t("adm_official_reply_sent"));
       setAdminReplyMessage("");
       setAdminReplyIsInternal(false);
       const refreshRes = await fetch("/api/admin?tab=support");
       const refreshData = await refreshRes.json();
       if (refreshData.success && refreshData.tickets) {
         setSupportTickets(refreshData.tickets);
-        const updated = refreshData.tickets.find((tk: any) => tk.id === ticketId);
-        if (updated) setSelectedTicket(updated);
+        // Réponse au client envoyée : on referme automatiquement le formulaire/fiche.
+        // Une note interne, elle, laisse la fiche ouverte pour continuer le suivi.
+        if (wasInternalNote) {
+          const updated = refreshData.tickets.find((tk: any) => tk.id === ticketId);
+          if (updated) setSelectedTicket(updated);
+        } else {
+          setSelectedTicket(null);
+        }
       }
       fetchSectionData("overview");
     } catch (error: any) {
