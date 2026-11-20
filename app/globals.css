@@ -25048,8 +25048,17 @@ html[data-theme="dark"] .np-codes-count, html[data-theme="mixed"] .np-codes-coun
   animation: np-sw-in .22s cubic-bezier(.2, .8, .3, 1);
 }
 @keyframes np-sw-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
-@media (max-width: 480px) {
-  .np-sw-panel { right: 8px; left: 8px; width: auto; bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 66px); height: min(78vh, 640px); }
+/* Sur mobile, la barre de navigation du bas (.np-mobile-nav, ~68px) est fixée en bas :
+   on remonte le bouton flottant et le panneau au-dessus d'elle pour éviter le chevauchement. */
+@media (max-width: 560px) {
+  .np-sw-fab {
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px) + 14px);
+  }
+  .np-sw-panel {
+    right: 8px; left: 8px; width: auto;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px) + 78px);
+    height: min(72vh, calc(100dvh - 68px - env(safe-area-inset-bottom, 0px) - 100px));
+  }
 }
 
 .np-sw-header { display: flex; align-items: center; gap: 11px; padding: 15px 16px; border-bottom: 1px solid #eef1f7; }
